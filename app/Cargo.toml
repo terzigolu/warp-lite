@@ -457,7 +457,6 @@ creating_shared_sessions = []
 cross_repo_context = []
 codebase_index_persistence = ["full_source_code_embedding"]
 default = [
-    "agent_mode",
     "viewing_shared_sessions",
     "render_continuous_block_selections_with_single_border",
     "settings_import",
@@ -561,7 +560,6 @@ default = [
     "team_api_keys",
     "agent_tips",
     "pluggable_notifications",
-    "agent_onboarding",
     "global_search",
     "cloud_conversations",
     "list_skills",
@@ -571,7 +569,6 @@ default = [
     "cloud_mode",
     "cloud_mode_from_local_session",
     "cloud_mode_image_context",
-    "agent_mode_computer_use",
     "oz_platform_skills",
     "sync_ambient_plans",
     "conversation_artifacts",
@@ -616,7 +613,6 @@ default = [
     "cli_agent_rich_input",
     "vertical_tabs",
     "tab_configs",
-    "hoa_onboarding_flow",
     "hoa_remote_control",
     "codex_notifications",
     "trim_trailing_blank_lines",
@@ -652,7 +648,7 @@ grep_tool = []
 # feature set is for a minimal build of Warp, and we add on GUI-specific features here.
 # For the most part, including GUI code in headless builds is fine; the main use case is
 # for things that pull in external dependencies.
-gui = ["voice_input"]
+gui = []
 msys2_shells = []
 file_retrieval_tools = []
 welcome_tab = []
