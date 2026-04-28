@@ -1768,10 +1768,7 @@ fn initialize_app(
     // When running natively, add the http server singleton to the application.
     #[cfg(not(target_family = "wasm"))]
     ctx.add_singleton_model(move |ctx| {
-        let routers = vec![
-            app_installation_detection::make_router(),
-            profiling::make_router(),
-        ];
+        let routers = vec![profiling::make_router()];
         http_server::HttpServer::new(routers, ctx)
     });
 
