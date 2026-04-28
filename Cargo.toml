@@ -7,7 +7,7 @@ resolver = "2"
 
 # Include all members except serve-wasm (since it's a helper helper for serving
 # wasm binaries and not something we want to regularly compile or run
-# tests against) and integration (since it is only used for testing).
+# tests against).
 default-members = [
   "app",
   "crates/channel_versions",
@@ -43,7 +43,6 @@ handlebars = { path = "crates/handlebars" }
 http_client = { path = "crates/http_client" }
 http_server = { path = "crates/http_server" }
 input_classifier = { path = "crates/input_classifier" }
-integration = { path = "crates/integration" }
 ipc = { path = "crates/ipc" }
 jsonrpc = { path = "crates/jsonrpc" }
 languages = { path = "crates/languages" }

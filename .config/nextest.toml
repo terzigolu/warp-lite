@@ -3,25 +3,12 @@
 # if it takes 2x as long as the slow timeout (i.e.: 60s total).
 slow-timeout = { period = "30s", terminate-after = 2 }
 
-[[profile.default.overrides]]
-filter = 'package(integration)'
-# Integration tests are heavier-weight than unit tests, so have each one
-# count twice against the parallelism limit.  This improves overall runtime
-# of the test suite, despite running fewer integration tests at a time.
-threads-required = 2
-
 [profile.ci]
 # Print out output for failing tests as soon as they fail, and also at the end
 # of the run (for easy scrollability).
 failure-output = "immediate-final"
 # Do not cancel the test run on the first failure.
 fail-fast = false
-
-[[profile.ci.overrides]]
-filter = 'package(integration)'
-# On CI, try integration tests up to 3 times (in total) to reduce the impact of
-# flaky tests.
-retries = 2
 
 [profile.ci.junit]
 # Output nextest results in junit format (for uploading to buildpulse).
