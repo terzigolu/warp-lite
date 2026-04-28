@@ -1103,11 +1103,7 @@ impl ServerApi {
             .map_err(Into::into)
             .map_err(Arc::new)?;
 
-        let mut request_builder = self
-            .client
-            .post(url)
-            .proto(request)
-            .prevent_sleep("Agent Mode request in-progress");
+        let mut request_builder = self.client.post(url).proto(request);
         if let Some(token) = auth_token.as_bearer_token() {
             request_builder = request_builder.bearer_auth(token);
         }

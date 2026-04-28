@@ -100,14 +100,11 @@ pub struct RequestBuilder<'a> {
 
     // The JSON payload of the request, if any, serialized to a pretty-printed String.
     serialized_payload: Option<String>,
-
-    prevent_sleep_reason: Option<&'static str>,
 }
 
 pub struct Request {
     wrapped: reqwest::Request,
     serialized_payload: Option<String>,
-    prevent_sleep_reason: Option<&'static str>,
 }
 
 /// A wrapper around a `reqwest::Response` that ensures any async calls to the underlying `Response`
@@ -179,7 +176,6 @@ impl Client {
             wrapped,
             client: self,
             serialized_payload: None,
-            prevent_sleep_reason: None,
         };
 
         if include_warp_headers {
@@ -329,14 +325,11 @@ impl Client {
         let Request {
             wrapped: request,
             serialized_payload,
-            prevent_sleep_reason,
         } = request;
 
         if let Some(before_response_send_fn) = &self.before_request_sent {
             before_response_send_fn(&request, &serialized_payload);
         }
-
-        let _guard = prevent_sleep_reason.map(prevent_sleep::prevent_sleep);
 
         cfg_if::cfg_if! {
             if #[cfg(target_family = "wasm")] {
@@ -367,7 +360,6 @@ impl<'a> RequestBuilder<'a> {
         let request = self.wrapped.build().map(|request| Request {
             wrapped: request,
             serialized_payload: self.serialized_payload,
-            prevent_sleep_reason: self.prevent_sleep_reason,
         });
         (self.client, request)
     }
@@ -466,12 +458,6 @@ impl<'a> RequestBuilder<'a> {
             future::ready(true)
         });
 
-        // Wrap the stream in one that holds onto a prevent_sleep guard, if one is required here.
-        let stream = prevent_sleep::Stream::wrap(
-            stream,
-            self.prevent_sleep_reason.map(prevent_sleep::prevent_sleep),
-        );
-
         cfg_if::cfg_if! {
             if #[cfg(target_family = "wasm")] {
                 stream.boxed_local()
@@ -555,16 +541,6 @@ impl<'a> RequestBuilder<'a> {
         }
     }
 
-    /// Prevents the system from sleeping due to idle while this request is in progress.
-    ///
-    /// The provided reason will be used in user-visible logging, so make sure it is
-    /// descriptive and reasonably formatted (e.g. "Agent mode request in-progress").
-    pub fn prevent_sleep(self, reason: &'static str) -> RequestBuilder<'a> {
-        Self {
-            prevent_sleep_reason: Some(reason),
-            ..self
-        }
-    }
 }
 
 /// An error returned from `Response::error_for_status` that includes response headers.

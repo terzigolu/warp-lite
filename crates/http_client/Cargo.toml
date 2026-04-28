@@ -18,7 +18,6 @@ futures.workspace = true
 http.workspace = true
 log.workspace = true
 oauth2.workspace = true
-prevent_sleep.workspace = true
 prost.workspace = true
 reqwest.workspace = true
 reqwest-eventsource.workspace = true

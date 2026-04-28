@@ -6071,7 +6071,6 @@ dependencies = [
  "http 1.1.0",
  "log",
  "oauth2",
- "prevent_sleep",
  "prost 0.14.3",
  "reqwest",
  "reqwest-eventsource",
@@ -9677,22 +9676,6 @@ checksum = "ae005bd773ab59b4725093fd7df83fd7892f7d8eafb48dbd7de6e024e4215f9d"
 dependencies = [
  "proc-macro2",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "prevent_sleep"
-version = "0.0.0"
-dependencies = [
- "cfg-if",
- "cfg_aliases 0.2.1",
- "futures",
- "itertools 0.14.0",
- "log",
- "objc2 0.6.3",
- "objc2-foundation 0.3.2",
- "parking_lot",
- "pin-project",
- "windows 0.62.2",
 ]
 
 [[package]]

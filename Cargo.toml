@@ -54,7 +54,6 @@ natural_language_detection = { path = "crates/natural_language_detection" }
 node_runtime = { path = "crates/node_runtime" }
 onboarding = { path = "crates/onboarding" }
 persistence = { path = "crates/persistence" }
-prevent_sleep = { path = "crates/prevent_sleep" }
 repo_metadata = { path = "crates/repo_metadata" }
 settings = { path = "crates/settings" }
 settings_value = { path = "crates/settings_value", default-features = false }
