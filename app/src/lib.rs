@@ -109,6 +109,11 @@ pub mod settings_view;
 pub mod tab_configs;
 pub mod terminal;
 pub mod themes;
+
+// --- warp-lite stub for removed AI/cloud type --------------------------
+#[allow(dead_code)] pub struct AgentModeEntrypoint;
+// --- end stubs ---------------------------------------------------------
+
 use crate::uri::web_intent_parser::maybe_rewrite_web_url_to_intent;
 use code::editor_management::CodeManager;
 use code::opened_files::OpenedFilesModel;

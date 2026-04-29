@@ -139,6 +139,17 @@ const WINDOW_TITLE: &str = "Warp";
 #[allow(dead_code)] pub struct UpdateManager;
 #[allow(dead_code)] pub struct UserAuthenticationError;
 #[allow(dead_code)] pub type WarpDriveItemId = String;
+#[allow(dead_code)] pub struct AISettings;
+#[allow(dead_code)] pub struct AuthOverrideWarningModal;
+#[allow(dead_code)] pub struct AuthOverrideWarningModalEvent;
+#[allow(dead_code)] pub struct AuthView;
+#[allow(dead_code)] pub struct CloudPreferencesSyncer;
+#[allow(dead_code)] pub struct CloudPreferencesSyncerEvent;
+#[allow(dead_code)] pub struct OnboardingTutorial;
+#[allow(dead_code)] pub fn apply_onboarding_settings() {}
+#[allow(dead_code)] pub fn build_onboarding_models() {}
+#[allow(dead_code)] pub fn current_onboarding_auth_state() -> Option<()> { None }
+#[allow(dead_code)] pub fn is_free_user_no_ai_experiment_active() -> bool { false }
 
 lazy_static! {
     static ref FALLBACK_WINDOW_SIZE: Vector2F = vec2f(800.0, 600.0);
