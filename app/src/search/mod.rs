@@ -1,6 +1,4 @@
 pub mod action;
-pub mod ai_context_menu;
-mod ai_queries;
 pub(crate) mod async_snapshot_data_source;
 pub mod binding_source;
 pub mod command_palette;
@@ -13,7 +11,6 @@ mod filter_chip_renderer;
 pub mod item;
 pub mod macros;
 pub mod mixer;
-pub mod notebook_embedding;
 mod notebooks;
 mod palette_styles;
 pub mod result_renderer;
