@@ -15,10 +15,11 @@ use crate::shell_indicator::ShellIndicatorType;
 use crate::terminal::available_shells::{AvailableShell, AvailableShells};
 #[cfg(not(target_family = "wasm"))]
 use crate::terminal::cli_agent_sessions::plugin_manager::PluginModalKind;
-use crate::terminal::view::inline_banner::{
-    ZeroStatePromptSuggestionTriggeredFrom, ZeroStatePromptSuggestionType,
-};
-use crate::terminal::view::load_ai_conversation::RestoredAIConversation;
+// warp-lite: AI conversation imports stubbed
+// use crate::terminal::view::inline_banner::{
+//     ZeroStatePromptSuggestionTriggeredFrom, ZeroStatePromptSuggestionType,
+// };
+// use crate::terminal::view::load_ai_conversation::RestoredAIConversation;
 use crate::undo_close::UndoCloseStack;
 use crate::undo_close::UndoCloseStackEvent;
 #[cfg(target_family = "wasm")]
@@ -98,12 +99,13 @@ use crate::terminal::local_tty;
 use crate::terminal::model::session::Session;
 use crate::terminal::session_settings::NewSessionSource;
 use crate::terminal::session_settings::SessionSettings;
-use crate::terminal::shared_session::render_util::ParticipantAvatarParams;
-use crate::terminal::shared_session::role_change_modal::{
-    RoleChangeCloseSource, RoleChangeModal, RoleChangeModalEvent,
-};
-use crate::terminal::shared_session::share_modal::{ShareSessionModal, ShareSessionModalEvent};
-use crate::terminal::shared_session::{self, IsSharedSessionCreator, SharedSessionActionSource};
+// warp-lite: shared_session imports stubbed
+// use crate::terminal::shared_session::render_util::ParticipantAvatarParams;
+// use crate::terminal::shared_session::role_change_modal::{
+//     RoleChangeCloseSource, RoleChangeModal, RoleChangeModalEvent,
+// };
+// use crate::terminal::shared_session::share_modal::{ShareSessionModal, ShareSessionModalEvent};
+// use crate::terminal::shared_session::{self, IsSharedSessionCreator, SharedSessionActionSource};
 use crate::terminal::view::ssh_file_upload::FileUploadId;
 use crate::terminal::view::{
     BlockNotification, ConversationRestorationInNewPaneType, ExecuteCommandEvent,
@@ -142,8 +144,9 @@ use focus_state::PaneGroupFocusState;
 #[path = "mod_tests.rs"]
 mod tests;
 
-pub use pane::ai_document_pane::AIDocumentPane;
-pub use pane::ai_fact_pane::AIFactPane;
+// warp-lite: AI panes stubbed
+// pub use pane::ai_document_pane::AIDocumentPane;
+// pub use pane::ai_fact_pane::AIFactPane;
 pub use pane::code_diff_pane::CodeDiffPane;
 pub use pane::code_pane::CodePane;
 pub use pane::env_var_collection_pane::EnvVarCollectionPane;
@@ -165,6 +168,134 @@ pub use tree::{Direction, PaneData, PaneFlex, PaneNode, SplitDirection};
 pub use working_directories::{WorkingDirectoriesEvent, WorkingDirectoriesModel};
 
 use self::pane::{DetachType, PaneViewEvent};
+
+// --- warp-lite stubs for removed AI/cloud types -------------------------
+#[allow(dead_code)]
+pub type AIDocumentPane = ();
+#[allow(dead_code)]
+pub type AIFactPane = ();
+#[allow(dead_code)]
+pub type AIConversation = ();
+#[allow(dead_code)]
+pub type AIConversationId = String;
+#[allow(dead_code)]
+pub type AIDocumentId = String;
+#[allow(dead_code)]
+pub type AIDocumentVersion = ();
+#[allow(dead_code)]
+pub type AmbientAgentTaskId = String;
+#[allow(dead_code)]
+pub type AskAIType = ();
+#[allow(dead_code)]
+pub type AttachedReviewComment = ();
+#[allow(dead_code)]
+pub type AnonymousUserSignupEntrypoint = ();
+#[allow(dead_code)]
+pub type ClientProfileId = String;
+#[allow(dead_code)]
+pub type CloudConversationData = ();
+#[allow(dead_code)]
+pub type CloudObjectTypeAndId = ();
+#[allow(dead_code)]
+pub type CodeDiffView = ();
+#[allow(dead_code)]
+pub type CodeReviewPanelArg = ();
+#[allow(dead_code)]
+pub type DiffMode = ();
+#[allow(dead_code)]
+pub type InputConfig = ();
+#[allow(dead_code)]
+pub type IsSharedSessionCreator = ();
+#[allow(dead_code)]
+pub type LLMId = String;
+#[allow(dead_code)]
+pub type ObjectUid = String;
+#[allow(dead_code)]
+pub type OpenWarpDriveObjectArgs = ();
+#[allow(dead_code)]
+pub type PaletteSource = ();
+#[allow(dead_code)]
+pub type PendingImportedReviewComment = ();
+#[allow(dead_code)]
+pub type RoleChangeCloseSource = ();
+#[allow(dead_code)]
+pub type RoleChangeModal = ();
+#[allow(dead_code)]
+pub type RoleChangeModalEvent = ();
+#[allow(dead_code)]
+pub type SerializedBlockListItem = ();
+#[allow(dead_code)]
+pub type ServerConversationToken = ();
+#[allow(dead_code)]
+pub type SessionNavigationData = ();
+#[allow(dead_code)]
+pub type SharedSessionActionSource = ();
+#[allow(dead_code)]
+pub type ShareSessionModal = ();
+#[allow(dead_code)]
+pub type ShareSessionModalEvent = ();
+#[allow(dead_code)]
+pub type SharingDialogSource = ();
+#[allow(dead_code)]
+pub type Space = ();
+#[allow(dead_code)]
+pub type SuggestedAgentModeWorkflowAndId = ();
+#[allow(dead_code)]
+pub type SuggestedRuleAndId = ();
+#[allow(dead_code)]
+pub type SyncId = String;
+#[allow(dead_code)]
+pub type WarpDriveItemId = String;
+#[allow(dead_code)]
+pub type ZeroStatePromptSuggestionType = ();
+#[allow(dead_code)]
+pub type AgentConversationsModelEvent = ();
+#[allow(dead_code)]
+pub struct BlocklistAIHistoryModel;
+#[allow(dead_code)]
+pub struct AgentConversationsModel;
+#[allow(dead_code)]
+pub struct AgentViewEntryOrigin;
+#[allow(dead_code)]
+pub struct TelemetryEvent;
+#[allow(dead_code)]
+pub struct AIAgentHarness;
+#[allow(dead_code)]
+pub struct RestoredAIConversation;
+#[allow(dead_code)]
+pub struct RestoredAgentConversations;
+#[allow(dead_code)]
+pub struct ConversationOrTask;
+#[allow(dead_code)]
+pub struct AIExecutionProfilesModel;
+#[allow(dead_code)]
+pub struct AIDocumentView;
+#[allow(dead_code)]
+pub struct ActiveAgentViewsModel;
+#[allow(dead_code)]
+pub struct ZeroStatePromptSuggestionTriggeredFrom;
+#[allow(dead_code)]
+pub struct ServerApiProvider;
+#[allow(dead_code)]
+pub struct ParticipantAvatarParams;
+#[allow(dead_code)]
+pub struct PaneSettings;
+#[allow(dead_code)]
+pub struct DefaultSessionMode;
+#[allow(dead_code)]
+pub struct AuthViewVariant;
+#[allow(dead_code)]
+pub struct AuthStateProvider;
+#[allow(dead_code)]
+pub struct AuthManager;
+#[allow(dead_code)]
+pub struct AISettings;
+#[allow(dead_code)]
+pub struct AIDocumentModel;
+#[allow(dead_code)]
+pub struct ConversationRestorationInNewPaneType;
+#[allow(dead_code)]
+pub struct CLIAgent;
 
 lazy_static! {
     // The value to use as the initial window bounds if we are unable to

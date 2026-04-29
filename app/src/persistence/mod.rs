@@ -1,21 +1,11 @@
 #![cfg_attr(not(feature = "local_fs"), allow(dead_code))]
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "local_fs")] {
-        pub mod agent;
-        mod block_list;
-        mod cloud_objects;
-        mod sqlite;
-        pub mod commands;
-    }
-}
+// warp-lite: AI/cloud submodules disabled. The `local_fs` feature gate
+// is no longer wired since the underlying submodule files are stripped.
 
 pub use persistence::model;
 #[cfg_attr(not(feature = "local_fs"), expect(unused_imports))]
 pub use persistence::schema;
-
-#[cfg(feature = "integration_tests")]
-pub mod testing;
 
 use instant::Instant;
 use std::collections::HashMap;
@@ -28,26 +18,43 @@ use chrono::{DateTime, Local, Utc};
 use lsp::supported_servers::LSPServerType;
 use uuid::Uuid;
 use warp_core::command::ExitCode;
-use warp_multi_agent_api as api;
 use warpui::{AppContext, Entity, SingletonEntity};
 
 use crate::app_state::AppState;
 
-use crate::notebooks::CloudNotebook;
 use crate::suggestions::ignored_suggestions_model::SuggestionType;
 use crate::terminal::history::PersistedCommand;
 use crate::terminal::model::block::{SerializedAgentViewVisibility, SerializedBlock};
 use crate::terminal::model::session::SessionId;
-use crate::workflows::CloudWorkflow;
 use crate::workspaces::user_profiles::UserProfileWithUID;
 use crate::workspaces::workspace::{Workspace as WorkspaceMetadata, WorkspaceUid};
 
-use self::model::{AgentConversation, AgentConversationData, Project};
+// --- warp-lite stubs for removed AI/cloud types ---------------------------
+// These keep the persistence facade compile-ready without the AI/cloud crates.
+pub trait CloudObject: Send + Sync + std::fmt::Debug {}
+pub trait CloudStringObject: Send + Sync + std::fmt::Debug {}
+pub type CloudFolder = ();
+pub type CloudWorkflow = ();
+pub type CloudNotebook = ();
+pub type ObjectAction = ();
+pub type ServerExperiment = ();
+pub type PersistedAIInput = ();
+pub type CodeWorkspaceMetadata = ();
+pub type EnablementState = ();
+pub type ProjectRulePath = ();
+pub type TemplatableMCPServerInstallation = ();
+pub type SyncId = String;
+pub type ObjectIdType = ();
+pub type ServerTimestamp = ();
+pub type ServerCreationInfo = ();
+pub type RevisionAndLastEditor = ();
+pub type CloudObjectMetadata = ();
+pub type PersistedCurrentUserInformation = ();
+pub type AgentConversation = ();
+pub type AgentConversationData = ();
+pub type Project = ();
 
-#[cfg(any(feature = "local_fs", feature = "integration_tests"))]
-pub use sqlite::database_file_path;
-#[cfg(any(feature = "local_fs", feature = "integration_tests"))]
-pub use sqlite::establish_ro_connection;
+// sqlite re-exports stripped — warp-lite has no `local_fs` submodule wiring.
 
 /// Initializes the persistence "subsystem".
 ///
@@ -55,43 +62,18 @@ pub use sqlite::establish_ro_connection;
 /// writing updated data to persist, if the persistence subsystem is
 /// available.
 #[cfg_attr(not(feature = "local_fs"), allow(unused_variables))]
-pub fn initialize(ctx: &mut AppContext) -> (Option<PersistedData>, Option<WriterHandles>) {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "local_fs")] {
-            sqlite::initialize(ctx)
-        } else {
-            (None, None)
-        }
-    }
+pub fn initialize(_ctx: &mut AppContext) -> (Option<PersistedData>, Option<WriterHandles>) {
+    (None, None)
 }
 
-// Remove sqlite database as part of Logout v0.
-// TODO: Implement per user scoping of sqlite.
 #[cfg_attr(not(feature = "local_fs"), allow(unused_variables))]
-pub fn remove(sender: &Option<SyncSender<ModelEvent>>) {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "local_fs")] {
-            if let Some(sender) = sender.clone() {
-                sqlite::remove(sender);
-            }
-        } else {
-            log::info!("Local filesystem persistence is not enabled.");
-        }
-    }
+pub fn remove(_sender: &Option<SyncSender<ModelEvent>>) {
+    log::info!("warp-lite: persistence::remove is a no-op");
 }
 
-// Reconstruct sqlite database as part of Logout v0.
 #[cfg_attr(not(feature = "local_fs"), allow(unused_variables))]
-pub fn reconstruct(sender: &Option<SyncSender<ModelEvent>>) {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "local_fs")] {
-            if let Some(sender) = sender.clone() {
-                sqlite::reconstruct(sender);
-            }
-        } else {
-            log::info!("Local filesystem persistence is not enabled.");
-        }
-    }
+pub fn reconstruct(_sender: &Option<SyncSender<ModelEvent>>) {
+    log::info!("warp-lite: persistence::reconstruct is a no-op");
 }
 
 /// Holds interfaces to the writer thread.
