@@ -1,7 +1,6 @@
 use crate::notebooks::manager::NotebookManager;
 use crate::notebooks::CloudNotebook;
 use crate::search::result_renderer::ItemHighlightState;
-use crate::server::ids::SyncId;
 use crate::{appearance::Appearance, cloud_object::CloudObject};
 use fuzzy_match::FuzzyMatchResult;
 use ordered_float::OrderedFloat;

@@ -5,9 +5,6 @@ use warpui::elements::PartialClickableElement;
 
 use warpui::platform::Cursor;
 
-use crate::ai::agent::{AIAgentActionType, AIAgentOutput, AIAgentTextSection, ReadFilesRequest};
-use crate::ai::blocklist::block::view_impl::output::LinkActionConstructors;
-use crate::ai::blocklist::block::TextLocation;
 use crate::terminal::links::should_directly_open_link;
 use crate::terminal::model::grid::grid_handler::FILE_LINK_SEPARATORS;
 use crate::terminal::ShellLaunchData;

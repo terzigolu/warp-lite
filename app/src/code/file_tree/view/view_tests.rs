@@ -10,8 +10,6 @@ use virtual_fs::{Stub, VirtualFS};
 use warp_core::ui::appearance::Appearance;
 use warpui::{platform::WindowStyle, App, ModelHandle};
 
-use crate::auth::AuthStateProvider;
-use crate::server::server_api::{team::MockTeamClient, workspace::MockWorkspaceClient};
 use crate::settings_view::keybindings::KeybindingChangedNotifier;
 use crate::test_util::settings::initialize_settings_for_tests;
 use crate::vim_registers::VimRegisters;

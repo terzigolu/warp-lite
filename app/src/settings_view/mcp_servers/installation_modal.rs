@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::ai::mcp::templatable_installation::{VariableType, VariableValue};
 use crate::appearance::Appearance;
 use crate::editor::Event as EditorEvent;
 use crate::editor::{EditorView, SingleLineEditorOptions};
@@ -26,7 +25,6 @@ use warpui::{
 };
 use warpui::{SingletonEntity, ViewContext};
 
-use crate::ai::mcp::{TemplatableMCPServer, TemplatableMCPServerManager, TemplateVariable};
 
 use crate::ui_components::{
     avatar::{Avatar, AvatarContent},

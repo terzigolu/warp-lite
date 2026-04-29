@@ -5,7 +5,6 @@ use super::{
     },
     SettingsSection,
 };
-use crate::auth::AuthStateProvider;
 use crate::{
     appearance::Appearance,
     channel::{Channel, ChannelState},

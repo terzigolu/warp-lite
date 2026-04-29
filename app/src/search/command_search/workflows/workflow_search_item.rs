@@ -16,7 +16,6 @@ use crate::search::command_search::searcher::{AcceptedWorkflow, CommandSearchIte
 use crate::search::item::SearchItem;
 use crate::search::result_renderer::ItemHighlightState;
 use crate::search::workflows::fuzzy_match::FuzzyMatchWorkflowResult;
-use crate::server::ids::SyncId;
 use crate::ui_components::icons::Icon;
 use crate::workflows::workflow::Workflow;
 use crate::workflows::{CloudWorkflowModel, WorkflowSource, WorkflowType};

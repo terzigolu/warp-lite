@@ -1,5 +1,3 @@
-use crate::auth::AuthStateProvider;
-use crate::cloud_object::model::persistence::CloudModel;
 use crate::code::editor::view::CodeEditorRenderOptions;
 use crate::notebooks::editor::keys::NotebookKeybindings;
 use crate::workspace::ActiveSession;

@@ -1,7 +1,6 @@
 use warp_core::ui::appearance::Appearance;
 use warpui::{platform::WindowStyle, App, ViewHandle};
 
-use crate::auth::AuthStateProvider;
 use crate::{
     cloud_object::model::{actions::ObjectActions, persistence::CloudModel, view::CloudViewModel},
     env_vars::{

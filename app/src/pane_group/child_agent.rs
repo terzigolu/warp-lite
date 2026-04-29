@@ -2,10 +2,6 @@ use std::{collections::HashMap, ffi::OsString};
 
 use warpui::{EntityId, SingletonEntity, ViewContext, ViewHandle};
 
-use crate::ai::agent::conversation::{AIConversationId, ConversationStatus};
-use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
-use crate::ai::blocklist::BlocklistAIHistoryModel;
-use crate::ai::llms::LLMPreferences;
 use crate::pane_group::{PaneGroup, PaneId};
 use crate::terminal::TerminalView;
 use crate::AIExecutionProfilesModel;

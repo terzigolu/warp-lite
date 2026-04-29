@@ -32,10 +32,6 @@ use warpui::{TypedActionView, ViewContext, ViewHandle};
 use warp_core::ui::theme::AnsiColorIdentifier;
 
 #[cfg(feature = "local_fs")]
-use crate::ai::persisted_workspace::PersistedWorkspaceEvent;
-use crate::ai::persisted_workspace::{
-    LSPEnablementResultForFile, LspRepoStatus, PersistedWorkspace,
-};
 use crate::settings::AISettings;
 use crate::ui_components::blended_colors;
 #[cfg(feature = "local_fs")]

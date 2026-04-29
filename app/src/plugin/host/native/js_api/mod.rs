@@ -6,7 +6,6 @@ cfg_if::cfg_if! {
     if #[cfg(feature = "completions_v2")] {
         use rquickjs::{prelude::MutFn, Value};
         use warp_completer::signatures::CommandSignature;
-        use warp_js::FromWarpJs;
     }
 }
 

@@ -14,7 +14,6 @@ use warp_terminal::model::Point;
 use warpui::r#async::block_on;
 
 use crate::safe_info;
-use crate::server::datetime_ext::DateTimeExt;
 use crate::terminal::event::ExecutedExecutorCommandEvent;
 use crate::terminal::shell::{Shell, ShellType};
 use warp_util::on_cancel::OnCancelFutureExt;

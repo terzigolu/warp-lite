@@ -40,14 +40,12 @@ use crate::{
 use git2::Repository as GitRepository;
 
 #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
-use ai::index::full_source_code_embedding::manager::CodebaseIndexManager;
 
 #[cfg(all(
     feature = "local_fs",
     not(target_family = "wasm"),
     not(any(test, feature = "integration_tests"))
 ))]
-use ai::index::full_source_code_embedding::manager::CodebaseIndexManagerEvent;
 
 const DIALOG_WIDTH: f32 = 600.;
 const AVAILABLE_LIST_MAX_HEIGHT: f32 = 260.;

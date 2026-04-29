@@ -6,7 +6,6 @@ use warp_core::features::FeatureFlag;
 use crate::appearance::Appearance;
 use crate::search::command_palette::FilterChipRenderer;
 
-use crate::drive::settings::WarpDriveSettings;
 use crate::search::QueryFilter;
 use crate::settings::AISettings;
 use crate::workspace::Workspace;

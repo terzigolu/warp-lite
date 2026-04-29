@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use crate::ai::blocklist::TextLocation;
 use crate::terminal::model::index::Point;
 use anyhow::anyhow;
 use itertools::Itertools;

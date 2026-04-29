@@ -1,6 +1,3 @@
-use crate::ai::blocklist::BlocklistAIInputModel;
-use crate::context_chips::display::PromptDisplay;
-use crate::context_chips::spacing;
 use crate::features::FeatureFlag;
 use crate::settings::InputSettings;
 use crate::terminal::grid_size_util::grid_compute_baseline_position_fn;

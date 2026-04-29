@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::coding_panel_enablement_state::CodingPanelEnablementState;
 
 use async_channel::Sender;
 use pathfinder_geometry::vector::vec2f;

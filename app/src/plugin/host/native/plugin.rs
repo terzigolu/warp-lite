@@ -6,7 +6,6 @@ use std::{
 
 use anyhow::anyhow;
 use rquickjs::Context;
-use warp_js::{JsFunctionId, JsFunctionRegistry, SerializedJsValue};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "completions_v2")] {

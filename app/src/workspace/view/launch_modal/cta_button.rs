@@ -1,5 +1,4 @@
 use super::Slide;
-use crate::server::telemetry::TelemetryEvent;
 use std::rc::Rc;
 use warpui::ViewContext;
 

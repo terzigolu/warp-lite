@@ -3,9 +3,6 @@ use std::{fs::read, io::Cursor, path::Path, time::Duration};
 use prost::Message;
 use warpui::{async_assert, integration::TestStep, SingletonEntity};
 
-use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
-use crate::ai::execution_profiles::ActionPermission;
-use crate::ai::llms::{LLMId, LLMPreferences};
 use crate::integration_testing::agent_mode::ConversationTarget;
 use crate::integration_testing::{
     agent_mode::{assert_latest_task_succeeds_or_blocked, assert_task_is_blocked},

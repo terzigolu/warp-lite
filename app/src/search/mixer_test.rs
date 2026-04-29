@@ -1,9 +1,5 @@
 use super::*;
-use crate::auth::auth_manager::AuthManager;
-use crate::auth::AuthStateProvider;
 use crate::search::item::SearchItem;
-use crate::server::server_api::ServerApiProvider;
-use crate::server::telemetry::context_provider::AppTelemetryContextProvider;
 use ordered_float::OrderedFloat;
 use std::collections::HashSet;
 use std::time::Duration;

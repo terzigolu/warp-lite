@@ -18,7 +18,6 @@ cfg_if::cfg_if! {
         use crate::terminal::view::WARP_PROMPT_HEIGHT_LINES;
         use crate::terminal::{SizeInfo, TerminalModel};
 
-        use crate::context_chips::prompt_type::PromptType;
         use crate::terminal::color::List;
     }
 }

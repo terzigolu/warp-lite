@@ -13,7 +13,6 @@ pub use improved_palette_search_layer::{ImprovedPaletteSearch, IMPROVED_PALETTE_
 pub use login_layer::{AuthFlowInstructions, LOGIN_LAYER};
 use warp_core::user_preferences::GetUserPreferences as _;
 
-use crate::auth::auth_state::AuthStateProvider;
 use crate::channel::{Channel, ChannelState};
 use anyhow::Result;
 use dashmap::DashMap;

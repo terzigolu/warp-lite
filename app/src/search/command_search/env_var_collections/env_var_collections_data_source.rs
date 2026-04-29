@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use warpui::{AppContext, SingletonEntity};
 
-use crate::cloud_object::model::persistence::CloudModel;
 
 use super::EnvVarCollectionSearchItem;
 use crate::search::command_search::searcher::CommandSearchItemAction;

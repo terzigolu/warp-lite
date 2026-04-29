@@ -2,7 +2,6 @@ use super::{
     editor_text_colors,
     settings_page::{render_input_list, InputListItem},
 };
-use crate::server::server_api::ServerApiProvider;
 use crate::{
     ai::ambient_agents::telemetry::CloudAgentTelemetryEvent,
     ai::{
@@ -32,7 +31,6 @@ use std::collections::HashMap;
 use url::Url;
 use warp_core::send_telemetry_from_ctx;
 use warp_editor::editor::NavigationKey;
-use warp_graphql::queries::user_github_info::UserGithubInfoResult;
 use warpui::{
     elements::{
         Border, ChildAnchor, ChildView, Clipped, ClippedScrollStateHandle, ClippedScrollable,

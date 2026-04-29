@@ -5,12 +5,8 @@ use settings::manager::SettingsManager;
 use warpui::{App, SingletonEntity};
 
 use super::*;
-use crate::auth::AuthStateProvider;
-use crate::cloud_object::Owner;
 use crate::notebooks::manager::NotebookManager;
 use crate::notebooks::CloudNotebookModel;
-use crate::server::ids::ServerId;
-use crate::server::ids::SyncId::{self};
 use crate::settings::AISettings;
 use crate::workflows::workflow::Workflow;
 use crate::workflows::CloudWorkflowModel;
@@ -34,11 +30,8 @@ use crate::{
 };
 
 #[cfg(test)]
-use crate::server::server_api::object::MockObjectClient;
 #[cfg(test)]
-use crate::server::server_api::team::MockTeamClient;
 #[cfg(test)]
-use crate::server::server_api::workspace::MockWorkspaceClient;
 
 fn mock_server_metadata() -> ServerMetadata {
     ServerMetadata {

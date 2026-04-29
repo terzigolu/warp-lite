@@ -11,7 +11,6 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use string_offset::{ByteOffset, CharCounter, CharOffset};
 
-use crate::server::ids::SyncId;
 
 use super::workflow::{ArgumentType, Workflow};
 

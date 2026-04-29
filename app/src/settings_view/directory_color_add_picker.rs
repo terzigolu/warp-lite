@@ -1,9 +1,6 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use ai::index::full_source_code_embedding::manager::{
-    CodebaseIndexManager, CodebaseIndexManagerEvent,
-};
 use settings::Setting;
 use warp_util::path::user_friendly_path;
 use warpui::{

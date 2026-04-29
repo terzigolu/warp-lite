@@ -1,4 +1,3 @@
-use crate::ai::mcp::{Author, MCPServerUpdate};
 use crate::appearance::Appearance;
 use crate::settings_view::mcp_servers::style::{
     INSTALLATION_MODAL_BUTTON_GAP, INSTALLATION_MODAL_PADDING,

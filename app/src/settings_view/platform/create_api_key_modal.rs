@@ -1,6 +1,5 @@
 use crate::editor::Event as EditorEvent;
 use crate::modal::{Modal, ModalViewState};
-use crate::server::server_api::auth::AuthClient;
 use crate::util::truncation::truncate_from_end;
 use crate::workspaces::user_workspaces::UserWorkspaces;
 use crate::{
