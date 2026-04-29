@@ -1,89 +1,72 @@
-<a href="https://www.warp.dev">
-    <img width="1024" alt="Warp Agentic Development Environment product preview" src="https://github.com/user-attachments/assets/9976b2da-2edd-4604-a36c-8fd53719c6d4" />
-</a>
+# warp-lite
 
-<p align="center">
-  <a href="https://www.warp.dev">Website</a>
-  ·
-  <a href="https://www.warp.dev/code">Code</a>
-  ·
-  <a href="https://www.warp.dev/agents">Agents</a>
-  ·
-  <a href="https://www.warp.dev/terminal">Terminal</a>
-  ·
-  <a href="https://www.warp.dev/drive">Drive</a>
-  ·
-  <a href="https://docs.warp.dev">Docs</a>
-  ·
-  <a href="https://www.warp.dev/blog/how-warp-works">How Warp Works</a>
-</p>
+Lightweight AGPL fork of [Warp Terminal](https://github.com/warpdotdev/warp) — **no AI, no cloud, no telemetry**.
 
-> [!NOTE]
-> OpenAI is the founding sponsor of the new, open-source Warp repository, and the new agentic management workflows are powered by GPT models.
+> ⚠️ **Status: alpha / under construction.** The fork is mid-amputation: terminal core works, AI/cloud/onboarding subsystems are being removed phase-by-phase. See [`FORK_NOTICE.md`](FORK_NOTICE.md) for the relationship with upstream Warp, and the [commit history](https://github.com/terzigolu/warp-lite/commits/warp-lite/main) for current state.
 
-<h1></h1>
+## Why
 
-## About
+Upstream Warp is excellent, but bundles a large agentic-development surface (Warp AI, Warp Drive, session sharing, ambient agents, computer use, voice input, telemetry, crash reporting) that some users do not want. This fork cuts that surface and ships only the terminal.
 
-[Warp](https://www.warp.dev) is an agentic development environment, born out of the terminal. Use Warp's built-in coding agent, or bring your own CLI agent (Claude Code, Codex, Gemini CLI, and others).
+Goals, in order:
 
-## Installation
+1. **Local-first.** Zero outbound network calls at idle. No telemetry. No crash uploads. No backend.
+2. **Lighter.** Smaller binary, faster cold build, lower idle RAM. Targets after Phase 4: ~90–110 MB binary, ~200 MB idle RAM, ~3–5 min release build (vs. ~200 MB / ~400 MB / ~10 min upstream).
+3. **Faithful to the terminal core.** Block model, GPU renderer, shell integrations, Vim mode, editor, LSP, syntax highlighting — all preserved.
 
-You can [download Warp](https://www.warp.dev/download) and [read our docs](https://docs.warp.dev/) for platform-specific instructions.
+What this fork is **not**: a closed-source repackage, an MIT relicense (the AGPL applies and cannot be downgraded), or a project under the Warp Team.
 
-## Licensing
+## Status
 
-Warp's UI framework (the `warpui_core` and `warpui` crates) are licensed under the [MIT license](LICENSE-MIT).
+| Phase | Subsystem | State |
+|---|---|---|
+| 0 | Default features purge | ✅ Done |
+| 1 | Quick-win crate deletions | ✅ Done (3 crates, –524 LOC) |
+| 2.2a | Telemetry macros stubbed to no-op | ✅ Done |
+| 2.2b | Telemetry call-site sweep | ⏳ Pending |
+| 3 | AI / Auth / Onboarding removal | 🚧 In progress |
+| 3.6 | Integration test crate removed | ✅ Done (–18 469 LOC) |
+| 4 | Cloud subsystem removal | ⏳ Pending |
+| 5 | Editor power-feature trim (deferred to v0.2) | ⏳ Future |
 
-The rest of the code in this repository is licensed under the [AGPL v3](LICENSE-AGPL).
+Tagging the first usable build as `v0.1.0-lite` once Phase 4 lands.
 
-## Open Source & Contributing
+## Building (macOS)
 
-Warp's client codebase is open source and lives in this repository. We welcome community contributions and have designed a lightweight workflow to help new contributors get started. For the full contribution flow, read our [CONTRIBUTING.md](CONTRIBUTING.md) guide.
+The fork keeps all of upstream's build prerequisites. On macOS:
 
-### Issue to PR
+1. **Xcode (full)** — not just Command Line Tools. The terminal renderer compiles Metal shaders (`crates/warpui/build.rs`) and `metal` lives only in Xcode.
+2. **Metal Toolchain** — Xcode 26+ ships this as a separate component:
+   ```sh
+   sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+   xcodebuild -downloadComponent MetalToolchain
+   ```
+3. **git-lfs** — upstream ships some assets via LFS. `brew install git-lfs && git lfs install`, then a fresh clone or `git lfs pull`.
+4. **Rust toolchain** — pinned by `rust-toolchain.toml` (currently 1.92.0); `rustup` handles it automatically.
 
-Before filing, [search existing issues](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+sort%3Areactions-%2B1-desc) for your bug or feature request. If nothing exists, [file an issue](https://github.com/warpdotdev/warp/issues/new/choose) using our templates. Security vulnerabilities should be reported privately as described in [CONTRIBUTING.md](CONTRIBUTING.md#reporting-security-issues).
+Then:
 
-Once filed, a Warp maintainer reviews the issue and may apply a readiness label: [`ready-to-spec`](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+label%3Aready-to-spec) signals the design is open for contributors to spec out, and [`ready-to-implement`](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+label%3Aready-to-implement) signals the design is settled and code PRs are welcome. Anyone can pick up a labeled issue — mention **@oss-maintainers** on an issue if you'd like it considered for a readiness label.
-
-### Building the Repo Locally
-
-To build and run Warp from source:
-
-```bash
-./script/bootstrap   # platform-specific setup
-./script/run         # build and run Warp
-./script/presubmit   # fmt, clippy, and tests
+```sh
+cargo check --workspace          # type-check (~2 min cold)
+cargo build --release -p app     # release build (target/release/warp-oss)
 ```
 
-See [WARP.md](WARP.md) for the full engineering guide, including coding style, testing, and platform-specific notes.
+The default binary is `warp-oss` (declared via `default-run` in `app/Cargo.toml`).
 
-## Joining the Team
+## Linux / Windows
 
-Interested in joining the team? See our [open roles](https://www.warp.dev/careers).
+Upstream supports both. The fork has not yet been smoke-tested on either; the AI / cloud removal touches platform-agnostic code, so they should keep working, but treat first builds on those platforms as "report bugs and we fix" until tagged v0.1.0-lite.
 
-## Support and Questions
+## Contributing
 
-1. See our [docs](https://docs.warp.dev/) for a comprehensive guide to Warp's features.
-2. Join our [Slack Community](https://go.warp.dev/join-preview) to connect with other users and get help from the Warp team.
-3. Try our [Preview build](https://www.warp.dev/download-preview) to test the latest experimental features.
-4. Mention **@oss-maintainers** on any issue to escalate to the team — for example, if you encounter problems with the automated agents.
+Issues and PRs welcome. Two ground rules:
 
-## Code of Conduct
+1. **License.** Contributions are accepted under AGPL-3.0-only. Do not paste code from non-AGPL/MIT-compatible sources.
+2. **Cherry-pick discipline for upstream fixes.** If you want a renderer or shell-integration improvement that landed in `warpdotdev/warp`, port it via `git cherry-pick -x <sha>` from the `upstream-tracking` branch — that preserves AGPL §13 attribution.
 
-We ask everyone to be respectful and empathetic. Warp follows the [Code of Conduct](CODE_OF_CONDUCT.md). To report violations, email warp-coc at warp.dev.
+## License
 
-## Open Source Dependencies
+- Source code: **AGPL-3.0-only** (see [`LICENSE-AGPL`](LICENSE-AGPL)). Inherited from upstream Warp; cannot be relicensed.
+- The two crates `warpui` and `warpui_core` retain their original **MIT** license (see [`LICENSE-MIT`](LICENSE-MIT)), matching upstream.
 
-We'd like to call out a few of the [open source dependencies](https://docs.warp.dev/help/licenses) that have helped Warp to get off the ground:
-
-* [Tokio](https://github.com/tokio-rs/tokio)
-* [NuShell](https://github.com/nushell/nushell)
-* [Fig Completion Specs](https://github.com/withfig/autocomplete)
-* [Warp Server Framework](https://github.com/seanmonstar/warp)
-* [Alacritty](https://github.com/alacritty/alacritty)
-* [Hyper HTTP library](https://github.com/hyperium/hyper)
-* [FontKit](https://github.com/servo/font-kit)
-* [Core-foundation](https://github.com/servo/core-foundation-rs)
-* [Smol](https://github.com/smol-rs/smol)
+Trademark "Warp" belongs to Denver Technologies, Inc. — see [`FORK_NOTICE.md`](FORK_NOTICE.md).
