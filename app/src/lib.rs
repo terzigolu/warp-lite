@@ -113,10 +113,7 @@ use crate::uri::web_intent_parser::maybe_rewrite_web_url_to_intent;
 use code::editor_management::CodeManager;
 use code::opened_files::OpenedFilesModel;
 use quit_warning::UnsavedStateSummary;
-#[cfg(feature = "local_fs")]
-use settings::import::model::ImportedConfigModel;
 use warp_cli::GlobalOptions;
-use warp_cli::CliCommand;
 
 #[cfg(feature = "local_fs")]
 use repo_metadata::{
@@ -163,7 +160,6 @@ use crate::notebooks::CloudNotebook;
 use crate::palette::PaletteMode;
 use crate::persistence::PersistenceWriter;
 use crate::projects::ProjectManagementModel;
-use crate::settings::cloud_preferences_syncer::initialize_cloud_preferences_syncer;
 use crate::settings::manager::SettingsManager;
 use crate::settings::{AccessibilitySettings, ScrollSettings, SelectionSettings};
 use crate::settings_view::keybindings::KeybindingChangedNotifier;
@@ -242,23 +238,6 @@ use warpui::{AppContext, SingletonEntity, WindowId};
 pub struct Assets;
 
 pub static ASSETS: Assets = Assets;
-
-fn determine_agent_source(
-    launch_mode: &LaunchMode,
-) -> Option<crate::ai::ambient_agents::AgentSource> {
-    match launch_mode {
-        LaunchMode::CommandLine { .. } => {
-            if std::env::var("GITHUB_ACTIONS").ok().as_deref() == Some("true") {
-                Some(crate::ai::ambient_agents::AgentSource::GitHubAction)
-            } else {
-                Some(crate::ai::ambient_agents::AgentSource::Cli)
-            }
-        }
-        LaunchMode::App { .. } | LaunchMode::Test { .. } => {
-            Some(crate::ai::ambient_agents::AgentSource::CloudMode)
-        }
-    }
-}
 
 /// Launch mode for how to start up Warp.
 #[allow(clippy::large_enum_variant)]
@@ -339,23 +318,14 @@ impl LaunchMode {
 
     /// Returns `true` if Warp should run headlessly, without a visible UI.
     fn is_headless(&self) -> bool {
-        match self {
-            LaunchMode::CommandLine { command, .. } => match command {
-                CliCommand::Agent(AgentCommand::Run(args)) => !args.gui,
-                _ => true,
-            },
-            _ => false,
-        }
+        // warp-lite: AI agent CLI removed, CLI mode is always headless.
+        matches!(self, LaunchMode::CommandLine { .. })
     }
 
     /// Returns `true` if running in app mode or via `agent run` to permit codebase indexing.
     fn supports_indexing(&self) -> bool {
-        match self {
-            LaunchMode::CommandLine { command, .. } => {
-                matches!(command, CliCommand::Agent(AgentCommand::Run { .. }))
-            }
-            _ => true,
-        }
+        // warp-lite: AI agent CLI removed; only app mode supports indexing.
+        !matches!(self, LaunchMode::CommandLine { .. })
     }
 
     /// Whether or not to start a crash recovery process (on platforms that support it).
@@ -552,7 +522,8 @@ pub fn run() -> Result<()> {
             }
             #[cfg(not(target_family = "wasm"))]
             warp_cli::Command::PrintTelemetryEvents => {
-                return TelemetryEvent::print_telemetry_events_json();
+                // warp-lite: telemetry stripped.
+                return Ok(());
             }
         }
     }
@@ -891,9 +862,20 @@ fn initialize_app(
     ctx: &mut warpui::AppContext,
     _pre_sentry_errors: impl IntoIterator<Item = anyhow::Error>,
 ) -> Option<AppState> {
-    // WARNING: Errors that happen here before crash_reporting::init will not be collected in
-    // Sentry. Only the dependencies of crash_reporting should be initialized here. Avoid adding
-    // any other stuff here, as failures will be silent. Push them to pre_sentry_errors instead.
+    // warp-lite: AI/cloud subsystem init removed. Minimal app bootstrap stub.
+    let _ = (launch_mode, &mut timer, startup_toml_parse_error, ctx);
+    for _ in _pre_sentry_errors {}
+    None
+}
+
+#[cfg(any())]
+fn initialize_app_legacy_unused(
+    launch_mode: &LaunchMode,
+    mut timer: IntervalTimer,
+    startup_toml_parse_error: Option<warpui_extras::user_preferences::Error>,
+    ctx: &mut warpui::AppContext,
+    _pre_sentry_errors: impl IntoIterator<Item = anyhow::Error>,
+) -> Option<AppState> {
     let data_domain = ChannelState::data_domain();
 
     // Register an implementation of the secure storage service.
@@ -1701,7 +1683,13 @@ fn initialize_app(
     app_state
 }
 
-fn app_callbacks(is_integration_test: bool) -> warpui::platform::AppCallbacks {
+fn app_callbacks(_is_integration_test: bool) -> warpui::platform::AppCallbacks {
+    // warp-lite: AI/cloud-coupled callbacks removed; rely on default fallbacks.
+    warpui::platform::AppCallbacks::default()
+}
+
+#[cfg(any())]
+fn app_callbacks_legacy_unused(is_integration_test: bool) -> warpui::platform::AppCallbacks {
     warpui::platform::AppCallbacks {
         on_internet_reachability_changed: Some(Box::new(move |reachable, ctx| {
             NetworkStatus::handle(ctx)
@@ -2011,7 +1999,8 @@ fn app_callbacks(is_integration_test: bool) -> warpui::platform::AppCallbacks {
 
 /// Focuses the active window or if there isn't one then a window with a running process
 /// and then shows the native modal.
-fn focus_running_window_and_show_native_modal(
+#[cfg(any())]
+fn focus_running_window_and_show_native_modal_unused(
     sessions_summary: RunningSessionSummary,
     dialog_with_callbacks: AlertDialogWithCallbacks<AppModalCallback>,
     ctx: &mut AppContext,
@@ -2037,7 +2026,8 @@ fn focus_running_window_and_show_native_modal(
     }
 }
 
-fn on_close_app_cancelled(open_navigation_palette: bool, ctx: &mut AppContext) {
+#[cfg(any())]
+fn on_close_app_cancelled_unused(open_navigation_palette: bool, ctx: &mut AppContext) {
     autoupdate::cancel_relaunch(ctx);
 
     send_telemetry_from_app_ctx!(
@@ -2089,7 +2079,8 @@ fn on_close_app_cancelled(open_navigation_palette: bool, ctx: &mut AppContext) {
     }
 }
 
-fn on_close_window_cancelled(
+#[cfg(any())]
+fn on_close_window_cancelled_unused(
     window_id: WindowId,
     open_navigation_palette: bool,
     ctx: &mut AppContext,
@@ -2135,6 +2126,11 @@ fn on_close_window_cancelled(
 }
 
 fn launch(ctx: &mut warpui::AppContext, app_state: Option<AppState>, launch_mode: LaunchMode) {
+    let _ = (ctx, app_state, launch_mode);
+}
+
+#[cfg(any())]
+fn launch_legacy_unused(ctx: &mut warpui::AppContext, app_state: Option<AppState>, launch_mode: LaunchMode) {
     IntervalTimer::handle(ctx).update(ctx, |timer, _ctx| {
         timer.mark_interval_end("APP_LAUNCHED");
     });
