@@ -1,28 +1,18 @@
 // Suppress warnings about rustdoc style.
 #![allow(clippy::doc_lazy_continuation)]
 
-mod ai;
 mod alloc;
 mod antivirus;
 #[cfg(target_os = "macos")]
 mod app_menus;
 mod app_services;
 mod app_state;
-mod auth;
 mod autoupdate;
 mod banner;
-mod billing;
 mod changelog_model;
-mod chip_configurator;
-mod cloud_object;
 mod code;
-mod code_review;
-mod coding_entrypoints;
-mod coding_panel_enablement_state;
 mod command_palette;
 mod completer;
-#[allow(dead_code)]
-mod context_chips;
 #[cfg(enable_crash_recovery)]
 mod crash_recovery;
 #[cfg(feature = "crash_reporting")]
@@ -31,7 +21,6 @@ mod debounce;
 mod debug_dump;
 mod default_terminal;
 mod download_method;
-mod drive;
 #[cfg(windows)]
 mod dynamic_libraries;
 mod env_vars;
@@ -59,20 +48,14 @@ mod plugin;
 mod prefix;
 #[cfg(target_os = "macos")]
 mod preview_config_migration;
-mod pricing;
 mod profiling;
 mod projects;
-mod prompt;
 mod quit_warning;
-mod referral_theme_status;
 #[allow(dead_code)]
 mod remote_server;
 mod resource_limits;
-mod reward_view;
 mod safe_triangle;
 mod search_bar;
-mod server;
-mod session_management;
 mod shell_indicator;
 mod suggestions;
 mod system;
@@ -89,8 +72,6 @@ mod user_config;
 pub mod util;
 mod view_components;
 mod vim_registers;
-mod voice;
-mod voltron;
 mod warp_managed_paths_watcher;
 #[cfg(target_family = "wasm")]
 mod wasm_nux_dialog;
@@ -110,7 +91,6 @@ mod workspaces;
 // in the warp::integration_testing::assertions module (or a sub-module).  These
 // functions will allow us to keep types internal to this crate and expose a
 // simpler API for integration tests to consume.
-pub mod ai_assistant;
 pub mod appearance;
 pub mod channel;
 pub mod editor;
@@ -129,39 +109,14 @@ pub mod settings_view;
 pub mod tab_configs;
 pub mod terminal;
 pub mod themes;
-use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
-#[cfg(not(target_family = "wasm"))]
-use crate::ai::aws_credentials::AwsCredentialRefresher as _;
-use crate::ai::mcp::FileBasedMCPManager;
-use crate::ai::mcp::FileMCPWatcher;
 use crate::uri::web_intent_parser::maybe_rewrite_web_url_to_intent;
-use ::ai::index::full_source_code_embedding::manager::CodebaseIndexManager;
-use ::ai::index::full_source_code_embedding::SyncTask;
-use ::ai::index::DEFAULT_SYNC_REQUESTS_PER_MIN;
-use ::ai::project_context::model::ProjectContextModel;
-pub use ai::agent::{todos::AIAgentTodoList, AIAgentActionResultType, FileEdit, TodoOperation};
-use ai::agent_conversations_model::AgentConversationsModel;
-use ai::agent_management::AgentNotificationsModel;
-use ai::ambient_agents::scheduled::ScheduledAgentManager;
-use ai::blocklist::{BlocklistAIHistoryModel, BlocklistAIPermissions};
-use ai::execution_profiles::editor::ExecutionProfileEditorManager;
-use ai::execution_profiles::profiles::AIExecutionProfilesModel;
-use ai::persisted_workspace::PersistedWorkspace;
-use auth::auth_state::AuthStateProvider;
-use auth::{auth_manager::AuthManager, auth_state::AuthState};
 use code::editor_management::CodeManager;
 use code::opened_files::OpenedFilesModel;
-use code_review::GlobalCodeReviewModel;
 use quit_warning::UnsavedStateSummary;
-use server::network_log_pane_manager::NetworkLogPaneManager;
-use server::network_logging::NetworkLogModel;
-use server::telemetry::context_provider::AppTelemetryContextProvider;
-use server::voice_transcriber::ServerVoiceTranscriber;
 #[cfg(feature = "local_fs")]
 use settings::import::model::ImportedConfigModel;
-use voice::transcriber::VoiceTranscriber;
 use warp_cli::GlobalOptions;
-use warp_cli::{agent::AgentCommand, CliCommand};
+use warp_cli::CliCommand;
 
 #[cfg(feature = "local_fs")]
 use repo_metadata::{

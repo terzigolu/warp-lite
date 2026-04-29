@@ -13,7 +13,6 @@ default-members = [
   "crates/channel_versions",
   "crates/command",
   "crates/editor",
-  "crates/graphql",
   "crates/markdown_parser",
   "crates/sum_tree",
   "crates/warpui",
@@ -29,17 +28,13 @@ publish = false
 
 [workspace.dependencies]
 # Local workspace crates. This lets us reference them in other crates without specifying a path.
-ai = { path = "crates/ai" }
 asset_cache = { path = "crates/asset_cache" }
 asset_macro = { path = "crates/asset_macro" }
 channel_versions = { path = "crates/channel_versions", default-features = false }
 command = { path = "crates/command" }
 command-signatures-v2 = { path = "crates/command-signatures-v2" }
-computer_use = { path = "crates/computer_use" }
 field_mask = { path = "crates/field_mask" }
-firebase = { path = "crates/firebase" }
 fuzzy_match = { path = "crates/fuzzy_match" }
-handlebars = { path = "crates/handlebars" }
 http_client = { path = "crates/http_client" }
 http_server = { path = "crates/http_server" }
 input_classifier = { path = "crates/input_classifier" }
@@ -50,7 +45,6 @@ lsp = { path = "crates/lsp" }
 markdown_parser = { path = "crates/markdown_parser" }
 natural_language_detection = { path = "crates/natural_language_detection" }
 node_runtime = { path = "crates/node_runtime" }
-onboarding = { path = "crates/onboarding" }
 persistence = { path = "crates/persistence" }
 repo_metadata = { path = "crates/repo_metadata" }
 settings = { path = "crates/settings" }
@@ -63,7 +57,6 @@ syntax_tree = { path = "crates/syntax_tree" }
 ui_components = { path = "crates/ui_components" }
 vim = { path = "crates/vim" }
 virtual-fs = { path = "crates/virtual_fs" }
-voice_input = { path = "crates/voice_input" }
 warp = { path = "app" }
 warp_cli = { path = "crates/warp_cli" }
 warp_completer = { path = "crates/warp_completer" }
@@ -72,14 +65,9 @@ warp_editor = { path = "crates/editor" }
 warp_features = { path = "crates/warp_features" }
 remote_server = { path = "crates/remote_server" }
 warp_files = { path = "crates/warp_files" }
-warp_graphql = { path = "crates/graphql" }
-warp_graphql_schema = { path = "crates/warp_graphql_schema" }
 warp_isolation_platform = { path = "crates/isolation_platform" }
-warp_js = { path = "crates/warp_js" }
 warp_logging = { path = "crates/warp_logging" }
-warp_managed_secrets = { path = "crates/managed_secrets" }
 warp_ripgrep = { path = "crates/warp_ripgrep" }
-warp_server_client = { path = "crates/warp_server_client" }
 warp_terminal = { path = "crates/warp_terminal" }
 warp_util = { path = "crates/warp_util" }
 warp_web_event_bus = { path = "crates/warp_web_event_bus" }
@@ -87,7 +75,6 @@ warpui = { path = "crates/warpui" }
 warpui_core = { path = "crates/warpui_core" }
 warpui_extras = { path = "crates/warpui_extras", default-features = false }
 watcher = { path = "crates/watcher" }
-websocket = { path = "crates/websocket" }
 
 # Workspace-level dependencies used by multiple crates. Prefer adding dependencies
 # here to copying-and-pasting versions.
@@ -245,7 +232,6 @@ serde_json = { version = "1.0", features = ["raw_value"] }
 serde_urlencoded = "0.7"
 serde_with = "2.0.1"
 serde_yaml = "0.8"
-session-sharing-protocol = { git = "https://github.com/warpdotdev/session-sharing-protocol.git", rev = "3a12b871dfd1019a66057e4d9b7d5c812b73ee8c" }
 similar = { version = "2.7", features = ["inline"] }
 simplelog = "0.12.2"
 smallvec = "1.6.1"
@@ -301,7 +287,6 @@ version-compare = "0.1"
 vte = { git = "https://github.com/warpdotdev/vte.git", rev = "4b399c87b63ba88f45709edaa6383fc519f6c900", default-features = false }
 walkdir = "2"
 warp-workflows = { git = "https://github.com/warpdotdev/workflows", rev = "793a98ddda6ef19682aed66364faebd2829f0e01" }
-warp_multi_agent_api = { git = "https://github.com/warpdotdev/warp-proto-apis.git", rev = "78a78f21a75432bf0141e396fb318bf1694e47f0" }
 wasm-bindgen = "0.2.89"
 wasm-bindgen-futures = "0.4.42"
 web-sys = { version = "0.3.69", features = [
@@ -373,7 +358,6 @@ typed-path = "0.10.0"
 streaming-iterator = "0.1.0"
 derivative = "2.2.0"
 parquet = { version = "55.0.0", features = ["arrow"] }
-rmcp = { git = "https://github.com/warpdotdev/rmcp.git", rev = "c0f65dc441af7d714b9c453ac5e7ef641451abe3" }
 
 # Comment this to disable building with debug symbols
 # Building with debug symbols generates a dsym which we can use to get
@@ -485,7 +469,3 @@ tink-hybrid = { git = "https://github.com/warpdotdev/tink-rust", branch = "warpd
 
 tikv-jemallocator = { git = "https://github.com/warpdotdev/jemallocator.git", rev = "2ee30bfdf7059223b54810e4ea6c666f0a379e0b" }
 tikv-jemalloc-sys = { git = "https://github.com/warpdotdev/jemallocator.git", rev = "2ee30bfdf7059223b54810e4ea6c666f0a379e0b" }
-
-[patch."https://github.com/warpdotdev/warp-proto-apis.git"]
-# Uncomment for local development of warp-proto-apis
-# warp_multi_agent_api = { path = "../warp-proto-apis/apis/multi_agent/v1/gen/rust" }
