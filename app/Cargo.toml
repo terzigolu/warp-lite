@@ -50,7 +50,6 @@ test = false
 
 [dependencies]
 addr = "0.15.6"
-ai.workspace = true
 anyhow.workspace = true
 arrayvec.workspace = true
 asset_cache.workspace = true
@@ -79,7 +78,6 @@ clap.workspace = true
 command = { workspace = true }
 command-corrections.workspace = true
 command-signatures-v2 = { workspace = true, optional = true }
-computer_use.workspace = true
 crc.workspace = true
 content_inspector = "0.2.4"
 concat-idents.workspace = true
@@ -100,7 +98,6 @@ enclose = "1.1.8"
 enum-iterator.workspace = true
 event-listener = "5.4.0"
 field_mask.workspace = true
-firebase.workspace = true
 flate2 = "1.0.17"
 float-cmp.workspace = true
 futures-lite.workspace = true
@@ -108,7 +105,6 @@ futures-util.workspace = true
 futures.workspace = true
 fuzzy_match.workspace = true
 getset.workspace = true
-handlebars.workspace = true
 hex.workspace = true
 http.workspace = true
 http_client.workspace = true
@@ -176,7 +172,6 @@ serde_regex = "1.1.0"
 serde_urlencoded.workspace = true
 serde_with.workspace = true
 serde_yaml.workspace = true
-session-sharing-protocol.workspace = true
 settings.workspace = true
 settings_value = { workspace = true, features = ["derive"] }
 sha2.workspace = true
@@ -218,20 +213,14 @@ warp-workflows.workspace = true
 warp_completer.workspace = true
 warp_core.workspace = true
 warp_editor.workspace = true
-warp_graphql.workspace = true
-warp_js = { workspace = true, optional = true }
-warp_server_client.workspace = true
 warp_util.workspace = true
 warpui = { workspace = true, features = ["schema_gen", "settings_value"] }
-voice_input = { workspace = true, optional = true }
 warpui_extras = { workspace = true, features = ["default", "user_preferences-toml"] }
 syntax_tree.workspace = true
 languages.workspace = true
 warp_terminal.workspace = true
-websocket.workspace = true
 wgpu = { workspace = true, optional = true }
 natural_language_detection.workspace = true
-onboarding.workspace = true
 aho-corasick = "1.1.3"
 strum.workspace = true
 strum_macros.workspace = true
@@ -241,14 +230,11 @@ counter = "0.6.0"
 typed-path.workspace = true
 urlencoding = "2.1.3"
 mime_guess = "2.0"
-warp_multi_agent_api.workspace = true
 remote_server.workspace = true
 repo_metadata.workspace = true
 vim.workspace = true
-rmcp = { workspace = true, features = ["client"] }
 warp_isolation_platform.workspace = true
 warp_ripgrep.workspace = true
-warp_managed_secrets.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block.workspace = true
@@ -289,12 +275,6 @@ aws-credential-types = "1"
 aws-sdk-sts = "1"
 aws-types = "1"
 
-rmcp = { workspace = true, features = [
-    "auth",
-    "transport-streamable-http-client-reqwest",
-    "transport-sse-client-reqwest",
-    "transport-child-process",
-] }
 notify-debouncer-full.workspace = true
 rquickjs = { workspace = true, optional = true }
 rustls.workspace = true
@@ -380,7 +360,6 @@ windows-result = { workspace = true }
 winreg.workspace = true
 
 [dev-dependencies]
-ai = { workspace = true, features = ["test-util"] }
 async-process.workspace = true
 jsonschema = { workspace = true, default-features = false }
 async-executor = "1.5.1"
@@ -395,7 +374,6 @@ virtual-fs.workspace = true
 warp_completer = { workspace = true, features = ["test-util"] }
 warp_core = { workspace = true, features = ["test-util"] }
 warp_editor = { workspace = true, features = ["test-util"] }
-warp_server_client = { workspace = true, features = ["test-util"] }
 warp_terminal = { workspace = true, features = ["test-util"] }
 warpui = { workspace = true, features = ["test-util"] }
 warpui_extras = { workspace = true, features = ["test-util"] }
@@ -450,7 +428,6 @@ crash_reporting = [
     "dep:minidumper",
     "dep:crash-handler",
     "warp_logging/crash_reporting",
-    "ai/crash_reporting",
 ]
 creating_shared_sessions = []
 cross_repo_context = []
@@ -676,7 +653,7 @@ inline_slash_commands = ["agent_view"]
 heap_usage_tracking = ["jemalloc_pprof", "crash_reporting"]
 image_as_context = []
 in_band_generators_ssh = []
-jemalloc = ["dep:tikv-jemallocator", "ai/jemalloc"]
+jemalloc = ["dep:tikv-jemallocator"]
 jemalloc_with_profiling = ["jemalloc", "tikv-jemallocator/profiling"]
 jemalloc_auto_heap_profiling = ["jemalloc_with_profiling"]
 jemalloc_pprof = ["jemalloc_with_profiling", "dep:jemalloc_pprof"]
@@ -698,7 +675,6 @@ local_computer_use = []
 # conditionally include dependencies that should only exist in such
 # environments.
 local_fs = [
-    "ai/local_fs",
     "lsp/local_fs",
     "persistence/local_fs",
     "repo_metadata/local_fs",
@@ -723,7 +699,7 @@ read_image_files = []
 # This feature enables plugin support in Warp. Note that its typically checked
 # directly, rather than via the `FeatureFlag` enum, because its value is
 # required early in the app lifecycle prior to `FeatureFlag` initialization.
-plugin_host = ["dep:rquickjs", "dep:warp_js", "warp_cli/plugin_host"]
+plugin_host = ["dep:rquickjs", "warp_cli/plugin_host"]
 # Enable this feature to automatically perform CPU profiling via pprof.  The
 # generated profile will be written to profile.pb in the current directory.
 # NOTE: This may slow down program execution.
@@ -751,7 +727,6 @@ skip_login = []
 # This feature should only be enabled when building a self-contained binary with the bundle script.
 standalone = []
 prompt_suggestions_via_maa = []
-voice_input = ["dep:voice_input"]
 system_theme = []
 tab_close_button_on_left = []
 team_features_override = []
