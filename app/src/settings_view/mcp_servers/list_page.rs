@@ -1,9 +1,6 @@
-use crate::ai::mcp::templatable::GalleryData;
-use crate::ai::mcp::MCPServerUpdate;
 use crate::modal::Modal;
 use crate::modal::ModalEvent;
 use crate::modal::ModalViewState;
-use crate::server::telemetry::{MCPTemplateInstallationSource, TelemetryEvent};
 use crate::settings::{AISettings, AISettingsChangedEvent};
 use crate::settings_view::mcp_servers_page::InstallOrigin;
 use crate::settings_view::settings_page::{
@@ -14,13 +11,6 @@ use crate::view_components::DismissibleToast;
 use crate::ToastStack;
 
 #[cfg(feature = "local_fs")]
-use crate::ai::mcp::{
-    // Import events for file-based manager and watcher conditionally
-    // since their WASM variants don't export events.
-    file_based_manager::FileBasedMCPManagerEvent,
-    FileMCPWatcher,
-    FileMCPWatcherEvent,
-};
 
 use crate::{
     ai::mcp::{

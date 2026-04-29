@@ -13,7 +13,6 @@ use warpui::{
 };
 
 use crate::appearance::Appearance;
-use crate::drive::settings::{WarpDriveSettings, WarpDriveSettingsChangedEvent};
 use crate::search::FilterChipRenderer;
 use crate::search::QueryFilter;
 use crate::settings::{AISettings, AISettingsChangedEvent};

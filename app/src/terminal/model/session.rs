@@ -32,7 +32,6 @@ use warpui::{platform::OperatingSystem, Entity, ModelContext, SingletonEntity};
 use crate::features::FeatureFlag;
 #[cfg(feature = "local_tty")]
 use crate::remote_server::manager::{RemoteServerManager, RemoteServerManagerEvent};
-use crate::server::telemetry::{BootstrappingInfo, TelemetryEvent};
 use crate::terminal::event::ExecutedExecutorCommandEvent;
 use crate::terminal::ShellHost;
 use crate::terminal::ShellLaunchData;

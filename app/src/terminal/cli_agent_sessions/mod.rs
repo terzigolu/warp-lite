@@ -7,7 +7,6 @@ use std::collections::{HashMap, HashSet};
 
 use warpui::{Entity, EntityId, ModelContext, ModelHandle, SingletonEntity};
 
-use crate::ai::blocklist::InputConfig;
 
 use self::listener::CLIAgentSessionListener;
 use super::CLIAgent;
@@ -23,7 +22,6 @@ pub enum CLIAgentSessionStatus {
 
 impl CLIAgentSessionStatus {
     pub fn to_conversation_status(&self) -> crate::ai::agent::conversation::ConversationStatus {
-        use crate::ai::agent::conversation::ConversationStatus;
         match self {
             CLIAgentSessionStatus::InProgress => ConversationStatus::InProgress,
             CLIAgentSessionStatus::Success => ConversationStatus::Success,

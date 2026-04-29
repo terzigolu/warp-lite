@@ -6,7 +6,6 @@ use crate::terminal::view::{
 };
 use crate::workspace::Workspace;
 use crate::FeatureFlag;
-use onboarding::{ProjectOnboardingSettings, SelectedSettings};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;

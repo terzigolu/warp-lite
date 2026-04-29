@@ -17,7 +17,6 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use warpui::AppContext;
 
-use crate::server::cloud_objects::update_manager::InitiatedBy;
 use crate::{
     ai::document::ai_document_model::AIDocumentId,
     appearance::Appearance,

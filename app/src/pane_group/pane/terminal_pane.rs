@@ -54,9 +54,7 @@ use crate::{
 };
 
 #[cfg(feature = "local_fs")]
-use crate::ai::blocklist::BlocklistAIHistoryEvent;
 #[cfg(not(target_family = "wasm"))]
-use crate::server::server_api::ServerApiProvider;
 
 use warp_core::execution_mode::AppExecutionMode;
 
@@ -1435,9 +1433,6 @@ fn handle_ai_history_event(
 ) {
     use std::sync::Arc;
 
-    use crate::ai::blocklist::{
-        AIQueryHistoryOutputStatus, PersistedAIInput, PersistedAIInputType,
-    };
 
     if event
         .terminal_view_id()

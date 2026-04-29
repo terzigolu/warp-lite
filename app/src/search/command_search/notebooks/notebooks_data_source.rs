@@ -3,14 +3,12 @@ use std::sync::Arc;
 use futures_lite::future::yield_now;
 use warpui::{AppContext, SingletonEntity};
 
-use crate::cloud_object::model::persistence::CloudModel;
 use crate::notebooks::manager::NotebookManager;
 use crate::notebooks::CloudNotebookModel;
 use crate::search::async_snapshot_data_source::AsyncSnapshotDataSource;
 use crate::search::command_search::searcher::CommandSearchItemAction;
 use crate::search::data_source::{Query, QueryResult};
 use crate::search::mixer::{BoxFuture, DataSourceRunErrorWrapper};
-use crate::server::ids::SyncId;
 
 use super::NotebookSearchItem;
 

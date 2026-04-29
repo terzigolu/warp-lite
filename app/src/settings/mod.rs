@@ -38,7 +38,6 @@ mod vim_banner;
 mod schema_validation_tests;
 
 pub use accessibility::*;
-pub use ai::*;
 pub use alias_expansion::*;
 pub use block_visibility::*;
 pub use changelog::*;
@@ -55,7 +54,6 @@ pub use input_mode::*;
 #[cfg(target_os = "linux")]
 pub use linux::*;
 pub use native_preference::*;
-pub use onboarding::*;
 pub use pane::*;
 pub use privacy::*;
 pub use same_line_prompt_block::*;

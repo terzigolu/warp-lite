@@ -1,6 +1,4 @@
 use super::hoa_onboarding;
-use crate::auth::auth_manager::AuthManagerEvent;
-use crate::auth::AuthManager;
 use crate::channel::{Channel, ChannelState};
 use crate::settings::cloud_preferences_syncer::{
     CloudPreferencesSyncer, CloudPreferencesSyncerEvent,

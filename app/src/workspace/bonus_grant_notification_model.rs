@@ -1,6 +1,3 @@
-use crate::ai::request_usage_model::{
-    AIRequestUsageModel, AIRequestUsageModelEvent, BonusGrant, BonusGrantScope,
-};
 use crate::terminal::general_settings::GeneralSettings;
 use chrono::{Duration, Utc};
 use std::collections::HashSet;

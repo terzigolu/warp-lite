@@ -16,8 +16,6 @@ use warpui::{
     ViewContext, WindowId,
 };
 
-use crate::code_review::diff_state::GitDeltaPreference;
-use crate::code_review::telemetry_event::CodeReviewPaneEntrypoint;
 use crate::pane_group::focus_state::PaneFocusHandle;
 use crate::pane_group::{
     pane::view, BackingView, NewTerminalOptions, PaneConfiguration, PaneEvent, PanesLayout,

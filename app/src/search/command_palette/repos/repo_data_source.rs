@@ -1,10 +1,8 @@
-use ai::workspace::WorkspaceMetadata;
 use fuzzy_match::{match_indices_case_insensitive, FuzzyMatchResult};
 use itertools::Itertools;
 use warpui::{AppContext, Entity, SingletonEntity};
 
 use super::RepoSearchItem;
-use crate::ai::persisted_workspace::PersistedWorkspace;
 use crate::search::command_palette::mixer::CommandPaletteItemAction;
 use crate::search::data_source::{Query, QueryResult};
 use crate::search::mixer::{DataSourceRunErrorWrapper, SyncDataSource};

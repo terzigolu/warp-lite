@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use session_sharing_protocol::common::ProfileData;
 use warpui::{Entity, SingletonEntity};
 
-use crate::auth::UserUid;
 
 pub enum UserProfilesEvent {}
 

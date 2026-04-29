@@ -1,8 +1,6 @@
 use warpui::{AppContext, ModelHandle, SingletonEntity, View, ViewContext, ViewHandle};
 
 use crate::app_state::LeafContents;
-use crate::server::network_log_pane_manager::NetworkLogPaneManager;
-use crate::server::network_log_view::{NetworkLogView, NetworkLogViewEvent};
 use crate::workspace::PaneViewLocator;
 
 use super::{

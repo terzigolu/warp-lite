@@ -1,4 +1,3 @@
-use crate::server::telemetry::ImageProtocol;
 use crate::terminal::model::session::Sessions;
 
 use crate::terminal::event::{

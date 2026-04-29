@@ -1,4 +1,3 @@
-use crate::ai::blocklist::{render_ai_agent_mode_icon, AIQueryHistory, AIQueryHistoryOutputStatus};
 use crate::terminal::model::session::SessionId;
 use crate::ui_components::icons::Icon as UIComponentsIcon;
 use async_channel::Sender;

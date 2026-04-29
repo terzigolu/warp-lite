@@ -2,14 +2,7 @@ use super::{
     EnvironmentFormInitArgs, EnvironmentFormValues, GithubAuthRedirectTarget, SuggestImageState,
     UpdateEnvironmentForm, UpdateEnvironmentFormAction,
 };
-use crate::ai::ambient_agents::github_auth_notifier::GitHubAuthNotifier;
-use crate::ai::cloud_environments::GithubRepo;
-use crate::auth::AuthStateProvider;
-use crate::cloud_object::model::persistence::CloudModel;
 use crate::network::NetworkStatus;
-use crate::server::ids::{ClientId, SyncId};
-use crate::server::server_api::ServerApiProvider;
-use crate::server::{cloud_objects::update_manager::UpdateManager, sync_queue::SyncQueue};
 use crate::settings::PrivacySettings;
 use crate::settings_view::keybindings::KeybindingChangedNotifier;
 use crate::test_util::settings::initialize_settings_for_tests;

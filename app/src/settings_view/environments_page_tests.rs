@@ -1,21 +1,12 @@
 use super::*;
-use crate::ai::ambient_agents::github_auth_notifier::GitHubAuthNotifier;
-use crate::ai::cloud_environments::{
-    AmbientAgentEnvironment, CloudAmbientAgentEnvironmentModel, GithubRepo,
-};
-use crate::auth::AuthStateProvider;
 use crate::network::NetworkStatus;
 use crate::root_view::CreateEnvironmentArg;
-use crate::server::ids::{ClientId, ServerId, SyncId};
-use crate::server::server_api::ServerApiProvider;
-use crate::server::{cloud_objects::update_manager::UpdateManager, sync_queue::SyncQueue};
 use crate::settings::PrivacySettings;
 use crate::settings_view::keybindings::KeybindingChangedNotifier;
 use crate::terminal::view::init_environment::mode_selector::EnvironmentSetupModeSelector;
 use crate::test_util::settings::initialize_settings_for_tests;
 use crate::workspaces::team_tester::TeamTesterStatus;
 use crate::workspaces::user_workspaces::UserWorkspaces;
-use ai::index::full_source_code_embedding::manager::CodebaseIndexManager;
 use instant::Instant;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -1329,7 +1320,6 @@ fn test_toolbar_renders_search_editor_view() {
 #[test]
 fn test_render_environment_card_with_last_used_never() {
     use chrono::{Duration, Utc};
-    use warp_graphql::scalars::time::ServerTimestamp;
 
     App::test((), |mut app| async move {
         app.add_singleton_model(|_| Appearance::mock());
@@ -1400,7 +1390,6 @@ fn test_render_environment_card_with_last_used_never() {
 #[test]
 fn test_render_environment_card_with_last_used_timestamp() {
     use chrono::{Duration, Utc};
-    use warp_graphql::scalars::time::ServerTimestamp;
 
     App::test((), |mut app| async move {
         app.add_singleton_model(|_| Appearance::mock());

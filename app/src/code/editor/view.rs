@@ -29,7 +29,6 @@ use crate::{
     settings::{AppEditorSettings, FontSettings},
     view_components::find::FindDirection,
 };
-use ai::diff_validation::DiffDelta;
 use lazy_static::lazy_static;
 use num_traits::SaturatingSub;
 use pathfinder_geometry::vector::vec2f;

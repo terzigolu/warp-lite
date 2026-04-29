@@ -21,10 +21,8 @@ use crate::{
 use super::{Event, OpenOverlay};
 
 #[cfg(test)]
-use crate::server::server_api::workspace::MockWorkspaceClient;
 
 #[cfg(test)]
-use crate::server::server_api::team::MockTeamClient;
 
 /// A dummy view that is also a backing pane view for testing purposes.
 struct TestView {

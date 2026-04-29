@@ -148,26 +148,12 @@ use warpui::platform::app::ApproveTerminateResult;
 use window_settings::WindowSettings;
 use workflows::manager::WorkflowManager;
 
-use crate::ai::ambient_agents::github_auth_notifier::GitHubAuthNotifier;
-use crate::ai::document::ai_document_model::AIDocumentModel;
-use crate::ai::facts::manager::AIFactManager;
-use crate::ai::llms::LLMPreferences;
-use crate::ai::mcp::MCPGalleryManager;
-use crate::ai::mcp::TemplatableMCPServerManager;
-use crate::ai::outline::RepoOutlines;
-use crate::ai::restored_conversations::RestoredAgentConversations;
-use crate::ai::skills::SkillManager;
-use crate::ai::AIRequestUsageModel;
 use crate::autoupdate::{AutoupdateState, RelaunchModel};
 use crate::changelog_model::ChangelogModel;
-use crate::cloud_object::model::actions::ObjectActions;
-use crate::cloud_object::model::view::CloudViewModel;
 use crate::code::global_buffer_model::GlobalBufferModel;
 #[cfg(feature = "local_fs")]
 use crate::code::language_server_shutdown_manager::LanguageServerShutdownManager;
-use crate::context_chips::prompt::Prompt;
 use crate::default_terminal::DefaultTerminal;
-use crate::drive::export::ExportManager;
 use crate::env_vars::manager::EnvVarCollectionManager;
 use crate::gpu_state::GPUState;
 use crate::network::NetworkStatus;
@@ -177,10 +163,6 @@ use crate::notebooks::CloudNotebook;
 use crate::palette::PaletteMode;
 use crate::persistence::PersistenceWriter;
 use crate::projects::ProjectManagementModel;
-use crate::server::cloud_objects::{listener::Listener, update_manager::UpdateManager};
-use crate::server::experiments::ServerExperiments;
-use crate::server::sync_queue::{QueueItem, SyncQueue};
-use crate::session_management::{RunningSessionSummary, SessionNavigationData};
 use crate::settings::cloud_preferences_syncer::initialize_cloud_preferences_syncer;
 use crate::settings::manager::SettingsManager;
 use crate::settings::{AccessibilitySettings, ScrollSettings, SelectionSettings};
@@ -209,9 +191,7 @@ use appearance::{Appearance, AppearanceManager};
 use channel::ChannelState;
 use interval_timer::IntervalTimer;
 use itertools::Itertools;
-use referral_theme_status::ReferralThemeStatus;
 use rust_embed::RustEmbed;
-use server::server_api::ServerApiProvider;
 use settings::{ExtraMetaKeys, PrivacySettings};
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -221,26 +201,18 @@ use terminal::input;
 use terminal::session_settings::SessionSettings;
 use url::Url;
 use warp_core::execution_mode::{AppExecutionMode, ExecutionMode};
-use warp_managed_secrets::ManagedSecretManager;
 use workspace::sync_inputs::SyncedInputState;
 
 use warpui::{integration::TestDriver, App, AssetProvider, Event};
 
 use self::features::FeatureFlag;
 use crate::app_state::AppState;
-use crate::cloud_object::model::actions::ObjectAction;
-use crate::cloud_object::model::persistence::CloudModel;
-use crate::drive::CloudObjectTypeAndId;
 use crate::experiments::ImprovedPaletteSearch;
 pub use crate::global_resource_handles::{GlobalResourceHandles, GlobalResourceHandlesProvider};
 use crate::notification::NotificationContext;
 use crate::root_view::{
     quake_mode_window_id, quake_mode_window_is_open, OpenFromRestoredArg, OpenPath,
 };
-pub use crate::server::telemetry::{
-    AgentModeEntrypoint, AgentModeEntrypointSelectionType, TelemetryEvent,
-};
-use crate::server::telemetry::{AppStartupInfo, CloseTarget, PaletteSource, TelemetryCollector};
 use crate::terminal::CustomSecretRegexUpdater;
 use crate::util::bindings::is_binding_cross_platform;
 use crate::workspace::{PaneViewLocator, Workspace, WorkspaceAction};
@@ -1349,7 +1321,6 @@ fn initialize_app(
     }
 
     {
-        use code_review::git_status_update::GitStatusUpdateModel;
         ctx.add_singleton_model(|_| GitStatusUpdateModel::new());
     }
 

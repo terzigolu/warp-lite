@@ -1,6 +1,5 @@
 use warpui::App;
 
-use crate::server::ids::SyncId;
 
 use super::workflow::{Argument, Workflow};
 

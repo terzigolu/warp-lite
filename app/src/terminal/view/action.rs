@@ -3,7 +3,6 @@ use std::fmt;
 use std::ops::Range;
 use std::path::PathBuf;
 
-use ai::skills::SkillReference;
 use command_corrections::Correction;
 use pathfinder_geometry::vector::Vector2F;
 use session_sharing_protocol::common::Role;
@@ -14,11 +13,6 @@ use warpui::event::ModifiersState;
 use warpui::units::Lines;
 use warpui::EntityId;
 
-use crate::ai::agent::conversation::AIConversationId;
-use crate::ai::agent::AIAgentExchangeId;
-use crate::ai::blocklist::codebase_index_speedbump_banner::CodebaseIndexSpeedbumpBannerAction;
-use crate::code_review::telemetry_event::CodeReviewPaneEntrypoint;
-use crate::server::telemetry::{AgentModeRewindEntrypoint, PaletteSource, ToggleBlockFilterSource};
 use crate::terminal::available_shells::AvailableShell;
 use crate::terminal::model::completions::ShellCompletion;
 use crate::terminal::shared_session::SharedSessionActionSource;
@@ -54,7 +48,6 @@ use super::{
     SSHBannerAction, TerminalEditor,
 };
 
-pub use onboarding::OnboardingIntention;
 
 /// Version of the agent onboarding flow (non-legacy).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

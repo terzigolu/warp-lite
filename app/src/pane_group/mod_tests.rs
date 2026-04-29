@@ -68,10 +68,6 @@ use watcher::HomeDirectoryWatcher;
 
 use super::*;
 use crate::terminal::resizable_data::ResizableData;
-use ai::{
-    index::full_source_code_embedding::manager::CodebaseIndexManager,
-    project_context::model::ProjectContextModel,
-};
 use pathfinder_geometry::rect::RectF;
 use shared_session::permissions_manager::SessionPermissionsManager;
 use warpui::windowing::{state::ApplicationStage, WindowManager};

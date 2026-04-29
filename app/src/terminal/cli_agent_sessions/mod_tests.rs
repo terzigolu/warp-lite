@@ -3,7 +3,6 @@ use super::{
     CLIAgentInputEntrypoint, CLIAgentInputState, CLIAgentSession, CLIAgentSessionContext,
     CLIAgentSessionStatus, CLIAgentSessionsModel,
 };
-use crate::ai::blocklist::{InputConfig, InputType};
 use crate::terminal::CLIAgent;
 
 #[test]

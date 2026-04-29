@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::auth::AuthStateProvider;
 use crate::features::FeatureFlag;
 use crate::settings::AISettings;
 use crate::ui_components::icons::Icon;

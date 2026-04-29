@@ -1,7 +1,3 @@
-use crate::ai::aws_credentials::AwsCredentialRefresher as _;
-use crate::ai::llms::{LLMPreferences, LLMPreferencesEvent};
-use crate::auth::auth_state::AuthState;
-use crate::auth::AuthStateProvider;
 use crate::terminal::model::terminal_model::ExitReason;
 use crate::terminal::shared_session::replay_agent_conversations::reconstruct_response_events_from_conversations;
 use crate::terminal::shared_session::shared_handlers::{
@@ -55,25 +51,14 @@ use warpui::{AppContext, ModelContext, ModelHandle, SingletonEntity, ViewHandle,
 
 use warp_core::execution_mode::AppExecutionMode;
 
-use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
-use crate::ai::agent::conversation::AIConversation;
-use crate::ai::blocklist::agent_view::{AgentViewController, AgentViewControllerEvent};
-use crate::ai::blocklist::{
-    BlocklistAIContextEvent, BlocklistAIContextModel, BlocklistAIControllerEvent,
-    BlocklistAIHistoryEvent, BlocklistAIHistoryModel, InputConfig, SerializedBlockListItem,
-};
 use crate::terminal::view::ConversationRestorationInNewPaneType;
 
 use crate::banner::BannerState;
-use crate::context_chips::current_prompt::CurrentPrompt;
-use crate::context_chips::prompt_snapshot::PromptSnapshot;
-use crate::context_chips::prompt_type::PromptType;
 use crate::features::FeatureFlag;
 use crate::pane_group::TerminalViewResources;
 use crate::persistence::ModelEvent;
 
 use crate::send_telemetry_on_executor;
-use crate::server::telemetry::{TelemetryAgentViewEntryOrigin, TelemetryEvent};
 use crate::settings::DebugSettings;
 use crate::settings::{PrivacySettings, SshSettings};
 use warp_core::send_telemetry_from_ctx;

@@ -4,7 +4,6 @@ use crate::{
     test_util::settings::initialize_settings_for_tests,
 };
 use chrono::Utc;
-use warp_graphql::scalars::time::ServerTimestamp;
 use warpui::{App, SingletonEntity};
 
 fn create_test_request_limit_info(

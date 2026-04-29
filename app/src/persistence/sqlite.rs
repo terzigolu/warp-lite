@@ -13,7 +13,6 @@ use std::{
     thread,
 };
 
-use ai::project_context::model::ProjectRulePath;
 use anyhow::{anyhow, bail, Context, Result};
 use chrono::{DateTime, Utc};
 use diesel::{
@@ -30,7 +29,6 @@ use num_traits::FromPrimitive;
 use pathfinder_geometry::{rect::RectF, vector::Vector2F};
 use persistence::model::AMBIENT_AGENT_PANE_KIND;
 use uuid::Uuid;
-use warp_graphql::scalars::time::ServerTimestamp;
 use warpui::platform::FullscreenState;
 use warpui::{AppContext, SingletonEntity};
 
@@ -53,40 +51,12 @@ use super::{
     BlockCompleted, FinishedCommandMetadata, ModelEvent, PersistedData, StartedCommandMetadata,
     WriterHandles,
 };
-use crate::ai::agent::conversation::AIConversationId;
-use crate::ai::ambient_agents::scheduled::{
-    CloudScheduledAmbientAgent, CloudScheduledAmbientAgentModel,
-};
-use crate::ai::ambient_agents::AmbientAgentTaskId;
-use crate::ai::cloud_environments::{
-    CloudAmbientAgentEnvironment, CloudAmbientAgentEnvironmentModel,
-};
-use crate::ai::document::ai_document_model::AIDocumentId;
-use crate::ai::execution_profiles::{CloudAIExecutionProfile, CloudAIExecutionProfileModel};
-use crate::ai::facts::{CloudAIFact, CloudAIFactModel};
-use crate::ai::mcp::templatable::{CloudTemplatableMCPServer, CloudTemplatableMCPServerModel};
-use crate::ai::mcp::templatable_installation::VariableValue;
-use crate::ai::mcp::{
-    CloudMCPServer, CloudMCPServerModel, TemplatableMCPServer, TemplatableMCPServerInstallation,
-};
-use crate::ai::persisted_workspace::EnablementState;
 use crate::app_state::{
     AIFactPaneSnapshot, AmbientAgentPaneSnapshot, CodeReviewPaneSnapshot,
     EnvVarCollectionPaneSnapshot, LeftPanelSnapshot, RightPanelSnapshot, SettingsPaneSnapshot,
     WorkflowPaneSnapshot,
 };
-use crate::auth::auth_manager::PersistedCurrentUserInformation;
-use crate::auth::auth_state::AuthStateProvider;
-use crate::auth::UserUid;
-use crate::cloud_object::model::actions::{ObjectAction, ObjectActionSubtype};
-use crate::cloud_object::model::generic_string_model::{CloudStringObject, GenericStringObjectId};
-use crate::cloud_object::{
-    CloudObject, JsonObjectType, ObjectIdType, ObjectType, Owner, RevisionAndLastEditor,
-    GENERIC_STRING_OBJECT_PREFIX, JSON_OBJECT_PREFIX,
-};
 use crate::code::editor_management::CodeSource;
-use crate::drive::folders::{CloudFolder, CloudFolderModel, FolderId};
-use crate::drive::OpenWarpDriveObjectSettings;
 use crate::env_vars::{CloudEnvVarCollection, CloudEnvVarCollectionModel};
 use crate::features::FeatureFlag;
 use crate::notebooks::{CloudNotebook, NotebookId};
@@ -96,9 +66,6 @@ use crate::persistence::model::{
     NewCloudObjectsRefresh, NewGenericStringObject, NewPersistedObjectAction, NewTeamSettings,
     ProjectRules, UserProfile, CODE_REVIEW_PANE_KIND, GET_STARTED_PANE_KIND,
 };
-use crate::server::experiments::ServerExperiment;
-use crate::server::ids::{ClientId, HashableId, ServerId, SyncId, ToServerId};
-use crate::server::telemetry::TelemetryEvent;
 use crate::settings::cloud_preferences::{CloudPreference, CloudPreferenceModel};
 use crate::settings_view::SettingsSection;
 use crate::suggestions::ignored_suggestions_model::SuggestionType;
@@ -139,7 +106,6 @@ diesel::define_sql_function! {
 const CHANNEL_SIZE: usize = 1024;
 const COMMANDS_COUNT_LIMIT: i64 = 10000;
 
-use warp_server_client::persistence::{upsert_cloud_object, CloudObjectId};
 
 const WARP_SQLITE_FILE_NAME: &str = "warp.sqlite";
 

@@ -2,12 +2,9 @@ use std::cell::RefCell;
 use std::pin::pin;
 use std::rc::Rc;
 
-use crate::ai::agent::conversation::ConversationStatus;
 use warp_terminal::model::escape_sequences::{BRACKETED_PASTE_END, BRACKETED_PASTE_START};
 use warpui::{notification::UserNotification, Presenter, WindowInvalidation};
 
-use crate::ai::agent::task::TaskId;
-use crate::ai::blocklist::block::cli_controller::UserTakeOverReason;
 use warpui::App;
 
 use crate::pane_group::focus_state::PaneGroupFocusState;
@@ -18,15 +15,10 @@ use crate::{
     test_util::terminal::add_window_with_id_and_terminal,
 };
 
-use crate::context_chips::prompt::Prompt;
 use crate::editor::{AutosuggestionLocation, AutosuggestionType};
 
 use crate::settings::{AISettings, AppEditorSettings, WarpPromptSeparator};
 
-use crate::ai::blocklist::agent_view::toolbar_item::AgentToolbarItemKind;
-use crate::ai::blocklist::{
-    agent_view::AgentViewEntryOrigin, BlocklistAIHistoryModel, InputConfig, InputType,
-};
 use crate::features::FeatureFlag;
 use crate::terminal::cli_agent_sessions::event::{
     CLIAgentEvent, CLIAgentEventPayload, CLIAgentEventType,
@@ -406,7 +398,6 @@ fn set_input_mode_agent_does_not_enter_local_agent_from_root_cloud_mode_pane() {
 fn test_clear_session_flag_state() {
     use warp_terminal::shell::ShellType;
 
-    use crate::ai::blocklist::SerializedBlockListItem;
     use crate::terminal::model::block::SerializedBlock;
     use crate::terminal::ShellHost;
 

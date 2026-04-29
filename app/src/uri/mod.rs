@@ -5,22 +5,15 @@ pub mod web_intent_parser;
 #[cfg(target_family = "wasm")]
 pub mod browser_url_handler;
 
-use crate::ai::active_agent_views_model::{ActiveAgentViewsModel, ConversationOrTaskId};
-use crate::ai::agent::api::ServerConversationToken;
-use crate::auth::AuthStateProvider;
-use crate::drive::OpenWarpDriveObjectSettings;
 use crate::launch_configs::launch_config::LaunchConfig;
 use crate::linear::{LinearAction, LinearIssueWork};
 use crate::root_view::{open_new_window_get_handles, OpenLaunchConfigArg};
-use crate::server::ids::ServerId;
-use crate::server::telemetry::{LaunchConfigUiLocation, TelemetryEvent};
 use crate::util::openable_file_type::{is_file_openable_in_warp, is_markdown_file};
 use crate::workspace::{Workspace, WorkspaceAction, WorkspaceRegistry};
 use crate::{cloud_object::ObjectType, workspace::ToastStack};
 use crate::{drive::OpenWarpDriveObjectArgs, view_components::DismissibleToast};
 use crate::{features::FeatureFlag, workspace::active_terminal_in_window};
 
-use crate::ai::ambient_agents::github_auth_notifier::GitHubAuthNotifier;
 use crate::settings_view::{OpenTeamsSettingsModalArgs, SettingsSection};
 use crate::user_config::load_launch_configs;
 use crate::{

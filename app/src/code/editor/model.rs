@@ -2,7 +2,6 @@
 // Adding this file level gate as some of the code around editability is not used in WASM yet.
 
 use crate::code::editor::line_iterator::LineIterator;
-use crate::code_review::CodeReviewTelemetryEvent;
 use num_traits::SaturatingSub;
 use rangemap::{RangeMap, RangeSet};
 use std::future::Future;
@@ -30,7 +29,6 @@ use crate::{
     themes::theme::AnsiColorIdentifier,
 };
 
-use ai::diff_validation::DiffDelta;
 use itertools::Itertools;
 use languages::{language_by_filename, language_by_name, Language};
 use line_ending::LineEnding;
@@ -80,7 +78,6 @@ use super::diff::{
     add_inline_overlay_color, DiffModel, DiffModelEvent, DiffStatus, RenderableDiffHunk,
 };
 use super::line::EditorLineLocation;
-use crate::code_review::comments::{CommentId, CommentOrigin, LineDiffContent};
 
 /// An opaque handle to a stable line in the editor content, suitable for scroll
 /// position preservation. Contains an internal anchor that tracks through

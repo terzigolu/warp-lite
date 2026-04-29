@@ -35,13 +35,6 @@ use crate::{
     },
     TelemetryEvent,
 };
-use ai::index::full_source_code_embedding::manager::{
-    CodebaseIndexFinishedStatus, CodebaseIndexManager, CodebaseIndexManagerEvent,
-    CodebaseIndexStatus, CodebaseIndexingError,
-};
-use ai::index::full_source_code_embedding::SyncProgress;
-use ai::project_context::model::{ProjectContextModel, ProjectContextModelEvent};
-use ai::workspace::WorkspaceMetadata;
 use lsp::supported_servers::LSPServerType;
 use lsp::{LspManagerModel, LspManagerModelEvent, LspServerModel, LspState};
 use pathfinder_color::ColorU;

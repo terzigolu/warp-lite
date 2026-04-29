@@ -3,7 +3,6 @@ use markdown_parser::{FormattedText, FormattedTextFragment, FormattedTextLine};
 use warp_core::ui::theme::WarpTheme;
 use warpui::assets::asset_cache::{AssetCache, AssetState};
 
-use crate::ai::blocklist::inline_action::requested_action::RenderableAction;
 use crate::appearance::Appearance;
 use crate::terminal::shell::ShellType;
 use crate::terminal::warpify;

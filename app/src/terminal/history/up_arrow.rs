@@ -3,8 +3,6 @@ use std::collections::HashSet;
 use warp_core::features::FeatureFlag;
 use warpui::{AppContext, EntityId, SingletonEntity};
 
-use crate::ai::blocklist::BlocklistAIHistoryModel;
-use crate::ai::blocklist::InputConfig;
 use crate::input_suggestions::HistoryInputSuggestion;
 use crate::settings::AISettings;
 use crate::suggestions::ignored_suggestions_model::{IgnoredSuggestionsModel, SuggestionType};

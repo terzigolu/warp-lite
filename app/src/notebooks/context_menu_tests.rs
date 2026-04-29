@@ -7,7 +7,6 @@ use warpui::{platform::WindowStyle, App};
 use crate::search::files::model::FileSearchModel;
 
 use super::MenuSource;
-use crate::auth::AuthStateProvider;
 use crate::pane_group::focus_state::{PaneFocusHandle, PaneGroupFocusState};
 use crate::pane_group::{BackingView as _, PaneId};
 use crate::terminal::keys::TerminalKeybindings;

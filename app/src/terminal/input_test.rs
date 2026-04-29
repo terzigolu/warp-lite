@@ -1,23 +1,7 @@
 use std::collections::HashSet;
 
 use super::*;
-use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
-use crate::ai::agent_conversations_model::AgentConversationsModel;
-use crate::ai::blocklist::{AIQueryHistory, BlocklistAIPermissions};
-use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
-use crate::ai::llms::LLMPreferences;
-use crate::ai::mcp::gallery::MCPGalleryManager;
-use crate::ai::mcp::templatable_manager::TemplatableMCPServerManager;
-use crate::ai::outline::RepoOutlines;
-use crate::ai::persisted_workspace::PersistedWorkspace;
-use crate::ai::restored_conversations::RestoredAgentConversations;
-use crate::ai::skills::SkillManager;
-use crate::ai::AIRequestUsageModel;
-use crate::auth::auth_manager::AuthManager;
-use crate::auth::AuthStateProvider;
 use crate::changelog_model::ChangelogModel;
-use crate::cloud_object::model::persistence::CloudModel;
-use crate::pricing::PricingInfoModel;
 use crate::search::files::model::FileSearchModel;
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
 use crate::terminal::input::slash_command_model::SlashCommandEntryState;
@@ -31,11 +15,7 @@ use watcher::HomeDirectoryWatcher;
 use crate::editor::{EditorAction, TextStyleOperation};
 use crate::input_suggestions::{HistoryOrder, Item};
 use crate::network::NetworkStatus;
-use crate::server::cloud_objects::{listener::Listener, update_manager::UpdateManager};
-use crate::server::server_api::ServerApiProvider;
-use crate::server::sync_queue::SyncQueue;
 
-use crate::server::telemetry::context_provider::AppTelemetryContextProvider;
 use crate::settings::{AliasExpansionSettings, AppEditorSettings, InputBoxType, PrivacySettings};
 use crate::settings_view::keybindings::KeybindingChangedNotifier;
 #[cfg(windows)]
@@ -58,7 +38,6 @@ use crate::terminal::model::grid::Dimensions as _;
 use crate::terminal::model::index::Side;
 use crate::terminal::model::session::{BootstrapSessionType, SessionInfo};
 use crate::terminal::model::terminal_model::BlockIndex;
-use ai::index::full_source_code_embedding::manager::CodebaseIndexManager;
 use chrono::Local;
 use warpui::text::SelectionType;
 
@@ -83,7 +62,6 @@ use warp_completer::meta::Span;
 use unindent::Unindent;
 
 #[cfg(feature = "voice_input")]
-use voice_input::VoiceInputToggledFrom;
 use warpui::platform::WindowStyle;
 use warpui::{App, ReadModel, UpdateView};
 
@@ -92,7 +70,6 @@ use crate::terminal::universal_developer_input::UniversalDeveloperInputButtonBar
 use warp_util::user_input::UserInput;
 use workflows::workflow::{Argument, ArgumentType, Workflow};
 
-use crate::context_chips::prompt::Prompt;
 use crate::terminal::general_settings::UserDefaultShellUnsupportedBannerState;
 use crate::terminal::resizable_data::ResizableData;
 use crate::terminal::view::inline_banner::ByoLlmAuthBannerSessionState;
@@ -6158,8 +6135,6 @@ fn test_agent_view_terminal_only_initial_input_config_unlocked_when_autodetectio
 
 #[test]
 fn test_terminal_only_ai_enter_enters_agent_view_and_clears_buffer() {
-    use crate::ai::blocklist::agent_view::AgentViewState;
-    use crate::ai::blocklist::InputConfig;
 
     App::test((), |mut app| async move {
         let _am_flag = FeatureFlag::AgentMode.override_enabled(true);
@@ -6218,7 +6193,6 @@ fn test_terminal_only_ai_enter_enters_agent_view_and_clears_buffer() {
 
 #[test]
 fn test_terminal_only_escape_locks_shell_mode() {
-    use crate::ai::blocklist::InputConfig;
 
     App::test((), |mut app| async move {
         let _am_flag = FeatureFlag::AgentMode.override_enabled(true);

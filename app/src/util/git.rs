@@ -337,7 +337,6 @@ pub struct RepoGitSummary {
 /// Returns None if not a git repo or git is unavailable.
 #[cfg(feature = "local_fs")]
 pub async fn get_repo_git_summary(repo_root: &Path) -> Option<RepoGitSummary> {
-    use crate::context_chips::display_chip::GitLineChanges;
 
     let branch = {
         log::debug!("[GIT OPERATION] git.rs get_repo_git_summary git symbolic-ref --short HEAD");

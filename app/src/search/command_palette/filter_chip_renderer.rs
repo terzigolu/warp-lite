@@ -1,6 +1,4 @@
 use crate::appearance::Appearance;
-use crate::drive::cloud_object_styling::warp_drive_icon_color;
-use crate::drive::DriveObjectType;
 use crate::search::FilterChipRenderer as CommonFilterChipRenderer;
 use crate::search::QueryFilter;
 use crate::util::color::{ContrastingColor, MinimumAllowedContrast};

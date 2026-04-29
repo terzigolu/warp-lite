@@ -2,7 +2,6 @@ use std::{collections::HashSet, ops::RangeInclusive};
 
 use itertools::Itertools as _;
 
-use crate::ai::blocklist::block::secret_redaction::find_secrets_in_text_with_levels;
 use crate::terminal::model::grid::{grapheme_cursor, Dimensions as _};
 use crate::terminal::model::terminal_model::RangeInModel;
 use crate::terminal::model::{

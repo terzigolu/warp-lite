@@ -1,7 +1,5 @@
 pub mod telemetry;
 
-use crate::ai::agent::conversation::ConversationStatus;
-use crate::ai::agent_management::AgentNotificationsModel;
 use crate::code::editor::{add_color, remove_color};
 use crate::code::icon_from_file_path;
 use crate::safe_triangle::SafeTriangle;
@@ -22,9 +20,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::appearance::Appearance;
-use crate::context_chips::display_chip::GitLineChanges;
-use crate::context_chips::github_pr_display_text_from_url;
-use crate::drive::{cloud_object_styling::warp_drive_icon_color, DriveObjectType};
 use crate::editor::EditorView;
 use crate::pane_group::pane::IPaneType;
 use crate::pane_group::TerminalPane;

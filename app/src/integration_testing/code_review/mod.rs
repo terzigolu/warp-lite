@@ -6,7 +6,6 @@ use warpui::{
     App, ViewHandle, WindowId,
 };
 
-use crate::code_review::code_review_view::{CodeReviewView, CodeReviewVisibleAnchorForTest};
 
 /// Expected scroll region type for assertions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

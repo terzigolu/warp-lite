@@ -9,7 +9,6 @@ use std::sync::Arc;
 use thousands::Separable;
 use warp_core::ui::theme::Fill;
 use warp_core::{features::FeatureFlag, ui::appearance::Appearance};
-use warp_graphql::billing::AddonCreditsOption;
 use warpui::prelude::ChildView;
 use warpui::{
     elements::{
@@ -119,7 +118,6 @@ const ADDITIONAL_ADDON_CREDITS_DESCRIPTION_FOR_TEAM: &str =
 // Cloud agent trial widget constants.
 const AMBIENT_AGENT_TRIAL_TITLE: &str = "Cloud agent trial";
 /// The threshold below which we only show the "Buy more" button (not "New agent").
-use crate::ai::request_usage_model::AMBIENT_AGENT_TRIAL_CREDIT_THRESHOLD;
 
 pub fn create_discount_badge(discount: u32, appearance: &Appearance) -> Box<dyn Element> {
     if discount == 0 {

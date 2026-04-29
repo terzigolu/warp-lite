@@ -6,7 +6,6 @@ use crate::search::command_palette::navigation::search::MatchedSession;
 use crate::search::command_palette::render_util::render_search_item_icon;
 use crate::search::item::IconLocation;
 use crate::search::result_renderer::ItemHighlightState;
-use crate::session_management::SessionNavigationData;
 use crate::ui_components::icons::Icon;
 use ordered_float::OrderedFloat;
 use warpui::elements::Container;
