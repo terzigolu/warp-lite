@@ -683,6 +683,75 @@ pub const ALIAS_EXPANSION_BANNER_SEEN_KEY: &str = "AliasExpansionBannerSeen";
 #[allow(dead_code)] pub const PRE_REWIND_PREFIX: &str = "";
 // --- end stubs ------------------------------------------------------------
 
+// --- additional stubs (round 2) -----------------------------------------
+#[allow(dead_code)] pub struct AgentModeAttachContextMethod;
+#[allow(dead_code)] pub struct AgentModeEntrypoint;
+#[allow(dead_code)] pub struct AgentToolbarItemKind;
+#[allow(dead_code)] pub struct AgentViewControllerEvent;
+#[allow(dead_code)] pub struct AgentViewDisplayMode;
+#[allow(dead_code)] pub struct AgentViewZeroStateBlock;
+#[allow(dead_code)] pub struct AgentViewZeroStateEvent;
+#[allow(dead_code)] pub struct AIAgentActionType;
+#[allow(dead_code)] pub struct AIAgentCitation;
+#[allow(dead_code)] pub struct AIAgentContext;
+#[allow(dead_code)] pub struct AIAgentInput;
+#[allow(dead_code)] pub struct AIAgentOutputStatus;
+#[allow(dead_code)] pub struct AIAgentTextSection;
+#[allow(dead_code)] pub struct AIBlockAction;
+#[allow(dead_code)] pub struct AIBlockModelImpl;
+#[allow(dead_code)] pub struct AIBlockOutputStatus;
+#[allow(dead_code)] pub struct AIIdentifiers;
+#[allow(dead_code)] pub struct AmbientConversationStatus;
+#[allow(dead_code)] pub struct ApiKeyManager;
+#[allow(dead_code)] pub struct AwsCredentialsState;
+#[allow(dead_code)] pub struct BlocklistAIStatusBarEvent;
+#[allow(dead_code)] pub struct BuildSource;
+#[allow(dead_code)] pub struct CancellationReason;
+#[allow(dead_code)] pub struct CLISubagentViewEvent;
+#[allow(dead_code)] pub struct CodebaseIndexManager;
+#[allow(dead_code)] pub struct CodeDiffViewEvent;
+#[allow(dead_code)] pub struct CommandCorrectionAcceptedType;
+#[allow(dead_code)] pub struct CommandCorrectionEvent;
+#[allow(dead_code)] pub struct ConversationDetailsPanelEvent;
+#[allow(dead_code)] pub struct ConversationStatus;
+#[allow(dead_code)] pub struct ConversationUsageView;
+#[allow(dead_code)] pub struct CurrentHead;
+#[allow(dead_code)] pub struct DiffBase;
+#[allow(dead_code)] pub struct DiffSetScope;
+#[allow(dead_code)] pub struct DiffStateModel;
+#[allow(dead_code)] pub struct DisplayMode;
+#[allow(dead_code)] pub struct EntrypointType;
+#[allow(dead_code)] pub struct ExitConfirmationTrigger;
+#[allow(dead_code)] pub struct FileTreeSource;
+#[allow(dead_code)] pub struct FinalState;
+#[allow(dead_code)] pub struct FinishedAIAgentOutput;
+#[allow(dead_code)] pub struct GitStatusUpdateModel;
+#[allow(dead_code)] pub struct InitActionResult;
+#[allow(dead_code)] pub struct InitProjectModelEvent;
+#[allow(dead_code)] pub struct InitStepBlock;
+#[allow(dead_code)] pub struct InlineAgentViewHeader;
+#[allow(dead_code)] pub struct InteractionSource;
+#[allow(dead_code)] pub struct LLMModelHost;
+#[allow(dead_code)] pub struct LspTask;
+#[allow(dead_code)] pub struct NotificationsTurnedOnSource;
+#[allow(dead_code)] pub struct ObjectActionType;
+#[allow(dead_code)] pub struct OnboardingQuery;
+#[allow(dead_code)] pub struct PassiveSuggestionResultType;
+#[allow(dead_code)] pub struct PersistedWorkspace;
+#[allow(dead_code)] pub struct ProjectScopedRulesResult;
+#[allow(dead_code)] pub struct RenderableAIError;
+#[allow(dead_code)] pub struct SecretInteraction;
+#[allow(dead_code)] pub struct ShareableObject;
+#[allow(dead_code)] pub struct SkillOpenOrigin;
+#[allow(dead_code)] pub struct SkillReference;
+#[allow(dead_code)] pub struct SlashCommandRequest;
+#[allow(dead_code)] pub struct StaticQueryType;
+#[allow(dead_code)] pub struct TelemetryBanner;
+#[allow(dead_code)] pub struct UserTakeOverReason;
+#[allow(dead_code)] pub struct VisibilityState;
+#[allow(dead_code)] pub struct WarpDriveSettings;
+// --- end round 2 stubs -------------------------------------------------
+
 /// Delay between receiving preexec hook for a command we want to auto-warpify
 /// and triggering the warpification (subshell bootstrapping).
 /// Reached this number after experimenting with different values to find a reliable delay.
