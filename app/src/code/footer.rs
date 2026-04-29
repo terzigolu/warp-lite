@@ -1,6 +1,13 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct LSPEnablementResultForFile;
+#[allow(dead_code)] pub struct LspRepoStatus;
+#[allow(dead_code)] pub struct PersistedWorkspace;
+#[allow(dead_code)] pub struct PersistedWorkspaceEvent;
+// --- end stubs --------------------------------------------------------
+
 use lsp::supported_servers::LSPServerType;
 use lsp::{
     LanguageId, LanguageServerId, LspManagerModel, LspManagerModelEvent, LspServerModel,

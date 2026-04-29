@@ -1,4 +1,27 @@
 use crate::terminal::model::terminal_model::ExitReason;
+
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct ActiveAgentViewsModel;
+#[allow(dead_code)] pub struct AgentViewController;
+#[allow(dead_code)] pub struct AgentViewControllerEvent;
+#[allow(dead_code)] pub struct AIConversation;
+#[allow(dead_code)] pub struct AuthState;
+#[allow(dead_code)] pub struct AuthStateProvider;
+#[allow(dead_code)] pub struct BlocklistAIContextEvent;
+#[allow(dead_code)] pub struct BlocklistAIContextModel;
+#[allow(dead_code)] pub struct BlocklistAIControllerEvent;
+#[allow(dead_code)] pub struct BlocklistAIHistoryEvent;
+#[allow(dead_code)] pub struct BlocklistAIHistoryModel;
+#[allow(dead_code)] pub struct CurrentPrompt;
+#[allow(dead_code)] pub struct InputConfig;
+#[allow(dead_code)] pub struct LLMPreferences;
+#[allow(dead_code)] pub struct LLMPreferencesEvent;
+#[allow(dead_code)] pub struct PromptSnapshot;
+#[allow(dead_code)] pub struct PromptType;
+#[allow(dead_code)] pub struct SerializedBlockListItem;
+#[allow(dead_code)] pub struct TelemetryAgentViewEntryOrigin;
+#[allow(dead_code)] pub struct TelemetryEvent;
+// --- end stubs --------------------------------------------------------
 use crate::terminal::shared_session::replay_agent_conversations::reconstruct_response_events_from_conversations;
 use crate::terminal::shared_session::shared_handlers::{
     apply_auto_approve_agent_actions_update, apply_cli_agent_state_update, apply_input_mode_update,

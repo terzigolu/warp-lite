@@ -1,4 +1,14 @@
 mod element;
+
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct BlocklistAIContextModel;
+#[allow(dead_code)] pub struct ImageContext;
+#[allow(dead_code)] pub struct NextCommandModel;
+#[allow(dead_code)] pub struct NextCommandSuggestionState;
+#[allow(dead_code)] pub struct PendingAttachment;
+#[allow(dead_code)] pub struct PendingFile;
+#[allow(dead_code)] pub struct TelemetryEvent;
+// --- end stubs --------------------------------------------------------
 mod figma_utils;
 mod model;
 mod movement;

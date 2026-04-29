@@ -1,4 +1,16 @@
 use crate::report_if_error;
+
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct ActionPermission;
+#[allow(dead_code)] pub struct AgentAutonomy;
+#[allow(dead_code)] pub struct AgentDevelopmentSettings;
+#[allow(dead_code)] pub struct AIExecutionProfilesModel;
+#[allow(dead_code)] pub struct SelectedSettings;
+#[allow(dead_code)] pub struct SessionDefault;
+#[allow(dead_code)] pub struct UICustomizationSettings;
+#[allow(dead_code)] pub struct WarpDriveSettings;
+#[allow(dead_code)] pub struct WriteToPtyPermission;
+// --- end stubs --------------------------------------------------------
 use crate::settings::ai::DefaultSessionMode;
 use crate::settings::{AISettings, CodeSettings};
 use crate::workspace::tab_settings::TabSettings;

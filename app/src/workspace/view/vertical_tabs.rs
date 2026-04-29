@@ -1,5 +1,14 @@
 pub mod telemetry;
 
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct AgentNotificationsModel;
+#[allow(dead_code)] pub struct ConversationStatus;
+#[allow(dead_code)] pub struct DriveObjectType;
+#[allow(dead_code)] pub struct GitLineChanges;
+#[allow(dead_code)] pub fn github_pr_display_text_from_url(_: &str) -> Option<String> { None }
+#[allow(dead_code)] pub fn warp_drive_icon_color() -> u32 { 0 }
+// --- end stubs --------------------------------------------------------
+
 use crate::code::editor::{add_color, remove_color};
 use crate::code::icon_from_file_path;
 use crate::safe_triangle::SafeTriangle;

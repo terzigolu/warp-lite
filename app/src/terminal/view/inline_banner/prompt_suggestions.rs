@@ -1,6 +1,20 @@
 use serde::Serialize;
 use std::rc::Rc;
 
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub const ACCEPT_PROMPT_SUGGESTION_KEYBINDING: &str = "";
+#[allow(dead_code)] pub struct AIConversationId;
+#[allow(dead_code)] pub struct BlocklistAIInputModel;
+#[allow(dead_code)] pub struct InteractionSource;
+#[allow(dead_code)] pub struct PassiveSuggestionTrigger;
+#[allow(dead_code)] pub struct PromptAlertEvent;
+#[allow(dead_code)] pub struct PromptAlertState;
+#[allow(dead_code)] pub struct PromptAlertView;
+#[allow(dead_code)] pub struct ServerConversationToken;
+#[allow(dead_code)] pub type ServerId = String;
+#[allow(dead_code)] pub struct StaticQueryType;
+// --- end stubs --------------------------------------------------------
+
 use crate::settings::InputSettings;
 use crate::terminal::view::passive_suggestions::PromptSuggestionResolution;
 use crate::util::bindings::keybinding_name_to_keystroke;

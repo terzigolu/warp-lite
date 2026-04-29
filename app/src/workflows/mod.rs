@@ -1,5 +1,28 @@
 use std::sync::Arc;
 
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct CloudModelType;
+#[allow(dead_code)] pub struct CloudObjectEventEntrypoint;
+#[allow(dead_code)] pub struct CloudObjectTypeAndId;
+#[allow(dead_code)] pub struct CloudViewModel;
+#[allow(dead_code)] pub struct CreateCloudObjectResult;
+#[allow(dead_code)] pub struct CreateObjectRequest;
+#[allow(dead_code)] pub struct GenericCloudObject;
+#[allow(dead_code)] pub struct GenericServerObject;
+#[allow(dead_code)] pub struct InitiatedBy;
+#[allow(dead_code)] pub struct ObjectClient;
+#[allow(dead_code)] pub struct ObjectType;
+#[allow(dead_code)] pub struct QueueItem;
+#[allow(dead_code)] pub type Revision = u64;
+#[allow(dead_code)] pub struct SerializedModel;
+#[allow(dead_code)] pub struct ServerCloudObject;
+#[allow(dead_code)] pub type ServerId = String;
+#[allow(dead_code)] pub type SyncId = String;
+#[allow(dead_code)] pub struct UpdateCloudObjectResult;
+#[allow(dead_code)] pub struct WarpDriveItem;
+#[allow(dead_code)] pub struct WarpDriveWorkflow;
+// --- end stubs --------------------------------------------------------
+
 use serde::{Deserialize, Serialize};
 use warp_core::context_flag::ContextFlag;
 use warp_core::features::FeatureFlag;
