@@ -1,6 +1,12 @@
 mod interaction_mode;
 mod serialized_block;
 
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct AgentViewDisplayMode;
+#[allow(dead_code)] pub struct AgentViewState;
+#[allow(dead_code)] pub struct AIConversationId;
+// --- end stubs --------------------------------------------------------
+
 pub use interaction_mode::*;
 pub use serialized_block::*;
 use warp_core::features::FeatureFlag;

@@ -1,5 +1,18 @@
 #[cfg(feature = "local_fs")]
 use crate::pane_group::pane::view::header::{components::HEADER_EDGE_PADDING, PANE_HEADER_HEIGHT};
+
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct AgentReviewCommentBatch;
+#[allow(dead_code)] pub struct CodeReviewAction;
+#[allow(dead_code)] pub struct CodeReviewCommentDebugState;
+#[allow(dead_code)] pub struct CodeReviewContextDestination;
+#[allow(dead_code)] pub struct CodeReviewView;
+#[allow(dead_code)] pub struct CodeReviewViewEvent;
+#[allow(dead_code)] pub const CONTENT_LEFT_MARGIN: f32 = 0.0;
+#[allow(dead_code)] pub const CONTENT_RIGHT_MARGIN: f32 = 0.0;
+#[allow(dead_code)] pub const HEADER_BUTTON_PADDING: f32 = 0.0;
+#[allow(dead_code)] pub fn render_file_navigation_button() {}
+// --- end stubs --------------------------------------------------------
 use crate::pane_group::WorkingDirectoriesEvent;
 use crate::pane_group::{Event as PaneGroupEvent, PaneGroup, WorkingDirectoriesModel};
 use crate::settings::{AISettings, AISettingsChangedEvent};

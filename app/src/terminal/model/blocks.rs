@@ -1,5 +1,14 @@
 mod selection;
 
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct AgentViewDisplayMode;
+#[allow(dead_code)] pub struct AgentViewState;
+#[allow(dead_code)] pub struct AIAgentActionId;
+#[allow(dead_code)] pub struct AIBlock;
+#[allow(dead_code)] pub struct AIConversationId;
+#[allow(dead_code)] pub struct SerializedBlockListItem;
+// --- end stubs --------------------------------------------------------
+
 use crate::terminal::block_filter::BlockFilterQuery;
 
 use crate::terminal::event::AfterBlockCompletedEvent;

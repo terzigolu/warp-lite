@@ -1,6 +1,14 @@
 //! Implementation of terminal panes.
 #[cfg(feature = "local_fs")]
 use crate::pane_group::CodeSource;
+
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct AIQueryHistoryOutputStatus;
+#[allow(dead_code)] pub struct BlocklistAIHistoryEvent;
+#[allow(dead_code)] pub struct PersistedAIInput;
+#[allow(dead_code)] pub struct PersistedAIInputType;
+#[allow(dead_code)] pub struct ServerApiProvider;
+// --- end stubs --------------------------------------------------------
 use std::{collections::HashMap, sync::mpsc::SyncSender};
 
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};

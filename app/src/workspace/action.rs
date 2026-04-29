@@ -2,6 +2,24 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+// --- warp-lite stubs ---------------------------------------------------
+#[allow(dead_code)] pub struct AddTabWithShellSource;
+#[allow(dead_code)] pub struct AgentModeEntrypoint;
+#[allow(dead_code)] pub struct AIAgentExchangeId;
+#[allow(dead_code)] pub struct AIConversationId;
+#[allow(dead_code)] pub struct AIDocumentId;
+#[allow(dead_code)] pub struct AIDocumentVersion;
+#[allow(dead_code)] pub struct AmbientAgentTaskId;
+#[allow(dead_code)] pub struct CloudObjectTypeAndId;
+#[allow(dead_code)] pub struct LoginGatedFeature;
+#[allow(dead_code)] pub struct PaletteSource;
+#[allow(dead_code)] pub struct PromptEditorOpenSource;
+#[allow(dead_code)] pub struct ServerConversationToken;
+#[allow(dead_code)] pub struct SharingDialogSource;
+#[allow(dead_code)] pub type SyncId = String;
+#[allow(dead_code)] pub type WarpDriveItemId = String;
+// --- end stubs --------------------------------------------------------
+
 use warp_util::path::LineAndColumnArg;
 
 use crate::palette::PaletteMode;
