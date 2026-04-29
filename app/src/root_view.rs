@@ -5,10 +5,13 @@ use crate::interval_timer::IntervalTimer;
 use crate::launch_configs::launch_config;
 use crate::linear::LinearIssueWork;
 use crate::notebooks::manager::NotebookSource;
+#[cfg(any())]
 use crate::settings::apply_onboarding_settings;
+#[cfg(any())]
 use crate::settings::cloud_preferences_syncer::{
     CloudPreferencesSyncer, CloudPreferencesSyncerEvent,
 };
+#[cfg(any())]
 use crate::settings::AISettings;
 use crate::workspace::tab_settings::TabSettings;
 
@@ -46,11 +49,15 @@ use crate::{
     server::{server_api::ServerTime, telemetry::TelemetryEvent},
     UpdateQuakeModeEventArg,
 };
+#[cfg(any())]
 use crate::{
     auth::auth_override_warning_modal::{AuthOverrideWarningModal, AuthOverrideWarningModalEvent},
     auth::auth_view_modal::{AuthView, AuthViewVariant},
+    workspace::view::OnboardingTutorial,
+};
+use crate::{
     server::server_api::ServerApi,
-    workspace::{view::OnboardingTutorial, PaneViewLocator, Workspace},
+    workspace::{PaneViewLocator, Workspace},
 };
 use crate::{features::FeatureFlag, ChannelState};
 use crate::{send_telemetry_from_app_ctx, GlobalResourceHandles, GlobalResourceHandlesProvider};
@@ -92,6 +99,46 @@ use warpui::{FocusContext, NextNewWindowsHasThisWindowsBoundsUponClose};
 #[cfg(target_family = "wasm")]
 
 const WINDOW_TITLE: &str = "Warp";
+
+// --- warp-lite stubs for removed AI/cloud types -------------------------
+#[allow(dead_code)] pub struct AgentOnboardingEvent;
+#[allow(dead_code)] pub struct AgentOnboardingView;
+#[allow(dead_code)] pub struct AuthManager;
+#[allow(dead_code)] pub struct AuthManagerEvent;
+#[allow(dead_code)] pub struct AuthOverrideWarningModalVariant;
+#[allow(dead_code)] pub struct AuthRedirectPayload;
+#[allow(dead_code)] pub struct AuthState;
+#[allow(dead_code)] pub struct AuthStateProvider;
+#[allow(dead_code)] pub struct CloudModel;
+#[allow(dead_code)] pub struct CloudObjectTypeAndId;
+#[allow(dead_code)] pub struct ExportManager;
+#[allow(dead_code)] pub struct GenericStringObjectFormat;
+#[allow(dead_code)] pub struct JsonObjectType;
+#[allow(dead_code)] pub struct LaunchConfigUiLocation;
+#[allow(dead_code)] pub struct LLMPreferences;
+#[allow(dead_code)] pub struct LLMPreferencesEvent;
+#[allow(dead_code)] pub struct LoginFailureReason;
+#[allow(dead_code)] pub struct LoginSlideEvent;
+#[allow(dead_code)] pub struct LoginSlideSource;
+#[allow(dead_code)] pub struct LoginSlideView;
+#[allow(dead_code)] pub struct NeedsSsoLinkView;
+#[allow(dead_code)] pub struct ObjectType;
+#[allow(dead_code)] pub struct OnboardingIntention;
+#[allow(dead_code)] pub struct OpenWarpDriveObjectArgs;
+#[allow(dead_code)] pub struct OpenWarpDriveObjectSettings;
+#[allow(dead_code)] pub struct PasteAuthTokenModalEvent;
+#[allow(dead_code)] pub struct PasteAuthTokenModalView;
+#[allow(dead_code)] pub struct PricingInfoModel;
+#[allow(dead_code)] pub struct PricingInfoModelEvent;
+#[allow(dead_code)] pub struct SelectedSettings;
+#[allow(dead_code)] pub struct SerializedBlockListItem;
+#[allow(dead_code)] pub struct ServerApiProvider;
+#[allow(dead_code)] pub struct ServerConversationToken;
+#[allow(dead_code)] pub struct StripeSubscriptionPlan;
+#[allow(dead_code)] pub type SyncId = String;
+#[allow(dead_code)] pub struct UpdateManager;
+#[allow(dead_code)] pub struct UserAuthenticationError;
+#[allow(dead_code)] pub type WarpDriveItemId = String;
 
 lazy_static! {
     static ref FALLBACK_WINDOW_SIZE: Vector2F = vec2f(800.0, 600.0);
