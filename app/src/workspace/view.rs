@@ -5055,6 +5055,31 @@ impl Workspace {
         ctx.notify();
     }
 
+    /// Programmatically sets the manual color override for a tab.
+    ///
+    /// - `Color(_)` applies that color.
+    /// - `Cleared` explicitly clears the color (also suppresses any directory default).
+    /// - `Unset` removes the manual override, letting the directory default apply.
+    pub fn set_tab_color(
+        &mut self,
+        index: usize,
+        color: SelectedTabColor,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        if self.tabs.get(index).is_none() {
+            log::warn!(
+                "Not setting tab color: index was {index} but len is {}",
+                self.tabs.len()
+            );
+            return;
+        }
+        if self.tabs[index].selected_color == color {
+            return;
+        }
+        self.tabs[index].selected_color = color;
+        ctx.notify();
+    }
+
     pub fn toggle_tab_color(
         &mut self,
         index: usize,
@@ -5068,8 +5093,7 @@ impl Workspace {
             );
             return;
         }
-        let is_same = self.tabs[index].color() == Some(color);
-        self.tabs[index].selected_color = if is_same {
+        let next = if self.tabs[index].color() == Some(color) {
             if FeatureFlag::DirectoryTabColors.is_enabled() {
                 SelectedTabColor::Cleared
             } else {
@@ -5078,7 +5102,7 @@ impl Workspace {
         } else {
             SelectedTabColor::Color(color)
         };
-        ctx.notify();
+        self.set_tab_color(index, next, ctx);
     }
 
     /// Syncs the tab color for the given tab based on the active terminal's CWD.
@@ -19420,6 +19444,7 @@ impl TypedActionView for Workspace {
             ResetPaneName(locator) => self.clear_pane_name(*locator, ctx),
             RenameActiveTab => self.rename_tab(self.active_tab_index, ctx),
             SetActiveTabName(name) => self.set_active_tab_name(name, ctx),
+            SetActiveTabColor(color) => self.set_tab_color(self.active_tab_index, *color, ctx),
             ToggleTabRightClickMenu { tab_index, anchor } => {
                 self.toggle_tab_right_click_menu(*tab_index, *anchor, ctx)
             }
