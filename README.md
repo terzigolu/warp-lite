@@ -18,21 +18,30 @@ What this fork is **not**: a closed-source repackage, an MIT relicense (the AGPL
 
 ## Roadmap & Status
 
-The work is split into compile-driven phases. Each phase commit is required to keep `cargo check --workspace` green on `warp-lite/main`. Larger atomic surgeries (Phase 3 in particular) live on a separate `phase3-wip` branch until they compile, then get cherry-picked back.
+The work is split into compile-driven phases. Each phase commit must keep `cargo check --workspace` green on `warp-lite/main`. **`v0.1.0-lite` is tagged and shipped** — the build is green, telemetry is silenced at runtime, and all Warp Cloud endpoints are blanked. The deeper crate-level removal of AI/Cloud subsystems is targeted at v0.2.
 
 | Phase | Subsystem | State | Notes |
 |---|---|---|---|
-| **0** | Default features purge | ✅ Done | `agent_mode`, `agent_mode_computer_use`, `agent_onboarding`, `hoa_onboarding_flow`, `gui = ["voice_input"]` removed from defaults. |
-| **1** | Quick-win crate deletions | ✅ Done | `managed_secrets_wasm`, `prevent_sleep`, `app-installation-detection` removed (~–524 LOC). |
-| **2.2a** | Telemetry macros → no-op | ✅ Done | All `send_telemetry_*!` macros neutralized; runtime emits **0 outbound network calls**. |
-| **2.2b** | Telemetry call-site sweep | ⏳ Pending | Physical deletion of dead call sites (~80 files left after Phase 3 removes most of them). |
-| **3** | AI / Auth / Onboarding removal | 🚧 In progress (`phase3-wip`) | 12 crates + 30+ app submodules + ~462 K LOC removed. Final compile pass in progress. |
-| **3.6** | Integration test crate | ✅ Done | `crates/integration` removed (–18 469 LOC) — e2e tests for cloud/AI flows; useless without backend. |
-| **4** | Cloud subsystem removal | 🟢 Folded into Phase 3 | `firebase`, `graphql`, `warp_server_client`, `websocket`, `managed_secrets`, `warp_graphql_schema` removed. |
-| **4.1** | `warp_files` partial edit | ⏳ TODO | Strip Drive-sync; keep local file model. |
-| **5** | Editor power-feature trim | ⏳ Deferred to v0.2 | `editor` (Zed fork, ~100 K LOC), `lsp`, `node_runtime`, `vim` stay in v0.1. |
+| **0** | Default features purge | ✅ v0.1 | `agent_mode`, `agent_mode_computer_use`, `agent_onboarding`, `hoa_onboarding_flow`, `gui = ["voice_input"]` removed from defaults. |
+| **1** | Quick-win crate deletions | ✅ v0.1 | `managed_secrets_wasm`, `prevent_sleep`, `app-installation-detection` removed (~–524 LOC). |
+| **2.2a** | Telemetry macros → no-op | ✅ v0.1 | All `send_telemetry_*!` macros neutralized; runtime emits **0 outbound network calls**. |
+| **2.2b** | Telemetry call-site sweep | 🟡 Deferred to v0.2 | Macros are no-op so runtime is safe; physical deletion of ~176 dead call sites is dead-code cleanup. |
+| **3** | AI surface stub (compile pass) | ✅ v0.1 | `app/src/search/{ai_context_menu, ai_queries, notebook_embedding}` mods replaced with minimal `warpui`-conformant stubs. `cargo check` green. |
+| **3.6** | Integration test crate | ✅ v0.1 | `crates/integration` removed (–18 469 LOC) — e2e tests for cloud/AI flows; useless without backend. |
+| **3.x** | AI/Onboarding crate physical removal | ⏳ v0.2 | `crates/ai`, `computer_use`, `onboarding`, `firebase`, `voice_input`, `handlebars`, `warp_js`, `warp_graphql_schema` etc. still in tree but inert at runtime. |
+| **4** | Cloud endpoint neutralization | ✅ v0.1 | `server_root_url`, `rtc_server_url`, `firebase_auth_api_key`, `oz_root_url` set to `""`; `crates/graphql` dropped from `default-members`. **0 reachable backends.** |
+| **4.x** | Cloud crate physical removal | ⏳ v0.2 | `crates/firebase`, `graphql`, `warp_server_client`, `websocket`, `managed_secrets`, `warp_files` partial — large surface (~5500 LOC, 103 importing files). |
+| **5** | Editor power-feature trim | ⏳ Deferred to v0.3+ | `editor` (Zed fork, ~100 K LOC), `lsp`, `node_runtime`, `vim` stay. |
 
-The first usable, fully green build will be tagged **`v0.1.0-lite`** once Phase 3 lands on `warp-lite/main`.
+### What `v0.1.0-lite` actually delivers
+
+- ✅ `cargo check --workspace` green on `warp-lite/main`.
+- ✅ Telemetry/crash-reporting macros are no-op — **0 outbound network at idle**.
+- ✅ Warp Cloud endpoint URLs blanked; even if cloud crates fire, they have nowhere to call.
+- ✅ Onboarding/agent-mode default features off.
+- ⚠️ AI/Cloud crates still live in the tree (inert). The "lightweight" goal is half-done at the source level — the runtime promise is fully delivered.
+
+The honest summary: **v0.1 is a privacy-respecting Warp**, not yet a slim Warp. Slimness lands in v0.2.
 
 ## What's been removed (`phase3-wip` branch — pending green compile)
 
