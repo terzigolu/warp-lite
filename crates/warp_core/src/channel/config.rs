@@ -42,11 +42,13 @@ pub struct WarpServerConfig {
 
 impl WarpServerConfig {
     pub fn production() -> Self {
+        // warp-lite (Phase 4): cloud endpoints removed. Network calls are
+        // unreachable since cloud crates are stubbed; URLs intentionally inert.
         Self {
-            server_root_url: "https://app.warp.dev".into(),
-            rtc_server_url: "wss://rtc.app.warp.dev/graphql/v2".into(),
-            session_sharing_server_url: Some("wss://sessions.app.warp.dev".into()),
-            firebase_auth_api_key: "AIzaSyBdy3O3S9hrdayLJxJ7mriBR4qgUaUygAs".into(),
+            server_root_url: "".into(),
+            rtc_server_url: "".into(),
+            session_sharing_server_url: None,
+            firebase_auth_api_key: "".into(),
         }
     }
 }
@@ -64,8 +66,9 @@ pub struct OzConfig {
 
 impl OzConfig {
     pub fn production() -> Self {
+        // warp-lite (Phase 4): Oz/ambient agent endpoint removed.
         Self {
-            oz_root_url: "https://oz.warp.dev".into(),
+            oz_root_url: "".into(),
             workload_audience_url: None,
         }
     }
