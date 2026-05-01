@@ -140,29 +140,9 @@ pub fn all_events() -> impl Iterator<Item = Box<dyn TelemetryEventDesc>> {
     inventory::iter::<&'static dyn AnyTelemetryEventRegistration>().flat_map(|meta| meta.events())
 }
 
-// warp-lite Phase 2.2a: telemetry macros neutralized to no-op.
-// The `if false { ... }` block is dead code at runtime (the optimizer eliminates it),
-// but the compiler still type-checks it so that call-site type inference is preserved.
-// Phase 2.2b will physically delete the call sites.
-#[macro_export]
-macro_rules! send_telemetry_from_ctx {
-    ($event:expr, $ctx:expr $(,)?) => {
-        if false {
-            let _ = &$event;
-            let _ = &$ctx;
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! send_telemetry_from_app_ctx {
-    ($event:expr, $app_ctx:expr $(,)?) => {
-        if false {
-            let _ = &$event;
-            let _ = &$app_ctx;
-        }
-    };
-}
+// warp-lite Phase 2.2b: telemetry dispatch macros (send_telemetry_from_ctx,
+// send_telemetry_from_app_ctx) deleted. All call sites were stripped in
+// Phase 2.2b; the no-op stubs from Phase 2.2a are no longer needed.
 
 /// Gives information about when a telemetry event is enabled.
 #[derive(Debug)]
