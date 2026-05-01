@@ -2,6 +2,7 @@
 
 mod agent_onboarding_view;
 pub mod callout;
+pub mod llm_id;
 mod model;
 pub mod slides;
 pub mod telemetry;

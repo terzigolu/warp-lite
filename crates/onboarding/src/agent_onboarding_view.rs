@@ -8,7 +8,7 @@ use crate::slides::{
     ThemePickerSlideEvent, ThirdPartySlide,
 };
 use crate::telemetry::OnboardingEvent;
-use ai::LLMId;
+use crate::llm_id::LLMId;
 use instant::Instant;
 use std::time::Duration;
 use warp_core::features::FeatureFlag;

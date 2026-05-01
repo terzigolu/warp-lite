@@ -153,7 +153,9 @@ fn apply_agent_settings(agent_settings: &AgentDevelopmentSettings, app: &mut App
 
         profiles.set_base_model(
             default_profile_id,
-            Some(agent_settings.selected_model_id.clone()),
+            Some(ai::LLMId::from(
+                agent_settings.selected_model_id.to_string(),
+            )),
             ctx,
         );
 

@@ -31,7 +31,7 @@ use warpui::{
     ViewContext,
 };
 
-use ai::LLMId;
+use crate::llm_id::LLMId;
 use pathfinder_color::ColorU;
 use ui_components::button::State as ButtonState;
 use warp_core::ui::icons::Icon;

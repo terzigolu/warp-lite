@@ -15,7 +15,6 @@ required-features = ["bin"]
 bin = ["warpui/log_named_telemetry_events"]
 
 [dependencies]
-ai.workspace = true
 anyhow.workspace = true
 cfg-if.workspace = true
 instant.workspace = true

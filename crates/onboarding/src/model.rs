@@ -3,7 +3,7 @@ use crate::slides::{
 };
 use crate::telemetry::OnboardingEvent;
 use crate::OnboardingIntention;
-use ai::LLMId;
+use crate::llm_id::LLMId;
 use warpui::{Entity, ModelContext};
 
 /// UI customization settings chosen during the "Customize your UI" onboarding slide.

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use ai::LLMId;
+use onboarding::llm_id::LLMId;
 use anyhow::Result;
 use onboarding::slides::OnboardingModelInfo;
 use onboarding::{
