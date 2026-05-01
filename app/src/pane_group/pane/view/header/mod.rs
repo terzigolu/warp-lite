@@ -12,7 +12,6 @@ use crate::{
         },
         BackingView, Direction, PaneDragDropLocation, PaneId, TabBarHoverIndex,
     },
-    send_telemetry_from_ctx,
     server::telemetry::{SharingDialogSource, TelemetryEvent},
     settings::CodeSettings,
     tab::tab_position_id,
@@ -892,7 +891,6 @@ impl<P: BackingView> TypedActionView for PaneHeader<P> {
                 self.share_pane_contents(SharingDialogSource::PaneHeader, ctx)
             }
             PaneHeaderAction::PaneHeaderDragStarted => {
-                send_telemetry_from_ctx!(TelemetryEvent::PaneDragInitiated, ctx);
             }
             PaneHeaderAction::PaneHeaderDragged {
                 origin,
@@ -958,12 +956,6 @@ impl<P: BackingView> TypedActionView for PaneHeader<P> {
                         ctx.emit(Event::PaneDroppedOutsideofTabBarOrPaneGroup)
                     }
                 }
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::PaneDropped {
-                        drop_location: *drop_location
-                    },
-                    ctx
-                );
             }
             PaneHeaderAction::PaneHeaderClicked => ctx.emit(Event::PaneHeaderClicked),
         }

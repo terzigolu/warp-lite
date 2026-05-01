@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::interval_timer::IntervalTimer;
 use crate::settings::import::config::{Config, ConfigError};
-use crate::{send_telemetry_from_ctx, TelemetryEvent};
 
 use serde::Serialize;
 use strum::IntoEnumIterator;
@@ -96,7 +95,6 @@ impl ImportedConfigModel {
                         Err(HotkeyError::MultipleHotkeys)
                     )
                 }) {
-                    send_telemetry_from_ctx!(TelemetryEvent::ITermMultipleHotkeys, ctx);
                 }
             }
         }
@@ -108,18 +106,6 @@ impl ImportedConfigModel {
         (configs, timer): (Result<Vec<Config>, ConfigError>, IntervalTimer),
         ctx: &mut ModelContext<Self>,
     ) {
-        send_telemetry_from_ctx!(
-            TelemetryEvent::SettingsImportConfigParsed {
-                timing_data: timer.compute_stats(),
-                terminal_type,
-                settings_shown_to_user: configs
-                    .as_ref()
-                    .ok()
-                    .and_then(|configs| configs.first())
-                    .map(|config| config.valid_setting_types())
-            },
-            ctx
-        );
         #[cfg(target_os = "macos")]
         self.maybe_send_multiple_hotkeys_telemetry_event(&terminal_type, &configs, ctx);
         self.parsed_terminals.insert(terminal_type, configs);

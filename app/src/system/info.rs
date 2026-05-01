@@ -11,8 +11,7 @@ use sysinfo::ProcessesToUpdate;
 use warp_core::channel::ChannelState;
 use warpui::{App, AppContext, Entity, ModelContext, SingletonEntity};
 
-use crate::{
-    send_telemetry_from_app_ctx, send_telemetry_sync_from_ctx, server::telemetry,
+use crate::{ server::telemetry,
     system::memory_footprint, terminal::TerminalView, TelemetryEvent,
 };
 
@@ -203,13 +202,6 @@ impl SystemInfo {
         // Send a telemetry event indicating that memory usage is extreme.
         // Report RSS here to keep Rudderstack dashboards consistent.
         let total_application_usage_bytes = rss.as_u64();
-        send_telemetry_sync_from_ctx!(
-            TelemetryEvent::MemoryUsageHigh {
-                total_application_usage_bytes,
-                memory_breakdown,
-            },
-            ctx
-        );
 
         ctx.emit(SystemInfoEvent::MemoryUsageHigh);
         self.has_emitted_memory_warning_event = true;
@@ -343,20 +335,12 @@ impl ResourceUsageReporter {
         //
         // TODO(vorporeal): Clean up the memory usage one, either eliminating it
         // or merging it into the general resource usage telemetry event.
-        send_telemetry_from_app_ctx!(
-            TelemetryEvent::ResourceUsageStats {
-                cpu: cpu_usage_stats.into(),
-                mem: memory_usage_stats.into(),
-            },
-            ctx
-        );
 
         // Only send detailed memory usage reports in dogfood, for the time being.
         if ChannelState::channel().is_dogfood() {
             // Only send the detailed memory usage report if the user has created
             // enough blocks since the last detailed memory usage report.
             if self.blocks_created_since_last_report >= Self::MIN_BLOCKS_CREATED_PER_MEMORY_REPORT {
-                send_telemetry_from_app_ctx!(TelemetryEvent::from(memory_usage_stats), ctx);
                 self.blocks_created_since_last_report = 0;
             }
         }

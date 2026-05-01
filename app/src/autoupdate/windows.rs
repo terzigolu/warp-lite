@@ -111,10 +111,7 @@ pub(super) fn check_and_report_update_errors(ctx: &mut AppContext) {
     )
     .is_some();
     if has_unable_to_close {
-        crate::send_telemetry_sync_from_app_ctx!(
-            TelemetryEvent::AutoupdateUnableToCloseApplications,
-            ctx
-        );
+        crate::();
     }
 
     let has_file_in_use = memchr::memmem::find(
@@ -123,21 +120,21 @@ pub(super) fn check_and_report_update_errors(ctx: &mut AppContext) {
     )
     .is_some();
     if has_file_in_use {
-        crate::send_telemetry_sync_from_app_ctx!(TelemetryEvent::AutoupdateFileInUse, ctx);
+        crate::();
     }
 
     // Fired when the mutex polling loop timed out and a force-kill was attempted.
     let has_mutex_timeout =
         memchr::memmem::find(&contents_lowercase, b"warp mutex still held after timeout").is_some();
     if has_mutex_timeout {
-        crate::send_telemetry_sync_from_app_ctx!(TelemetryEvent::AutoupdateMutexTimeout, ctx);
+        crate::();
     }
 
     // Fired when taskkill returned non-zero after the mutex timeout.
     let has_forcekill_failed =
         memchr::memmem::find(&contents_lowercase, b"force-kill failed for").is_some();
     if has_forcekill_failed {
-        crate::send_telemetry_sync_from_app_ctx!(TelemetryEvent::AutoupdateForcekillFailed, ctx);
+        crate::();
     }
 
     #[cfg(feature = "crash_reporting")]

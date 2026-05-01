@@ -18,6 +18,7 @@ pub use {
     },
 };
 
+use warp_core::{safe_error};
 use self::model::{LocalSelections, Selection, UpdateBufferOption};
 use super::soft_wrap::{ClampDirection, DisplayPointAndClampDirection};
 use super::Point;
@@ -38,7 +39,6 @@ use pathfinder_color::ColorU;
 use settings::Setting as _;
 use snapshot::{EditorHeightShrinkDelay, ViewSnapshot};
 use vec1::{vec1, Vec1};
-use warp_core::{safe_error, send_telemetry_from_ctx};
 use warp_util::{path::ShellFamily, user_input::UserInput};
 use warpui::platform::keyboard::KeyCode;
 use warpui::ui_components::button::ButtonTooltipPosition;
@@ -3063,16 +3063,6 @@ impl EditorView {
                             item_count,
                             query_length,
                         } => {
-                            send_telemetry_from_ctx!(
-                                TelemetryEvent::AtMenuInteracted {
-                                    action: "cancelled".to_string(),
-                                    item_count: *item_count,
-                                    query_length: Some(*query_length),
-                                    is_udi_enabled,
-                                    current_input_mode,
-                                },
-                                ctx
-                            );
 
                             ctx.emit(Event::SetAIContextMenuOpen(false));
                             ctx.focus_self();
@@ -3083,16 +3073,6 @@ impl EditorView {
                             item_count,
                             query_length,
                         } => {
-                            send_telemetry_from_ctx!(
-                                TelemetryEvent::AtMenuInteracted {
-                                    action: "item_selected".to_string(),
-                                    item_count: *item_count,
-                                    query_length: Some(*query_length),
-                                    is_udi_enabled,
-                                    current_input_mode,
-                                },
-                                ctx
-                            );
 
                             ctx.emit(Event::AcceptAIContextMenuItem(action.clone()));
                             ctx.focus_self();
@@ -5206,13 +5186,6 @@ impl EditorView {
 
         let is_udi_enabled = InputSettings::as_ref(ctx).is_universal_developer_input_enabled(ctx);
 
-        send_telemetry_from_ctx!(
-            TelemetryEvent::AttachedImagesToAgentModeQuery {
-                num_images: pending_images.len(),
-                is_udi_enabled,
-            },
-            ctx
-        );
 
         self.process_attached_images_future_handle = Some(ctx.spawn(
             async move {

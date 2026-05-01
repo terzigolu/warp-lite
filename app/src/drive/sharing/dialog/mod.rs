@@ -9,7 +9,6 @@ use crate::cloud_object::Owner;
 use crate::cloud_object::{CloudObject, ServerGuestSubject};
 use crate::editor::PropagateAndNoOpNavigationKeys;
 use crate::menu::{self, Menu, MenuItem, MenuItemFields};
-use crate::send_telemetry_from_ctx;
 use crate::server::cloud_objects::update_manager::{
     ObjectOperation, UpdateManager, UpdateManagerEvent,
 };
@@ -611,7 +610,6 @@ impl SharingDialog {
             None => return,
         };
 
-        send_telemetry_from_ctx!(event, ctx);
     }
 
     fn reset_editable_state(&mut self, ctx: &mut ViewContext<Self>) {
@@ -917,7 +915,6 @@ impl SharingDialog {
                 None => None,
             };
             if let Some(event) = event {
-                send_telemetry_from_ctx!(event, ctx);
             }
 
             ctx.clipboard().write(ClipboardContent::plain_text(url));

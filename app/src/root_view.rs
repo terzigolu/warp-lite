@@ -1,3 +1,4 @@
+use crate::{GlobalResourceHandles, GlobalResourceHandlesProvider};
 use crate::ai::agent::api::ServerConversationToken;
 use crate::ai::blocklist::SerializedBlockListItem;
 use crate::appearance::Appearance;
@@ -66,7 +67,6 @@ use crate::{
     autoupdate::{RequestType, UpdateReady},
     changelog_model::ChangelogRequestType,
     pane_group::{NewTerminalOptions, PanesLayout},
-    send_telemetry_from_ctx,
     server::{server_api::ServerTime, telemetry::TelemetryEvent},
     UpdateQuakeModeEventArg,
 };
@@ -77,7 +77,6 @@ use crate::{
     workspace::{view::OnboardingTutorial, PaneViewLocator, Workspace},
 };
 use crate::{features::FeatureFlag, ChannelState};
-use crate::{send_telemetry_from_app_ctx, GlobalResourceHandles, GlobalResourceHandlesProvider};
 use anyhow::Result;
 use cfg_if::cfg_if;
 use itertools::Itertools;
@@ -602,13 +601,6 @@ fn open_launch_config(arg: &OpenLaunchConfigArg, ctx: &mut AppContext) {
         }
     }
 
-    send_telemetry_from_app_ctx!(
-        TelemetryEvent::OpenLaunchConfig {
-            ui_location: crate::server::telemetry::LaunchConfigUiLocation::Uri,
-            open_in_active_window: arg.open_in_active_window,
-        },
-        ctx
-    );
 }
 
 fn send_feedback(_: &(), ctx: &mut AppContext) {
@@ -1427,7 +1419,6 @@ fn toggle_quake_mode_window(global_resource_handles: &GlobalResourceHandles, ctx
     let state = get_quake_mode_state(ctx);
     match state {
         None => {
-            send_telemetry_from_app_ctx!(TelemetryEvent::OpenQuakeModeWindow, ctx);
 
             let config = quake_mode_config(
                 &KeysSettings::as_ref(ctx)
@@ -1477,7 +1468,6 @@ fn toggle_quake_mode_window(global_resource_handles: &GlobalResourceHandles, ctx
             });
         }
         Some(state) if matches!(state.window_state, WindowState::Hidden) => {
-            send_telemetry_from_app_ctx!(TelemetryEvent::OpenQuakeModeWindow, ctx);
 
             // If quake mode does not have a set pin screen -- move it to the current active screen.
             if KeysSettings::as_ref(ctx)
@@ -2528,7 +2518,6 @@ impl RootView {
     ) -> bool {
         // Focus the pane that the notification originated from.
         self.focus_pane(pane_view_locator, ctx);
-        send_telemetry_from_ctx!(TelemetryEvent::NotificationClicked, ctx);
         true
     }
 

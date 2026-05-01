@@ -47,7 +47,6 @@ use warpui::{
 
 use crate::appearance::Appearance;
 use crate::completer::SessionContext;
-use crate::{send_telemetry_from_ctx, TelemetryEvent};
 
 use super::{
     agent_view_chip_color,
@@ -1610,14 +1609,6 @@ impl TypedActionView for DisplayChip {
                             let is_udi_enabled = InputSettings::as_ref(ctx)
                                 .is_universal_developer_input_enabled(ctx);
 
-                            send_telemetry_from_ctx!(
-                                TelemetryEvent::ContextChipInteracted {
-                                    chip_type: "git_branch".to_string(),
-                                    action: "opened".to_string(),
-                                    is_udi_enabled,
-                                },
-                                ctx
-                            );
                         }
                         ctx.notify();
                     }
@@ -1645,14 +1636,6 @@ impl TypedActionView for DisplayChip {
                             let is_udi_enabled = InputSettings::as_ref(ctx)
                                 .is_universal_developer_input_enabled(ctx);
 
-                            send_telemetry_from_ctx!(
-                                TelemetryEvent::ContextChipInteracted {
-                                    chip_type: "working_directory".to_string(),
-                                    action: "opened".to_string(),
-                                    is_udi_enabled,
-                                },
-                                ctx
-                            );
                         }
                         ctx.notify();
                     }

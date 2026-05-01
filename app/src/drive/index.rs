@@ -27,7 +27,7 @@ use crate::{
     menu::{Event, Menu, MenuItem, MenuItemFields},
     network::NetworkStatus,
     notebooks::CloudNotebookModel,
-    report_if_error, send_telemetry_from_ctx,
+    report_if_error,
     server::{
         cloud_objects::update_manager::{FetchSingleObjectOption, UpdateManager},
         ids::{ClientId, ObjectUid, ServerId, SyncId},
@@ -3787,12 +3787,6 @@ impl DriveIndex {
             report_if_error!(settings.sorting_choice.set_value(*sorting_choice, ctx));
         });
 
-        send_telemetry_from_ctx!(
-            TelemetryEvent::UpdateSortingChoice {
-                sorting_choice: *sorting_choice
-            },
-            ctx
-        );
     }
 
     fn toggle_sorting_menu(&mut self, ctx: &mut ViewContext<Self>) {
@@ -5287,10 +5281,6 @@ impl TypedActionView for DriveIndex {
                 }
             }
             DriveIndexAction::CopyObjectToClipboard(cloud_object_type_and_id) => {
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::CopyObjectToClipboard(cloud_object_type_and_id.into()),
-                    ctx
-                );
 
                 let shell_family =
                     active_terminal_in_window(ctx.window_id(), ctx, |terminal, ctx| {
@@ -5334,14 +5324,9 @@ impl TypedActionView for DriveIndex {
                     .write(ClipboardContent::plain_text(workflow_id));
             }
             DriveIndexAction::DuplicateObject(cloud_object_type_and_id) => {
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::DuplicateObject(cloud_object_type_and_id.into()),
-                    ctx
-                );
                 ctx.emit(DriveIndexEvent::DuplicateObject(*cloud_object_type_and_id));
             }
             DriveIndexAction::ExportObject(type_and_id) => {
-                send_telemetry_from_ctx!(TelemetryEvent::ExportObject(type_and_id.into()), ctx);
                 ctx.emit(DriveIndexEvent::ExportObject(*type_and_id));
             }
             DriveIndexAction::ToggleNewAssetsMenu(space) => {
@@ -5582,10 +5567,6 @@ impl TypedActionView for DriveIndex {
                 }
             }
             DriveIndexAction::CopyObjectLinkToClipboard(link) => {
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::ObjectLinkCopied { link: link.clone() },
-                    ctx
-                );
                 ctx.clipboard()
                     .write(ClipboardContent::plain_text(link.to_owned()));
             }
@@ -5602,10 +5583,6 @@ impl TypedActionView for DriveIndex {
             }
             DriveIndexAction::ViewPlans { team_uid } => {
                 ctx.open_url(UserWorkspaces::upgrade_link_for_team(*team_uid).as_str());
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::SharedObjectLimitHitBannerViewPlansButtonClicked,
-                    ctx
-                );
             }
             DriveIndexAction::ManageBilling { team_uid } => {
                 UserWorkspaces::handle(ctx).update(ctx, move |user_workspaces, ctx| {

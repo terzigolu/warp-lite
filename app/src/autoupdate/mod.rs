@@ -8,12 +8,11 @@ mod mac;
 mod windows;
 
 use crate::features::FeatureFlag;
-use crate::send_telemetry_sync_from_app_ctx;
 use crate::server::server_api::ServerApi;
 use crate::server::telemetry::TelemetryEvent;
 use crate::workspace::Workspace;
 use crate::{
-    channel::Channel, report_if_error, send_telemetry_from_ctx, server::datetime_ext::DateTimeExt,
+    channel::Channel, report_if_error, server::datetime_ext::DateTimeExt,
     ChannelState,
 };
 use ::channel_versions::{ParsedVersion, VersionInfo};
@@ -497,7 +496,6 @@ impl AutoupdateState {
                 })
             }
             Ok(DownloadReady::NeedsAuthorization) => {
-                send_telemetry_from_ctx!(TelemetryEvent::UnableToAutoUpdateToNewVersion, ctx);
                 self.stage = AutoupdateStage::UnableToUpdateToNewVersion { new_version };
                 Ok(UpdateReady::No)
             }
@@ -885,7 +883,6 @@ pub fn initiate_relaunch_for_update(app: &mut AppContext) {
                 let event = TelemetryEvent::AutoupdateRelaunchAttempt {
                     new_version: new_version_string,
                 };
-                send_telemetry_sync_from_app_ctx!(event, app);
 
                 // Request termination of the app.
                 app.terminate_app(TerminationMode::Cancellable, None);

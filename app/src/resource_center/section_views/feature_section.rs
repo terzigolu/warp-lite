@@ -1,6 +1,5 @@
 use crate::{
     appearance::Appearance,
-    send_telemetry_from_ctx,
     server::telemetry::TelemetryEvent,
     settings_view::keybindings::{KeybindingChangedEvent, KeybindingChangedNotifier},
     themes::theme::Fill,
@@ -147,7 +146,6 @@ impl FeatureSectionView {
 
     // Turns gamification off without rendering completed modal
     pub fn skip_gamified_section(&mut self, ctx: &mut ViewContext<Self>) {
-        send_telemetry_from_ctx!(TelemetryEvent::ResourceCenterTipsSkipped, ctx);
         self.tips_completed.update(ctx, |tips_completed, ctx| {
             skip_tips_and_write_to_user_defaults(tips_completed, ctx);
             ctx.notify();
@@ -156,7 +154,6 @@ impl FeatureSectionView {
 
     // Turns gamification off and renders completed modal
     pub fn complete_gamified_section(&mut self, ctx: &mut ViewContext<Self>) {
-        send_telemetry_from_ctx!(TelemetryEvent::ResourceCenterTipsCompleted, ctx);
         self.tips_completed.update(ctx, |tips_completed, ctx| {
             complete_tips_and_write_to_user_defaults(tips_completed, ctx);
             ctx.notify();

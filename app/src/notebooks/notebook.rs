@@ -70,7 +70,7 @@ use crate::{
         pane::view,
         BackingView, PaneConfiguration, PaneEvent,
     },
-    report_if_error, safe_info, send_telemetry_from_ctx,
+    report_if_error, safe_info,
     server::{
         cloud_objects::update_manager::{FetchSingleObjectOption, UpdateManager},
         ids::{ClientId, ServerId, SyncId},
@@ -895,13 +895,6 @@ impl NotebookView {
             self.last_content_length = content.len();
             self.send_edit_telemetry = false;
 
-            send_telemetry_from_ctx!(
-                TelemetryEvent::EditNotebook {
-                    metadata: self.telemetry_metadata(ctx),
-                    meaningful_change: delta > MEANINGFUL_EDIT_THRESHOLD
-                },
-                ctx
-            );
         }
 
         // Schedule another check. If we stop editing in the meantime, either the mode check above
@@ -1098,13 +1091,6 @@ impl NotebookView {
 
     /// Send a [`NotebookTelemetryAction`] telemetry event.
     fn send_telemetry_action(&self, action: NotebookTelemetryAction, ctx: &mut ViewContext<Self>) {
-        send_telemetry_from_ctx!(
-            TelemetryEvent::NotebookAction(NotebookActionEvent {
-                action,
-                metadata: self.telemetry_metadata(ctx)
-            }),
-            ctx
-        );
     }
 
     /// Puts the nodebook into edit mode and focuses the editor. The caller is responsible for
@@ -1630,10 +1616,6 @@ impl NotebookView {
             editor.set_space(notebook.space(ctx), ctx);
         });
 
-        send_telemetry_from_ctx!(
-            TelemetryEvent::OpenNotebook(self.open_telemetry_metadata(ctx)),
-            ctx
-        );
 
         // Once we've received metadata from the server, check if we can eagerly edit the notebook.
         let has_metadata = UpdateManager::as_ref(ctx).initial_load_complete();
@@ -2323,10 +2305,6 @@ impl TypedActionView for NotebookView {
             NotebookAction::CopyToPersonal => self.copy_to_personal(ctx),
             NotebookAction::CopyToClipboard => self.copy_notebook_contents_to_clipboard(ctx),
             NotebookAction::CopyLink(link) => {
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::ObjectLinkCopied { link: link.clone() },
-                    ctx
-                );
                 ctx.clipboard()
                     .write(ClipboardContent::plain_text(link.to_owned()));
 
@@ -2345,12 +2323,6 @@ impl TypedActionView for NotebookView {
             } => self.move_to_team_owner(*cloud_object_type_and_id, *new_space, ctx),
             #[cfg(target_family = "wasm")]
             NotebookAction::OpenLinkOnDesktop(url) => {
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::WebCloudObjectOpenedOnDesktop {
-                        object_metadata: self.generic_telemetry_metadata(ctx)
-                    },
-                    ctx
-                );
                 open_url_on_desktop(url);
             }
             #[cfg(not(target_family = "wasm"))]

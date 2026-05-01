@@ -4,7 +4,6 @@ use crate::editor::{
     EditorView, Event as EditorEvent, PropagateAndNoOpNavigationKeys, SingleLineEditorOptions,
 };
 use crate::launch_configs::launch_config::LaunchConfig;
-use crate::send_telemetry_from_ctx;
 use crate::server::telemetry::TelemetryEvent;
 use crate::user_config::launch_configs_dir;
 #[cfg(feature = "local_fs")]
@@ -252,7 +251,6 @@ impl LaunchConfigSaveModal {
                     target,
                     line_col: None,
                 });
-                send_telemetry_from_ctx!(TelemetryEvent::OpenLaunchConfigFile, ctx);
             }
         }
     }
@@ -476,23 +474,11 @@ impl LaunchConfigSaveModal {
 
     pub fn saved_successfully(&mut self, file_name: String, ctx: &mut ViewContext<Self>) {
         self.set_save_state(SaveState::Success, Some(file_name));
-        send_telemetry_from_ctx!(
-            TelemetryEvent::SaveLaunchConfig {
-                state: SaveState::Success,
-            },
-            ctx
-        );
         ctx.notify();
     }
 
     pub fn failed_save(&mut self, failure_type: FailureType, ctx: &mut ViewContext<Self>) {
         self.set_save_state(SaveState::Failure(failure_type), None);
-        send_telemetry_from_ctx!(
-            TelemetryEvent::SaveLaunchConfig {
-                state: SaveState::Failure(failure_type)
-            },
-            ctx
-        );
         ctx.notify();
     }
 

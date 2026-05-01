@@ -19,7 +19,6 @@ use crate::{
     themes::theme::Fill,
     ui_components::icons,
 };
-use crate::{send_telemetry_from_ctx, server::telemetry::TelemetryEvent};
 
 use super::{feature_section::FeatureSection, SectionAction, SectionView};
 
@@ -56,10 +55,6 @@ impl TypedActionView for ChangelogSectionView {
         use SectionAction::*;
         match action {
             OpenUrl(url) => {
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::OpenChangelogLink { url: url.clone() },
-                    ctx
-                );
                 ctx.open_url(url.as_str());
             }
             ToggleExpanded => self.toggle_expanded(ctx),

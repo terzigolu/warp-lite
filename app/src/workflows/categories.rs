@@ -1,3 +1,4 @@
+use crate::{editor::Event as EditorEvent};
 use itertools::Itertools;
 use warp_editor::editor::NavigationKey;
 use warpui::{
@@ -17,7 +18,6 @@ use crate::workflows::WorkflowType;
 use crate::{
     cloud_object::model::persistence::CloudModel, workspaces::user_workspaces::UserWorkspaces,
 };
-use crate::{editor::Event as EditorEvent, send_telemetry_from_ctx};
 use crate::{server::telemetry::TelemetryEvent, user_config::WarpConfig};
 use crate::{
     themes::theme::{self, Blend, WarpTheme},
@@ -1265,7 +1265,6 @@ impl VoltronFeatureViewMeta for CategoriesView {
 
         self.load_cloud_workflows(ctx);
 
-        send_telemetry_from_ctx!(TelemetryEvent::OpenWorkflowSearch, ctx);
         self.search_term = String::new();
         ctx.notify();
     }

@@ -44,7 +44,6 @@ use crate::search::search_bar::{
     SearchBar, SearchBarEvent, SearchBarState, SearchResultOrdering, SelectionUpdate,
 };
 use crate::search::QueryFilter;
-use crate::send_telemetry_from_ctx;
 use crate::server::{ids::SyncId, telemetry::TelemetryEvent};
 use crate::settings::AISettings;
 use crate::terminal::History;
@@ -589,7 +588,6 @@ impl WelcomePalette {
             }
         };
 
-        send_telemetry_from_ctx!(event, ctx);
 
         self.state_handles.clipped_scroll_state = Default::default();
         self.reset(ctx);
@@ -839,10 +837,6 @@ impl WelcomePalette {
         action: &dyn warpui::Action,
         ctx: &mut ViewContext<Self>,
     ) {
-        send_telemetry_from_ctx!(
-            TelemetryEvent::SelectCommandPaletteOption(format!("{action:?}")),
-            ctx
-        );
 
         let (window_id, view_id) = match self.binding_source.as_ref(ctx) {
             BindingSource::View {
