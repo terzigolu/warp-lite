@@ -2757,8 +2757,12 @@ impl Workspace {
             Self::build_ai_assistant_panel_view(ctx, server_api.clone(), ai_client.clone());
 
         // warp-lite v0.3: Context Panel host view.
-        let context_panel =
-            ctx.add_view(crate::context_panel::panel::ContextPanelView::new);
+        let context_panel = {
+            let model_handle = working_directories_model.clone();
+            ctx.add_view(move |child_ctx| {
+                crate::context_panel::panel::ContextPanelView::new(model_handle, child_ctx)
+            })
+        };
 
         ctx.observe(&tips_completed, Workspace::on_tips_model_changed);
 

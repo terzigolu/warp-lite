@@ -9,10 +9,10 @@ use warpui::{
         Container, CrossAxisAlignment, Element, Flex, MainAxisSize, ParentElement, Text,
     },
     presenter::ChildView,
-    AppContext, Entity, SingletonEntity, View, ViewContext, ViewHandle,
+    AppContext, Entity, ModelHandle, SingletonEntity, View, ViewContext, ViewHandle,
 };
 
-use crate::appearance::Appearance;
+use crate::{appearance::Appearance, pane_group::WorkingDirectoriesModel};
 
 use super::widgets::working_directory::WorkingDirectoryWidget;
 
@@ -25,8 +25,14 @@ pub struct ContextPanelView {
 }
 
 impl ContextPanelView {
-    pub fn new(ctx: &mut ViewContext<Self>) -> Self {
-        let working_directory = ctx.add_view(|_| WorkingDirectoryWidget::new());
+    pub fn new(
+        working_directories_model: ModelHandle<WorkingDirectoriesModel>,
+        ctx: &mut ViewContext<Self>,
+    ) -> Self {
+        let model_for_widget = working_directories_model.clone();
+        let working_directory = ctx.add_view(move |child_ctx| {
+            WorkingDirectoryWidget::new(model_for_widget, child_ctx)
+        });
         Self { working_directory }
     }
 }
