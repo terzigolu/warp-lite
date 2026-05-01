@@ -218,7 +218,6 @@ warp_completer.workspace = true
 warp_core.workspace = true
 warp_editor.workspace = true
 warp_graphql.workspace = true
-warp_js = { workspace = true, optional = true }
 warp_server_client.workspace = true
 warp_util.workspace = true
 warpui = { workspace = true, features = ["schema_gen", "settings_value"] }
@@ -437,11 +436,6 @@ codebase_index_speedbump = []
 cocoa_sentry = ["crash_reporting"]
 command_predictor = []
 context_line_review_comments = []
-completions_v2 = [
-    "plugin_host",
-    "warp_completer/v2",
-    "dep:command-signatures-v2",
-]
 crash_reporting = [
     "dep:sentry",
     "dep:sentry-log",
@@ -721,7 +715,6 @@ read_image_files = []
 # This feature enables plugin support in Warp. Note that its typically checked
 # directly, rather than via the `FeatureFlag` enum, because its value is
 # required early in the app lifecycle prior to `FeatureFlag` initialization.
-plugin_host = ["dep:rquickjs", "dep:warp_js", "warp_cli/plugin_host"]
 # Enable this feature to automatically perform CPU profiling via pprof.  The
 # generated profile will be written to profile.pb in the current directory.
 # NOTE: This may slow down program execution.
