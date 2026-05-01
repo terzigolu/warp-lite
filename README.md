@@ -98,8 +98,8 @@ The fork keeps all of upstream's build prerequisites. On macOS:
 Then:
 
 ```sh
-cargo check --workspace          # type-check (~2 min cold)
-cargo build --release -p app     # release build (target/release/warp-oss)
+cargo check --workspace                    # type-check (~2 min cold)
+cargo build --release --bin warp-oss       # release build (target/release/warp-oss)
 ```
 
 The default binary is `warp-oss` (declared via `default-run` in `app/Cargo.toml`).
