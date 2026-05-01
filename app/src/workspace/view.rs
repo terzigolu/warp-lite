@@ -18659,7 +18659,10 @@ impl Workspace {
                     ChildView::new(&self.context_panel).finish(),
                     &PanelPosition::Right,
                 ))
-            } else if self.current_workspace_state.is_ai_assistant_panel_open {
+            } else if false && self.current_workspace_state.is_ai_assistant_panel_open {
+                // warp-lite v0.3.1: legacy AI assistant panel render disabled.
+                // The Context Panel (Cmd+Shift+K) replaces it. Underlying view
+                // stays compiled until the AI crate is physically removed in v0.4.
                 Some(self.render_panel(
                     app,
                     ChildView::new(&self.ai_assistant_panel).finish(),

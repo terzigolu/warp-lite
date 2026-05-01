@@ -1183,8 +1183,8 @@ impl SettingsView {
         // The Agents umbrella, BillingAndUsage, Cloud platform umbrella, Teams,
         // Warpify, Referrals, WarpDrive entries are hidden from the sidebar
         // (the underlying pages remain compiled but unreachable from the UI).
+        // warp-lite: Account entry hidden (auth flow disabled at runtime).
         let mut nav_items = vec![
-            SettingsNavItem::Page(SettingsSection::Account),
             SettingsNavItem::Umbrella(SettingsUmbrella::new(
                 "Code",
                 vec![
