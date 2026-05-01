@@ -5,7 +5,6 @@ use super::OnboardingSlide;
 use pathfinder_color::ColorU;
 use pathfinder_geometry::vector::vec2f;
 use ui_components::{button, Component as _, Options as _};
-use warp_core::send_telemetry_from_ctx;
 use warp_core::ui::{appearance::Appearance, theme::color::internal_colors, Icon};
 use warpui::{
     elements::{
@@ -120,7 +119,6 @@ impl View for IntroSlide {
 
 impl IntroSlide {
     fn get_started_clicked(&mut self, ctx: &mut ViewContext<Self>) {
-        send_telemetry_from_ctx!(OnboardingEvent::GetStartedClicked, ctx);
 
         self.onboarding_state.update(ctx, |model, ctx| {
             model.next(ctx);
@@ -209,7 +207,6 @@ impl TypedActionView for IntroSlide {
                 self.get_started_clicked(ctx);
             }
             IntroSlideAction::LoginClicked => {
-                send_telemetry_from_ctx!(OnboardingEvent::WelcomeLoginClicked, ctx);
                 ctx.emit(IntroSlideEvent::LoginRequested);
             }
         }

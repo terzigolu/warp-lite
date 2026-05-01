@@ -12,7 +12,6 @@ use ai::LLMId;
 use instant::Instant;
 use std::time::Duration;
 use warp_core::features::FeatureFlag;
-use warp_core::send_telemetry_from_ctx;
 use warpui::assets::asset_cache::AssetSource;
 use warpui::image_cache::ImageType;
 use warpui::windowing::{
@@ -327,13 +326,6 @@ impl AgentOnboardingView {
             Self::preload_onboarding_images(ctx);
         }
 
-        send_telemetry_from_ctx!(OnboardingEvent::OnboardingStarted, ctx);
-        send_telemetry_from_ctx!(
-            OnboardingEvent::SlideViewed {
-                slide_name: "intro".to_string(),
-            },
-            ctx
-        );
     }
 
     /// Eagerly loads all onboarding slide images into the asset cache

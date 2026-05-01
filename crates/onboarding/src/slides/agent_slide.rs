@@ -2,7 +2,6 @@ use super::two_line_button::{render_two_line_button, TwoLineButtonSpec};
 use crate::model::{OnboardingAuthState, OnboardingStateEvent, OnboardingStateModel};
 use crate::slides::{bottom_nav, layout, slide_content};
 use crate::telemetry::OnboardingEvent;
-use warp_core::send_telemetry_from_ctx;
 
 use super::OnboardingSlide;
 use crate::visuals::agent_visual;
@@ -1617,7 +1616,6 @@ impl TypedActionView for AgentSlide {
                 self.next(ctx);
             }
             AgentSlideAction::UpgradeClicked => {
-                send_telemetry_from_ctx!(OnboardingEvent::AgentSlideUpgradeClicked, ctx);
                 if !matches!(
                     self.onboarding_state.as_ref(ctx).auth_state(),
                     OnboardingAuthState::PayingUser,

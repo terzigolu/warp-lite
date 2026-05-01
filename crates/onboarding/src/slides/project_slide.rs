@@ -3,7 +3,6 @@ use crate::slides::{bottom_nav, layout, slide_content};
 use crate::telemetry::OnboardingEvent;
 use crate::visuals::project_visual;
 use ui_components::{button, keyboard_shortcut, Component as _, Options as _};
-use warp_core::send_telemetry_from_ctx;
 use warp_core::ui::{
     appearance::Appearance, color::coloru_with_opacity, theme::color::internal_colors, Icon,
 };
@@ -460,7 +459,6 @@ impl View for ProjectSlide {
 
 impl ProjectSlide {
     fn open_local_folder(&mut self, ctx: &mut ViewContext<Self>) {
-        send_telemetry_from_ctx!(OnboardingEvent::FolderSelectionStarted, ctx);
         ctx.open_file_picker(
             |result, ctx| {
                 if let Some(path_result) = result.map(|paths| paths.into_iter().next()).transpose()
