@@ -2,6 +2,7 @@ pub mod block;
 pub mod cloud_objects;
 pub mod datetime_ext;
 pub mod experiments;
+pub mod firebase_types;
 pub mod graphql;
 pub mod ids;
 pub mod network_log_pane_manager;

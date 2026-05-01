@@ -4,6 +4,8 @@
 //! refresh-token-to-access-token exchange. The auth flow is gone in warp-lite,
 //! but the response shapes are still referenced by `app/src/server` so we
 //! keep just the types needed for compilation. No network calls live here.
+//!
+//! Inlined here as part of v0.4 physical purge of `crates/firebase`.
 use serde::{Deserialize, Serialize};
 
 /// Format for error response payloads for Google APIs.
