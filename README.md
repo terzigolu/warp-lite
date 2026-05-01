@@ -18,7 +18,7 @@ What this fork is **not**: a closed-source repackage, an MIT relicense (the AGPL
 
 ## Roadmap & Status
 
-The work is split into compile-driven phases. Each phase commit must keep `cargo check --workspace` green on `warp-lite/main`. **`v0.1.0-lite` and `v0.2.0-lite` are tagged and shipped.** v0.2 lands the runtime privacy + measurable source-level slimming; full crate-level removal of `ai` (22 K LOC) and `onboarding` (11 K LOC) is targeted at v0.3.
+The work is split into compile-driven phases. Each phase commit must keep `cargo check --workspace` green on `warp-lite/main`. **`v0.1.0-lite`, `v0.2.0-lite`, `v0.2.1-lite`, and `v0.3.0-lite` are tagged and shipped.** v0.3 introduced the **Context Panel** (a terminal-context-aware Tools Panel that replaces the AI Assistant), additional crate deletions, and hides the legacy AI/Account UI surfaces. v0.4 targets the physical removal of the two giant remaining crates (`ai`, `onboarding`).
 
 | Phase | Subsystem | State | Notes |
 |---|---|---|---|
@@ -29,24 +29,26 @@ The work is split into compile-driven phases. Each phase commit must keep `cargo
 | **3 (compile pass)** | AI surface stub | ✅ v0.1 | `app/src/search/{ai_context_menu, ai_queries, notebook_embedding}` mods stubbed. |
 | **3.6** | Integration test crate | ✅ v0.1 | `crates/integration` removed (–18 469 LOC). |
 | **3.x (partial)** | Niche AI crate physical removal | ✅ v0.2 | `crates/voice_input`, `handlebars`, `warp_js`, `warp_graphql_schema` deleted (~–1.5 K Rust LOC + assets). `crates/onboarding` decoupled from `ai` (`LLMId` inlined). |
-| **3.x (computer_use)** | AI peripheral gut | ✅ v0.2 | `crates/computer_use` shrunk from 4 K LOC → 200 LOC inert stub. Public API (Action, Screenshot, Vector2I, Actor trait) preserved; runtime is no-op. |
-| **3.x (final)** | `crates/ai`, `crates/onboarding` physical removal | ⏳ v0.3 | `ai` (22 K LOC, 172 import paths) + `onboarding` (11 K LOC, 22 deep consumers). Onboarding is now ai-independent so a future drop is unblocked. |
-| **4 (network silence)** | Cloud endpoint neutralization | ✅ v0.1 | `server_root_url`, `rtc_server_url`, `firebase_auth_api_key`, `oz_root_url` set to RFC-2606 invalid TLDs; **0 reachable backends.** |
-| **4.x (transport)** | Cloud HTTP/WS short-circuit | ✅ v0.2 | `firebase` 145→55 LOC, `websocket` 1080→380 LOC (proxy.rs purged + `connect()` returns Err), `warp_graphql` HTTP transport short-circuited at `client.rs::send_graphql_request`. **0 outbound HTTPS / WS dial.** |
-| **4.x (final)** | Full cloud crate `rm -rf` | ⏳ v0.3 | `firebase`, `graphql`, `warp_server_client`, `managed_secrets`, `warp_files` (partial) — blocked by AI crate's deep cloud type usage; unlocks once `crates/ai` goes. |
-| **5** | Editor power-feature trim | ⏳ Deferred to v0.4+ | `editor` (Zed fork, ~100 K LOC), `lsp`, `node_runtime`, `vim` stay. |
+| **3.x (computer_use)** | AI peripheral gut | ✅ v0.2 | `crates/computer_use` shrunk from 4 K LOC → 200 LOC inert stub. Public API preserved; runtime is no-op. |
+| **3.x (extra crates)** | More physical drops | ✅ v0.3 | `crates/firebase`, `crates/command-signatures-v2`, `crates/serve-wasm` fully deleted. `crates/onboarding` bin/examples/telemetry trimmed (~–10 K LOC total). |
+| **3.x (final)** | `crates/ai`, `crates/onboarding` lib physical removal | ⏳ v0.4 | `ai` (22 K LOC, 172 import paths) + `onboarding` (~9.8 K LOC, 22 deep consumers). |
+| **4 (network silence)** | Cloud endpoint neutralization | ✅ v0.1 | URLs blanked → RFC-2606 invalid TLDs; **0 reachable backends.** |
+| **4.x (transport)** | Cloud HTTP/WS short-circuit | ✅ v0.2 | `firebase` 145→55 LOC, `websocket` 1080→380 LOC (`connect()` returns Err), `warp_graphql` HTTP gated. **0 outbound HTTPS / WS dial.** |
+| **4.x (final)** | Full cloud crate `rm -rf` | ⏳ v0.4 | `graphql`, `warp_server_client`, `managed_secrets`, `warp_files` (partial). Unlocks once `crates/ai` goes. |
+| **5 — Context Panel scaffold** | New right-side Tools Panel | ✅ v0.3 | New `app/src/context_panel/` module + 4 widgets (Working Directory, Git, Claude Code Sessions, Foreground Process). Toggle: `Cmd+Shift+K`. Default closed. |
+| **5.1 — UI polish** | AI Panel + Account hidden | ✅ v0.3.1 | Legacy AI assistant render branch gated with `false &&`; Settings sidebar `Account` entry removed. |
+| **5.2 — Widget polish** | Foreground Process real wiring + collapsible polish + project-type detect | 🚧 in progress | Foreground Process widget is currently a placeholder; real `ps` wiring + 1-second tick deferred to v0.3.2. |
+| **6** | Editor power-feature trim | ⏳ Deferred to v0.5+ | `editor` (Zed fork, ~100 K LOC), `lsp`, `node_runtime`, `vim` stay. |
 
-### What v0.2.0-lite actually delivers
+### What ships in v0.3.0-lite (cumulative on top of v0.2)
 
-- ✅ `cargo check --workspace` green on `warp-lite/main` (55 crates, down from 63).
-- ✅ Telemetry physically removed: 1 026 call sites across 168 files, plus the macro definitions themselves.
-- ✅ All cloud endpoint URLs blanked + transport-layer short-circuit (no outbound HTTPS GraphQL, no outbound WS, no Firebase REST). **Idle network call count: 0.**
-- ✅ 4 AI/network crates fully deleted (`voice_input`, `handlebars`, `warp_js`, `warp_graphql_schema`).
-- ✅ `computer_use` reduced 95 % to inert stub (4 K → 200 LOC).
-- ✅ `onboarding` decoupled from `ai`, ready for removal in v0.3.
-- ⚠️ `crates/ai` (22 K LOC) and `crates/onboarding` (11 K LOC) and the cloud type-stack still live in the tree — runtime-inert but on disk. v0.3 is the cleanup release.
+- ✅ **Context Panel** replaces the AI Assistant — `Cmd+Shift+K` toggles a right-side panel with four collapsible cards: working directory + project type, Git branch / ahead-behind / status / last commit, Claude Code session count for the current cwd, and a foreground-process placeholder.
+- ✅ Legacy `Warp AI` panel render branch is hardcoded off; the Account section is gone from Settings; menus, sidebar, header buttons, and modals previously hidden in v0.2.1 stay clean.
+- ✅ Three more crates physically deleted (`firebase`, `command-signatures-v2`, `serve-wasm`); onboarding bin/examples trimmed.
+- ✅ `cargo check --workspace` green; release binary builds and launches; smoke test passes (`PostBootstrapPrecmd`, terminal hooks fire, no panics).
+- ⚠️ `crates/ai` (22 K LOC) and `crates/onboarding` lib (~9.8 K LOC) still on disk, runtime-inert. v0.4 is the rm-rf release.
 
-The honest summary: **v0.2 is a privacy-respecting Warp with most of the bulk gutted at runtime.** True file-level slimness for the two giant crates lands in v0.3.
+The honest summary: **v0.3 is the first warp-lite release where the user actually sees a "pure terminal" — the AI panel is gone, login is gone, and the new right-side panel surfaces what a terminal user actually wants (cwd, git, running process, Claude Code).** Source-level cleanup of the giant remaining crates lands in v0.4.
 
 ## What's been removed (`phase3-wip` branch — pending green compile)
 
