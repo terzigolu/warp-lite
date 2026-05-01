@@ -17,6 +17,7 @@ pub mod user_uid;
 #[cfg(target_family = "wasm")]
 pub mod web_handoff;
 
+use crate::{report_if_error};
 use crate::ai::agent_conversations_model::AgentConversationsModel;
 use crate::ai::blocklist::BlocklistAIHistoryModel;
 use crate::ai::execution_profiles::profiles::AIExecutionProfilesModel;
@@ -53,7 +54,6 @@ use crate::terminal::shared_session::manager::Manager as SharedSessionManager;
 use crate::workspace::{Workspace, WorkspaceAction};
 use crate::workspaces::update_manager::TeamUpdateManager;
 use crate::{persistence, GlobalResourceHandlesProvider};
-use crate::{report_if_error, send_telemetry_sync_from_app_ctx};
 
 /// Prefix for API keys used in authentication
 #[cfg_attr(target_family = "wasm", allow(dead_code))]
@@ -70,7 +70,6 @@ pub fn init(app: &mut AppContext) {
 /// If the app has running processes or dirty objects, we'll show a confirmation modal before logging out.
 /// If the user aborts, the user will not be logged out.
 pub fn maybe_log_out(app: &mut AppContext) {
-    send_telemetry_sync_from_app_ctx!(TelemetryEvent::UserInitiatedLogOut, app);
 
     let sessions = SessionNavigationData::all_sessions(app).collect_vec();
     let num_long_running_commands = RunningSessionSummary::new(&sessions)
@@ -94,7 +93,6 @@ pub fn maybe_log_out(app: &mut AppContext) {
             || num_unsaved_objects > 0
             || num_unsaved_files > 0)
     {
-        send_telemetry_sync_from_app_ctx!(TelemetryEvent::LogOutModalShown, app);
         let mut button_data = vec![ModalButton::for_app("Yes, log out", |ctx| {
             log_out(ctx);
         })];
@@ -111,10 +109,6 @@ pub fn maybe_log_out(app: &mut AppContext) {
             ));
 
             button_data.push(ModalButton::for_app("Show running processes", move |ctx| {
-                send_telemetry_sync_from_app_ctx!(
-                    TelemetryEvent::LogOutModalCancel { nav_palette: true },
-                    ctx
-                );
                 let windowing_model = ctx.windows();
                 let window_id = if let Some(active_window_id) = windowing_model.active_window() {
                     active_window_id
@@ -176,10 +170,6 @@ pub fn maybe_log_out(app: &mut AppContext) {
         }
 
         button_data.push(ModalButton::for_app("Cancel", move |ctx| {
-            send_telemetry_sync_from_app_ctx!(
-                TelemetryEvent::LogOutModalCancel { nav_palette: false },
-                ctx
-            );
         }));
 
         let alert_data = AlertDialogWithCallbacks::for_app(
@@ -211,7 +201,6 @@ pub fn maybe_log_out(app: &mut AppContext) {
 
 // Log out the user, clears workspace state, stops running processes, and deletes database.
 pub fn log_out(app: &mut AppContext) {
-    send_telemetry_sync_from_app_ctx!(TelemetryEvent::LogOut, app);
 
     CodebaseIndexManager::handle(app).update(app, |index_manager, ctx| {
         index_manager.reset_codebase_indexing(ctx);

@@ -10,7 +10,6 @@ use crate::server::telemetry::{LoginEventSource, TelemetryEvent};
 use crate::settings::PrivacySettings;
 use crate::themes::theme::Fill as ThemeFill;
 use crate::util::bindings::CustomAction;
-use crate::{send_telemetry_from_ctx, send_telemetry_sync_from_ctx};
 
 use onboarding::slides::{layout, slide_content};
 use onboarding::{OnboardingIntention, AI_FEATURES, WARP_DRIVE_FEATURES};
@@ -393,12 +392,6 @@ impl LoginSlideView {
     fn handle_login_later(&mut self, ctx: &mut ViewContext<Self>) {
         // Send synchronously since this is an important event in the sign up funnel and we
         // don't want to lose events if the user quits before the event queue is flushed.
-        send_telemetry_sync_from_ctx!(
-            TelemetryEvent::LoginLaterConfirmationButtonClicked {
-                source: LoginEventSource::OnboardingSlide,
-            },
-            ctx
-        );
         if FeatureFlag::SkipFirebaseAnonymousUser.is_enabled() {
             AuthManager::handle(ctx).update(ctx, |_, ctx| {
                 ctx.emit(AuthManagerEvent::SkippedLogin);
@@ -1181,12 +1174,6 @@ impl TypedActionView for LoginSlideView {
                     return;
                 }
                 // Otherwise Enter is log in
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::LoginButtonClicked {
-                        source: LoginEventSource::OnboardingSlide,
-                    },
-                    ctx
-                );
                 self.last_login_failure_reason = None;
                 self.step = LoginStep::BrowserOpen;
                 AuthManager::handle(ctx).update(ctx, |auth_manager, ctx| {
@@ -1196,12 +1183,6 @@ impl TypedActionView for LoginSlideView {
                 ctx.notify();
             }
             LoginSlideAction::ShowSkipDialog => {
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::LoginLaterButtonClicked {
-                        source: LoginEventSource::OnboardingSlide,
-                    },
-                    ctx
-                );
                 self.active_overlay = Some(LoginSlideOverlay::SkipDialog);
                 ctx.notify();
             }
@@ -1284,12 +1265,6 @@ impl TypedActionView for LoginSlideView {
                 ctx.notify();
             }
             LoginSlideAction::ShowPrivacySettings => {
-                send_telemetry_sync_from_ctx!(
-                    TelemetryEvent::OpenAuthPrivacySettings {
-                        source: LoginEventSource::OnboardingSlide,
-                    },
-                    ctx
-                );
                 self.step = LoginStep::PrivacySettings;
                 ctx.notify();
             }
