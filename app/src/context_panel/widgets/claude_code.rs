@@ -23,6 +23,10 @@ use crate::{
 struct SessionsSummary {
     count: usize,
     last_modified: Option<SystemTime>,
+    /// Approximate turn count of the most recently modified session.
+    /// `None` when the file couldn't be read or there is no recent
+    /// session.
+    last_turn_count: Option<usize>,
 }
 
 pub struct ClaudeCodeWidget {
@@ -98,27 +102,47 @@ impl View for ClaudeCodeWidget {
             )
             .finish();
 
-        let body_text = if self.cwd.is_none() {
-            "(no active terminal)".to_string()
+        let lines: Vec<String> = if self.cwd.is_none() {
+            vec!["(no active terminal)".to_string()]
         } else if self.summary.count == 0 {
-            "No active sessions".to_string()
+            vec!["No active sessions".to_string()]
         } else {
             let suffix = relative_time(self.summary.last_modified);
-            format!("{} session(s){}", self.summary.count, suffix)
+            let mut out = vec![format!("{} session(s){}", self.summary.count, suffix)];
+            if let Some(turns) = self.summary.last_turn_count {
+                if turns > 0 {
+                    out.push(format!(
+                        "Latest: ~{} turn{}",
+                        turns,
+                        if turns == 1 { "" } else { "s" }
+                    ));
+                }
+            }
+            out
         };
 
-        let body = Container::new(
-            Text::new(body_text, font_family, font_size)
-                .with_color(sub_text_color.into())
+        let mut body = Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Start);
+        for (i, line) in lines.iter().enumerate() {
+            body = body.with_child(
+                Container::new(
+                    Text::new(line.clone(), font_family, font_size)
+                        .with_color(sub_text_color.into())
+                        .finish(),
+                )
+                .with_margin_top(if i == 0 { 4. } else { 2. })
+                .finish(),
+            );
+        }
+
+        Container::new(
+            Flex::column()
+                .with_child(header)
+                .with_child(body.finish())
                 .finish(),
         )
-        .with_margin_top(4.)
-        .finish();
-
-        Container::new(Flex::column().with_child(header).with_child(body).finish())
-            .with_horizontal_padding(12.)
-            .with_vertical_padding(10.)
-            .finish()
+        .with_horizontal_padding(12.)
+        .with_vertical_padding(10.)
+        .finish()
     }
 }
 
@@ -155,6 +179,7 @@ fn scan_sessions_for_cwd(cwd: &Path) -> SessionsSummary {
 
     let mut count = 0usize;
     let mut newest: Option<SystemTime> = None;
+    let mut newest_path: Option<PathBuf> = None;
     for entry in entries.flatten() {
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
@@ -163,17 +188,46 @@ fn scan_sessions_for_cwd(cwd: &Path) -> SessionsSummary {
         count += 1;
         if let Ok(meta) = entry.metadata() {
             if let Ok(modified) = meta.modified() {
-                newest = Some(match newest {
-                    Some(prev) if prev > modified => prev,
-                    _ => modified,
-                });
+                let bumped = match newest {
+                    Some(prev) if prev > modified => false,
+                    _ => true,
+                };
+                if bumped {
+                    newest = Some(modified);
+                    newest_path = Some(path.clone());
+                }
             }
         }
     }
+
+    let last_turn_count = newest_path
+        .as_deref()
+        .and_then(approximate_turn_count);
+
     SessionsSummary {
         count,
         last_modified: newest,
+        last_turn_count,
     }
+}
+
+/// Cheap, allocation-free approximation: count newlines in the JSONL
+/// file. Bounded by `MAX_BYTES` so a runaway transcript can't stall
+/// the UI thread on the synchronous read.
+fn approximate_turn_count(path: &Path) -> Option<usize> {
+    const MAX_BYTES: u64 = 4 * 1024 * 1024;
+    let meta = std::fs::metadata(path).ok()?;
+    if !meta.is_file() {
+        return None;
+    }
+    if meta.len() > MAX_BYTES {
+        // Don't try to count for huge transcripts; the widget shows
+        // session count regardless, so this is an information-only
+        // skip rather than a failure.
+        return None;
+    }
+    let bytes = std::fs::read(path).ok()?;
+    Some(bytes.iter().filter(|b| **b == b'\n').count())
 }
 
 fn encode_path(path: &Path) -> String {
