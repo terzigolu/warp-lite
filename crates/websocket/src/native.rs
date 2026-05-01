@@ -1,58 +1,27 @@
-//! A WebSocket+TLS client based on `async-tungstenite`.
-
-use std::sync::Arc;
-
+//! warp-lite stub for the native WebSocket connector.
+//!
+//! Original code dialed websockets (with optional HTTP proxy + TLS via
+//! rustls-platform-verifier) to power Warp's session sharing and graphql
+//! subscription transport. warp-lite never opens an outbound websocket, so
+//! the connect path is now an error return; the type aliases remain so that
+//! downstream callers (graphql subscriptions, sharer/viewer) still compile.
 use async_tungstenite::{
-    tokio::{
-        client_async_tls_with_connector_and_config, connect_async_with_tls_connector, ClientStream,
-    },
-    tungstenite::client::IntoClientRequest,
-    WebSocketStream,
+    tokio::ClientStream, tungstenite::client::IntoClientRequest, WebSocketStream,
 };
 use futures::{Sink, Stream};
 use futures_util::StreamExt as _;
-use rustls_platform_verifier::ConfigVerifierExt;
 use tokio::net::TcpStream;
-use tokio_rustls::TlsConnector;
 
 use crate::WebsocketMessage;
-
-mod proxy;
 
 pub use async_tungstenite::tungstenite::Message;
 
 pub struct WebSocket(WebSocketStream<ClientStream<TcpStream>>);
 
-static CLIENT_CONFIG: std::sync::LazyLock<Result<Arc<rustls::ClientConfig>, rustls::Error>> =
-    std::sync::LazyLock::new(|| Ok(Arc::new(rustls::ClientConfig::with_platform_verifier()?)));
-
-/// Connects to a WebSocket address (optionally secured by TLS).
-///
-/// When `HTTPS_PROXY`, `HTTP_PROXY`, or `ALL_PROXY` environment variables are set,
-/// the connection is tunneled through the specified HTTP proxy using the CONNECT method.
-/// The `NO_PROXY` environment variable is respected to bypass the proxy for specific hosts.
-pub async fn connect(request: impl IntoClientRequest + Unpin) -> anyhow::Result<WebSocket> {
-    let request = request.into_client_request()?;
-    let tls_connector = Some(TlsConnector::from(CLIENT_CONFIG.clone()?));
-
-    if let Some(proxy_info) = proxy::resolve_proxy(request.uri())? {
-        log::debug!(
-            "Using HTTP proxy {}:{} for WebSocket connection to {}",
-            proxy_info.host,
-            proxy_info.port,
-            request.uri(),
-        );
-        let tcp_stream = proxy::connect_via_proxy(&proxy_info, request.uri()).await?;
-        let (stream, _response) =
-            client_async_tls_with_connector_and_config(request, tcp_stream, tls_connector, None)
-                .await?;
-        Ok(WebSocket(stream))
-    } else {
-        let stream = connect_async_with_tls_connector(request, tls_connector)
-            .await?
-            .0;
-        Ok(WebSocket(stream))
-    }
+pub async fn connect(_request: impl IntoClientRequest + Unpin) -> anyhow::Result<WebSocket> {
+    Err(anyhow::anyhow!(
+        "warp-lite: outbound websocket connections are disabled"
+    ))
 }
 
 impl WebSocket {

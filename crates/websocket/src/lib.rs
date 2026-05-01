@@ -18,8 +18,6 @@ pub use async_tungstenite::tungstenite::client::IntoClientRequest;
 #[cfg(not(target_family = "wasm"))]
 use async_tungstenite::tungstenite::http::HeaderValue;
 use futures_util::{future, SinkExt, TryStreamExt};
-#[cfg(not(target_family = "wasm"))]
-use itertools::Itertools;
 use thiserror::Error;
 
 #[cfg(not(target_family = "wasm"))]
@@ -108,7 +106,11 @@ impl WebSocket {
         protocols: impl IntoIterator<Item = &str>,
     ) -> anyhow::Result<Self> {
         let mut request = request.into_client_request()?;
-        let protocols = protocols.into_iter().join(", ");
+        let mut protocol_strs: Vec<&str> = Vec::new();
+        for p in protocols {
+            protocol_strs.push(p);
+        }
+        let protocols = protocol_strs.join(", ");
         if !protocols.is_empty() {
             request
                 .headers_mut()

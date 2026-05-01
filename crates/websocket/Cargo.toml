@@ -5,21 +5,19 @@ edition = "2021"
 publish.workspace = true
 license.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# warp-lite: this crate retains its public API (`WebSocket`, `Message`,
+# `Sink`/`Stream` traits, `tungstenite` re-export) so that GraphQL
+# subscriptions and session sharing call sites still compile, but the
+# `connect()` path always returns an error - no websocket dial is performed.
 
 [dependencies]
 anyhow.workspace = true
-base64.workspace = true
-percent-encoding = "2.3.1"
-itertools.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 http.workspace = true
-cfg-if.workspace = true
 log.workspace = true
 thiserror.workspace = true
 pin-project.workspace = true
-url.workspace = true
 
 [dev-dependencies]
 futures-test-sink = "0.1.1"
@@ -30,14 +28,6 @@ ws_stream_wasm = "0.7"
 graphql-ws-client = {workspace = true, features = ["ws_stream_wasm"]}
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-async-io.workspace = true
-async-net = "2.0.0"
 async-tungstenite = {version = "0.28.2", features = ["tokio-rustls-manual-roots"]}
-http-body-util = "0.1"
-hyper = { workspace = true, features = ["client", "http1"] }
-hyper-util = { version = "0.1", features = ["tokio"] }
 tokio = { workspace = true, features = ["io-util", "net", "time"] }
-tokio-rustls = "0.26.4"
 graphql-ws-client = {workspace = true, features = ["tungstenite"]}
-rustls = "0.23.29"
-rustls-platform-verifier = "0.6.1"
