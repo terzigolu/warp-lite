@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use handlebars::{get_arguments, render_template};
+use crate::workflows::handlebars_parser::{get_arguments, render_template};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};

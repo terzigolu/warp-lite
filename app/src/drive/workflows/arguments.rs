@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::workflows::workflow::Argument;
-use handlebars::parser::{ParsedArgumentResult, ParsedArgumentsIterator};
+use crate::workflows::handlebars_parser::{ParsedArgumentResult, ParsedArgumentsIterator};
 
 /// Represents arguments for workflow to be viewed and edited in ArgumentsEditorView.
 ///

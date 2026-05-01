@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::DateTime;
-use handlebars::{get_arguments, render_template};
+use crate::workflows::handlebars_parser::{get_arguments, render_template};
 
 #[cfg(feature = "local_fs")]
 use serde::Deserialize;

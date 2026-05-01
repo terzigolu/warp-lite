@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::DateTime;
-use handlebars::get_arguments;
+use crate::workflows::handlebars_parser::get_arguments;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use warp_core::ui::appearance::Appearance;

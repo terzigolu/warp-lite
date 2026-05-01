@@ -12,6 +12,7 @@ use workflow::Workflow;
 pub mod aliases;
 pub mod command_parser;
 pub mod export_workflow;
+pub mod handlebars_parser;
 pub mod info_box;
 pub mod local_workflows;
 pub mod manager;

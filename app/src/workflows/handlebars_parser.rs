@@ -1,7 +1,87 @@
+//! In-tree replacement for the former `crates/handlebars` workspace crate
+//! (Phase 3.x). Provides Handlebars-style `{{name}}` template parsing and
+//! rendering used by tab configs, workflows, and (cfg-gated) AI MCP modules.
+
 use std::{
+    collections::{HashMap, HashSet},
     iter::{Enumerate, Peekable},
     ops::Range,
 };
+
+pub fn get_arguments(template: &str) -> Vec<String> {
+    let mut char_to_byte: Vec<usize> = template
+        .char_indices()
+        .map(|(byte_idx, _)| byte_idx)
+        .collect();
+    char_to_byte.push(template.len());
+
+    ParsedArgumentsIterator::new(template.chars())
+        .filter_map(|parsed| {
+            if let ParsedArgumentResult::Valid { .. } = parsed.result() {
+                let name_range = parsed.chars_range();
+
+                if name_range.start >= 2 {
+                    let name_start_byte = char_to_byte[name_range.start];
+                    let name_end_byte = char_to_byte[name_range.end];
+                    let name = template[name_start_byte..name_end_byte].to_string();
+
+                    Some(name)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect::<HashSet<String>>()
+        .into_iter()
+        .collect()
+}
+
+pub fn render_template(template: &str, context: &HashMap<String, String>) -> String {
+    let mut char_to_byte: Vec<usize> = template
+        .char_indices()
+        .map(|(byte_idx, _)| byte_idx)
+        .collect();
+    char_to_byte.push(template.len());
+
+    let mut out = String::with_capacity(template.len());
+    let mut cursor_byte = 0usize;
+
+    for parsed in ParsedArgumentsIterator::new(template.chars()) {
+        if let ParsedArgumentResult::Valid { .. } = parsed.result() {
+            let name_range = parsed.chars_range();
+            if name_range.start >= 2 {
+                let placeholder_start_char = name_range.start - 2;
+                let placeholder_end_char = name_range.end + 2;
+
+                let start_byte = char_to_byte[placeholder_start_char];
+                let name_start_byte = char_to_byte[name_range.start];
+                let name_end_byte = char_to_byte[name_range.end];
+                let end_byte = char_to_byte[placeholder_end_char];
+
+                if cursor_byte < start_byte {
+                    out.push_str(&template[cursor_byte..start_byte]);
+                }
+
+                let var_name = &template[name_start_byte..name_end_byte];
+                if let Some(value) = context.get(var_name) {
+                    out.push_str(value);
+                } else {
+                    out.push_str(&template[start_byte..end_byte]);
+                }
+
+                cursor_byte = end_byte;
+            }
+        }
+    }
+
+    if cursor_byte < template.len() {
+        out.push_str(&template[cursor_byte..]);
+    }
+
+    out
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParsedArgument {
@@ -165,10 +245,10 @@ where
         let mut chars_skipped = 0;
         while let Some(_) = self.char_iter.next() {
             chars_skipped += 1;
-            if let Some((_, character)) = self.char_iter.peek()
-                && *character != repeating_character
-            {
-                break;
+            if let Some((_, character)) = self.char_iter.peek() {
+                if *character != repeating_character {
+                    break;
+                }
             }
         }
         chars_skipped
