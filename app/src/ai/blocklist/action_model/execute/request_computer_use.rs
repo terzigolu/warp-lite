@@ -6,7 +6,6 @@ use warpui::{Entity, EntityId, ModelContext, SingletonEntity};
 
 use crate::ai::agent::{AIAgentActionId, AIAgentActionType};
 use crate::ai::ambient_agents::AmbientAgentTaskId;
-use crate::send_telemetry_from_ctx;
 use crate::server::telemetry::TelemetryEvent;
 
 use super::{ActionExecution, AnyActionExecution, ExecuteActionInput, PreprocessActionInput};
@@ -70,14 +69,6 @@ impl RequestComputerUseExecutor {
 
         // If we're executing, that implies that computer use has been approved.
         let is_autoexecuted = self.autoexecuted_actions.remove(&action.id);
-        send_telemetry_from_ctx!(
-            TelemetryEvent::ComputerUseApproved {
-                conversation_id,
-                is_autoexecuted,
-                ambient_agent_task_id: self.ambient_agent_task_id,
-            },
-            ctx
-        );
 
         let screenshot_params = request.screenshot_params;
         let mut actor = computer_use::create_actor();

@@ -21,7 +21,6 @@ use crate::terminal::CLIAgent;
 use crate::workspace::util::is_terminal_view_in_same_tab;
 use crate::workspace::{Workspace, WorkspaceRegistry};
 use crate::BlocklistAIHistoryModel;
-use warp_core::send_telemetry_from_ctx;
 
 /// Singleton model responsible for triggering in-app notifications on blocking conversation
 /// status updates and tracking/storing these notifications for the notifications mailbox.
@@ -419,12 +418,6 @@ impl AgentNotificationsModel {
             terminal_view_id,
             artifacts,
             branch,
-        );
-        send_telemetry_from_ctx!(
-            TelemetryEvent::AgentNotificationShown {
-                agent_variant: agent.into(),
-            },
-            ctx
         );
 
         let id = item.id;

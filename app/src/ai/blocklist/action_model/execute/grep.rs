@@ -23,7 +23,6 @@ use crate::terminal::model::session::ExecuteCommandOptions;
 use crate::PrivacySettings;
 use crate::{
     ai::agent::{AIAgentActionResultType, GrepFileMatch, GrepLineMatch},
-    send_telemetry_from_app_ctx,
     terminal::{
         model::session::active_session::ActiveSession, model::session::Session, shell::ShellType,
         ShellLaunchData,
@@ -188,7 +187,6 @@ fn log_grep_error(
         absolute_path,
         error,
     );
-    send_telemetry_from_app_ctx!(event, ctx);
 }
 
 pub struct GrepExecutor {
@@ -301,7 +299,6 @@ impl GrepExecutor {
                             );
                         }
                         GrepResult::Success { .. } => {
-                            send_telemetry_from_app_ctx!(TelemetryEvent::GrepToolSucceeded, ctx);
                         }
                         _ => {}
                     }

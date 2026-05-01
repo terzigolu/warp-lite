@@ -15,7 +15,6 @@ use crate::{
     ui_components::{blended_colors, icons::Icon},
 };
 use pathfinder_color::ColorU;
-use warp_core::send_telemetry_from_ctx;
 use warp_core::ui::appearance::Appearance;
 use warp_core::ui::theme::Fill;
 use warpui::{
@@ -219,12 +218,6 @@ impl SuggestionChipView {
         workflow: SuggestedAgentModeWorkflow,
         ctx: &mut ViewContext<Self>,
     ) -> Self {
-        send_telemetry_from_ctx!(
-            TelemetryEvent::ShowedSuggestedAgentModeWorkflowChip {
-                logging_id: workflow.logging_id.clone(),
-            },
-            ctx
-        );
 
         Self::listen_for_warp_drive_events(ctx);
         let sync_id = SyncId::ClientId(ClientId::default());
@@ -447,12 +440,6 @@ impl TypedActionView for SuggestionChipView {
                             sync_id: self.sync_id,
                         });
                     } else {
-                        send_telemetry_from_ctx!(
-                            TelemetryEvent::ShowedSuggestedAgentModeWorkflowModal {
-                                logging_id: workflow.logging_id.clone(),
-                            },
-                            ctx
-                        );
 
                         ctx.emit(
                             SuggestedChipViewEvent::ShowSuggestedAgentModeWorkflowModal {

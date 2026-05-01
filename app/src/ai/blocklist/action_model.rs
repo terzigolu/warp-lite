@@ -71,7 +71,6 @@ use self::execute::{
 use super::BlocklistAIHistoryModel;
 use crate::ai::ai_document_view::DEFAULT_PLANNING_DOCUMENT_TITLE;
 use crate::ai::document::ai_document_model::AIDocumentModel;
-use crate::{send_telemetry_from_ctx, TelemetryEvent};
 
 /// The status of an action from an AI output.
 #[derive(Clone, Debug)]
@@ -1047,13 +1046,6 @@ impl BlocklistAIActionModel {
             pending_action.action,
             AIAgentActionType::RequestComputerUse(_)
         ) {
-            send_telemetry_from_ctx!(
-                TelemetryEvent::ComputerUseCancelled {
-                    conversation_id,
-                    ambient_agent_task_id: self.ambient_agent_task_id,
-                },
-                ctx
-            );
         }
 
         let result = Arc::new(AIAgentActionResult {

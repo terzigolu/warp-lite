@@ -14,7 +14,6 @@ use crate::ai::blocklist::telemetry::{
 use crate::server::server_api::ai::SendAgentMessageRequest;
 use crate::server::server_api::ServerApiProvider;
 use warp_core::features::FeatureFlag;
-use warp_core::send_telemetry_from_ctx;
 
 use super::{ActionExecution, AnyActionExecution, ExecuteActionInput, PreprocessActionInput};
 
@@ -84,24 +83,6 @@ impl SendMessageToAgentExecutor {
                     }
                     Err(err) => {
                         let error_message = err.to_string();
-                        send_telemetry_from_ctx!(
-                            BlocklistOrchestrationTelemetryEvent::TeamAgentCommunicationFailed(
-                                TeamAgentCommunicationFailedEvent {
-                                    communication_kind: TeamAgentCommunicationKind::Message,
-                                    transport: TeamAgentCommunicationTransport::ServerApi,
-                                    orchestration_version: TeamAgentOrchestrationVersion::V2,
-                                    failure_reason:
-                                        TeamAgentCommunicationFailureReason::RequestFailed,
-                                    source_conversation_id: conversation_id,
-                                    source_run_id: (!log_sender_run_id.is_empty())
-                                        .then(|| log_sender_run_id.clone()),
-                                    target_count: Some(log_addresses.len()),
-                                    lifecycle_event_type: None,
-                                    error_message: Some(error_message.clone()),
-                                }
-                            ),
-                            ctx
-                        );
                         log::warn!(
                             "Failed to send child-agent message via server API: conversation_id={conversation_id:?} sender_run_id={log_sender_run_id:?} target_agent_ids={log_addresses:?} subject={log_subject:?} error={err:#}"
                         );

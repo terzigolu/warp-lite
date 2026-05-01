@@ -28,7 +28,7 @@ use warp_completer::completer::CompletionContext;
 
 use crate::{
     input_classifier::InputClassifierModel,
-    report_if_error, send_telemetry_from_ctx,
+    report_if_error,
     settings::{AISettings, AISettingsChangedEvent, InputBoxType, InputSettings},
     terminal::{
         input::decorations::ParsedTokensSnapshot,
@@ -739,22 +739,6 @@ impl BlocklistAIInputModel {
                             PrivacySettings::as_ref(ctx).is_telemetry_enabled,
                         )
                         .then_some(other_buffer_cloned);
-                        send_telemetry_from_ctx!(
-                            TelemetryEvent::AgentModeChangedInputType {
-                                input: input_buffer_text_for_telemetry,
-                                buffer_length,
-                                is_manually_changed: false,
-                                new_input_type,
-                                active_block_id: me
-                                    .model
-                                    .lock()
-                                    .block_list()
-                                    .active_block_id()
-                                    .clone(),
-                                is_udi_enabled,
-                            },
-                            ctx
-                        );
                     }
                 },
             )

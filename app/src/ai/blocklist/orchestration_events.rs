@@ -13,7 +13,6 @@ use crate::ai::agent::{
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 use warp_core::features::FeatureFlag;
-use warp_core::send_telemetry_from_ctx;
 use warp_multi_agent_api as api;
 use warpui::{Entity, ModelContext, SingletonEntity};
 
@@ -195,25 +194,6 @@ impl OrchestrationEventService {
         ctx: &mut ModelContext<Self>,
     ) -> SendEventResult {
         if event_type == LifecycleEventType::Unspecified {
-            send_telemetry_from_ctx!(
-                BlocklistOrchestrationTelemetryEvent::TeamAgentCommunicationFailed(
-                    TeamAgentCommunicationFailedEvent {
-                        communication_kind: TeamAgentCommunicationKind::LifecycleEvent,
-                        transport: TeamAgentCommunicationTransport::Local,
-                        orchestration_version: TeamAgentOrchestrationVersion::V1,
-                        failure_reason:
-                            TeamAgentCommunicationFailureReason::InvalidLifecycleEventType,
-                        source_conversation_id,
-                        source_run_id: None,
-                        target_count: None,
-                        lifecycle_event_type: Some(
-                            lifecycle_event_type_name(event_type).to_string(),
-                        ),
-                        error_message: None,
-                    }
-                ),
-                ctx
-            );
             return SendEventResult::Error(
                 "Cannot send lifecycle event with unspecified type".to_string(),
             );
@@ -223,50 +203,12 @@ impl OrchestrationEventService {
             let history_model = BlocklistAIHistoryModel::as_ref(ctx);
             let Some(source_conversation) = history_model.conversation(&source_conversation_id)
             else {
-                send_telemetry_from_ctx!(
-                    BlocklistOrchestrationTelemetryEvent::TeamAgentCommunicationFailed(
-                        TeamAgentCommunicationFailedEvent {
-                            communication_kind: TeamAgentCommunicationKind::LifecycleEvent,
-                            transport: TeamAgentCommunicationTransport::Local,
-                            orchestration_version: TeamAgentOrchestrationVersion::V1,
-                            failure_reason:
-                                TeamAgentCommunicationFailureReason::MissingSourceConversation,
-                            source_conversation_id,
-                            source_run_id: None,
-                            target_count: None,
-                            lifecycle_event_type: Some(
-                                lifecycle_event_type_name(event_type).to_string(),
-                            ),
-                            error_message: None,
-                        }
-                    ),
-                    ctx
-                );
                 return SendEventResult::Error("Source conversation not found".to_string());
             };
             let Some(sender_agent_id) = source_conversation
                 .server_conversation_token()
                 .map(|token| token.as_str().to_string())
             else {
-                send_telemetry_from_ctx!(
-                    BlocklistOrchestrationTelemetryEvent::TeamAgentCommunicationFailed(
-                        TeamAgentCommunicationFailedEvent {
-                            communication_kind: TeamAgentCommunicationKind::LifecycleEvent,
-                            transport: TeamAgentCommunicationTransport::Local,
-                            orchestration_version: TeamAgentOrchestrationVersion::V1,
-                            failure_reason:
-                                TeamAgentCommunicationFailureReason::MissingSourceIdentifier,
-                            source_conversation_id,
-                            source_run_id: None,
-                            target_count: None,
-                            lifecycle_event_type: Some(
-                                lifecycle_event_type_name(event_type).to_string(),
-                            ),
-                            error_message: None,
-                        }
-                    ),
-                    ctx
-                );
                 return SendEventResult::Error(
                     "Source conversation has no server token — cannot send events".to_string(),
                 );
@@ -291,24 +233,6 @@ impl OrchestrationEventService {
                 let Some(conversation_id) =
                     history_model.conversation_id_for_agent_id(&route.target_agent_id)
                 else {
-                    send_telemetry_from_ctx!(
-                        BlocklistOrchestrationTelemetryEvent::TeamAgentCommunicationFailed(
-                            TeamAgentCommunicationFailedEvent {
-                                communication_kind: TeamAgentCommunicationKind::LifecycleEvent,
-                                transport: TeamAgentCommunicationTransport::Local,
-                                orchestration_version: TeamAgentOrchestrationVersion::V1,
-                                failure_reason: TeamAgentCommunicationFailureReason::UnknownAgent,
-                                source_conversation_id,
-                                source_run_id: None,
-                                target_count: Some(1),
-                                lifecycle_event_type: Some(
-                                    lifecycle_event_type_name(event_type).to_string(),
-                                ),
-                                error_message: None,
-                            }
-                        ),
-                        ctx
-                    );
                     log::warn!(
                         "OrchestrationEventService: could not resolve lifecycle target {}",
                         route.target_agent_id
@@ -606,23 +530,6 @@ impl OrchestrationEventService {
             let history_model = BlocklistAIHistoryModel::as_ref(ctx);
             let Some(source_conversation) = history_model.conversation(&source_conversation_id)
             else {
-                send_telemetry_from_ctx!(
-                    BlocklistOrchestrationTelemetryEvent::TeamAgentCommunicationFailed(
-                        TeamAgentCommunicationFailedEvent {
-                            communication_kind: TeamAgentCommunicationKind::Message,
-                            transport: TeamAgentCommunicationTransport::Local,
-                            orchestration_version: TeamAgentOrchestrationVersion::V1,
-                            failure_reason:
-                                TeamAgentCommunicationFailureReason::MissingSourceConversation,
-                            source_conversation_id,
-                            source_run_id: None,
-                            target_count: Some(target_agent_ids.len()),
-                            lifecycle_event_type: None,
-                            error_message: None,
-                        }
-                    ),
-                    ctx
-                );
                 let error = "Source conversation not found".to_string();
                 self.log_send_message_error(
                     source_conversation_id,
@@ -636,23 +543,6 @@ impl OrchestrationEventService {
                 .server_conversation_token()
                 .map(|token| token.as_str().to_string())
             else {
-                send_telemetry_from_ctx!(
-                    BlocklistOrchestrationTelemetryEvent::TeamAgentCommunicationFailed(
-                        TeamAgentCommunicationFailedEvent {
-                            communication_kind: TeamAgentCommunicationKind::Message,
-                            transport: TeamAgentCommunicationTransport::Local,
-                            orchestration_version: TeamAgentOrchestrationVersion::V1,
-                            failure_reason:
-                                TeamAgentCommunicationFailureReason::MissingSourceIdentifier,
-                            source_conversation_id,
-                            source_run_id: None,
-                            target_count: Some(target_agent_ids.len()),
-                            lifecycle_event_type: None,
-                            error_message: None,
-                        }
-                    ),
-                    ctx
-                );
                 let error =
                     "Source conversation has no server token — cannot send events".to_string();
                 self.log_send_message_error(
@@ -671,23 +561,6 @@ impl OrchestrationEventService {
                         resolved_targets.push((agent_id.clone(), conversation_id));
                     }
                     None => {
-                        send_telemetry_from_ctx!(
-                            BlocklistOrchestrationTelemetryEvent::TeamAgentCommunicationFailed(
-                                TeamAgentCommunicationFailedEvent {
-                                    communication_kind: TeamAgentCommunicationKind::Message,
-                                    transport: TeamAgentCommunicationTransport::Local,
-                                    orchestration_version: TeamAgentOrchestrationVersion::V1,
-                                    failure_reason:
-                                        TeamAgentCommunicationFailureReason::UnknownAgent,
-                                    source_conversation_id,
-                                    source_run_id: None,
-                                    target_count: Some(target_agent_ids.len()),
-                                    lifecycle_event_type: None,
-                                    error_message: None,
-                                }
-                            ),
-                            ctx
-                        );
                         let error = format!("Unknown agent address: {agent_id}");
                         self.log_send_message_error(
                             source_conversation_id,
@@ -703,22 +576,6 @@ impl OrchestrationEventService {
         };
 
         if resolved_targets.is_empty() {
-            send_telemetry_from_ctx!(
-                BlocklistOrchestrationTelemetryEvent::TeamAgentCommunicationFailed(
-                    TeamAgentCommunicationFailedEvent {
-                        communication_kind: TeamAgentCommunicationKind::Message,
-                        transport: TeamAgentCommunicationTransport::Local,
-                        orchestration_version: TeamAgentOrchestrationVersion::V1,
-                        failure_reason: TeamAgentCommunicationFailureReason::NoTargets,
-                        source_conversation_id,
-                        source_run_id: None,
-                        target_count: Some(0),
-                        lifecycle_event_type: None,
-                        error_message: None,
-                    }
-                ),
-                ctx
-            );
             let error = "No target agents provided".to_string();
             self.log_send_message_error(source_conversation_id, target_agent_ids, &subject, &error);
             return SendMessageResult::Error(error);

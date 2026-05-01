@@ -11,7 +11,6 @@ use ai::diff_validation::AIRequestedCodeDiff;
 use futures::{channel::oneshot, future::BoxFuture, FutureExt};
 use itertools::Itertools;
 use vec1::{vec1, Vec1};
-use warp_core::send_telemetry_from_ctx;
 use warpui::{Entity, EntityId, ModelContext, ModelHandle, SingletonEntity as _, ViewHandle};
 
 use apply_diff_model::ApplyDiffModel;
@@ -213,19 +212,6 @@ impl RequestFileEditsExecutor {
 
                 let passive_diff = BlocklistAIHistoryModel::as_ref(ctx)
                     .is_entirely_passive_conversation(&input.conversation_id);
-                send_telemetry_from_ctx!(
-                    RequestFileEditsTelemetryEvent::EditResolved(EditResolvedEvent {
-                        identifiers: identifiers.clone(),
-                        response: RequestedEditResolution::Accept,
-                        stats: EditStats {
-                            files_edited: updated_files.len(),
-                            lines_added: diff.lines_added,
-                            lines_removed: diff.lines_removed,
-                        },
-                        passive_diff,
-                    },),
-                    ctx
-                );
 
                 // Build a map of file path → content from the editor buffers.
                 // This avoids re-reading files from disk or the remote server.
@@ -303,15 +289,6 @@ impl RequestFileEditsExecutor {
         let passive_diff = BlocklistAIHistoryModel::as_ref(ctx)
             .is_entirely_passive_conversation(&input.conversation_id);
 
-        send_telemetry_from_ctx!(
-            RequestFileEditsTelemetryEvent::EditReceived(EditReceivedEvent {
-                identifiers: ai_identifiers.clone(),
-                unique_files: file_edits.iter().map(|file| file.file()).unique().count(),
-                diffs: file_edits.len(),
-                passive_diff,
-            }),
-            ctx
-        );
 
         let (tx, rx) = oneshot::channel();
         let files = file_edits.clone();

@@ -29,7 +29,6 @@ use vec1::{Size0Error, Vec1};
 use warp_core::command::ExitCode;
 use warp_core::execution_mode::AppExecutionMode;
 use warp_core::features::FeatureFlag;
-use warp_core::send_telemetry_from_ctx;
 use warp_core::ui::appearance::Appearance;
 use warp_core::ui::theme::color::internal_colors;
 use warp_core::ui::theme::WarpTheme;
@@ -1844,15 +1843,6 @@ impl AIConversation {
                 ..
             }
         );
-        send_telemetry_from_ctx!(
-            crate::TelemetryEvent::AgentModeError {
-                identifiers,
-                error: error.to_string(),
-                is_user_visible: true,
-                will_attempt_to_resume,
-            },
-            ctx
-        );
 
         for AddedExchange {
             exchange_id,
@@ -2228,12 +2218,6 @@ impl AIConversation {
                                         comments_op.clone(),
                                     );
                                     if resolved_count > 0 {
-                                        send_telemetry_from_ctx!(
-                                            CodeReviewTelemetryEvent::CommentResolved {
-                                                resolved_count
-                                            },
-                                            ctx
-                                        );
                                     }
                                 } else {
                                     log::error!(

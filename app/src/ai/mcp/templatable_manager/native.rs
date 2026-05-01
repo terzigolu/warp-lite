@@ -37,7 +37,6 @@ use crate::{
     cloud_object::{GenericStringObjectFormat, JsonObjectType},
     drive::CloudObjectTypeAndId,
     persistence::ModelEvent,
-    send_telemetry_from_ctx,
     server::{
         cloud_objects::update_manager::UpdateManager, ids::SyncId, telemetry::TelemetryEvent,
     },
@@ -868,7 +867,7 @@ impl TemplatableMCPServerManager {
                 me.spawned_servers.remove(&installation_uuid);
                 me.pending_oauth_csrf.retain(|_, v| *v != installation_uuid);
 
-                let error = match server_info {
+                let _error: Option<anyhow::Error> = match server_info {
                     Ok(info) => {
                         let peer = info.service.clone();
                         me.active_servers.insert(installation_uuid, info);
@@ -916,19 +915,6 @@ impl TemplatableMCPServerManager {
                 };
 
                 if should_send_telemetry {
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::MCPServerSpawned {
-                            transport_type: match server.transport_type {
-                                TransportType::CLIServer { .. } =>
-                                    MCPServerTelemetryTransportType::CLIServer,
-                                TransportType::ServerSentEvents { .. } =>
-                                    MCPServerTelemetryTransportType::ServerSentEvents,
-                            },
-                            server_model: MCPServerModel::Templatable,
-                            error
-                        },
-                        ctx
-                    );
                 }
             },
         );
@@ -1438,14 +1424,6 @@ impl TemplatableMCPServerManager {
             );
             match result {
                 Ok(result) => {
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::MCPTemplateCreated {
-                            source: MCPTemplateCreationSource::Conversion,
-                            variables: result.templatable_mcp_server.template.variables,
-                            name: result.templatable_mcp_server.name,
-                        },
-                        ctx
-                    );
                 }
                 Err(e) => log::error!("{e}"),
             }
@@ -1477,7 +1455,6 @@ impl TemplatableMCPServerManager {
                         ctx,
                     );
                 });
-                send_telemetry_from_ctx!(TelemetryEvent::MCPTemplateShared, ctx);
             }
         }
     }

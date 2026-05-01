@@ -11,8 +11,7 @@ use crate::{
         agent::{AIAgentAction, AIAgentActionResultType, CallMCPToolResult},
         blocklist::{action_model::AIAgentActionType, BlocklistAIPermissions},
         mcp::TemplatableMCPServerManager,
-    },
-    send_telemetry_from_app_ctx, TelemetryEvent,
+    }, TelemetryEvent,
 };
 #[cfg(not(target_family = "wasm"))]
 use itertools::Itertools;
@@ -238,42 +237,14 @@ fn handle_call_tool_result(
                             content_str
                         }
                     });
-                send_telemetry_from_app_ctx!(
-                    TelemetryEvent::MCPToolCallAccepted {
-                        server_output_id,
-                        tool_call: tool_name,
-                        error: Some(
-                            crate::server::telemetry::MCPServerTelemetryError::ResponseError(
-                                error_message.clone()
-                            )
-                        ),
-                    },
-                    ctx
-                );
                 CallMCPToolResult::Error(error_message)
             } else {
-                send_telemetry_from_app_ctx!(
-                    TelemetryEvent::MCPToolCallAccepted {
-                        server_output_id,
-                        tool_call: tool_name,
-                        error: None,
-                    },
-                    ctx
-                );
                 CallMCPToolResult::Success { result }
             }
         }
         Err(e) => {
             let error_message = e.to_string();
             log::warn!("Executing MCP tool resulted in error: {e:?}");
-            send_telemetry_from_app_ctx!(
-                TelemetryEvent::MCPToolCallAccepted {
-                    server_output_id,
-                    tool_call: tool_name,
-                    error: Some(rmcp::RmcpError::Service(e).into()),
-                },
-                ctx
-            );
             CallMCPToolResult::Error(error_message)
         }
     };

@@ -19,7 +19,6 @@ use crate::{
         },
     },
     features::FeatureFlag,
-    send_telemetry_from_ctx,
     terminal::model::session::active_session::ActiveSession,
     TelemetryEvent,
 };
@@ -219,14 +218,6 @@ impl SearchCodebaseExecutor {
             search_dir = current_working_directory;
         }
         let server_output_id = get_server_output_id(input.conversation_id, ctx);
-        send_telemetry_from_ctx!(
-            TelemetryEvent::SearchCodebaseRequested {
-                action_id: id.clone(),
-                server_output_id,
-                is_cross_repo,
-            },
-            ctx
-        );
 
         let Some(root_dir_for_search) = self.root_repo_paths.get(id) else {
             let action_id = id.clone();
@@ -239,10 +230,6 @@ impl SearchCodebaseExecutor {
                 } else {
                     "The codebase doesn't exist".to_string()
                 };
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::SearchCodebaseRepoUnavailable { action_id, error },
-                    ctx
-                );
             });
             return ActionExecution::Sync(AIAgentActionResultType::SearchCodebase(SearchCodebaseResult::Failed {
                 message: "The search failed because the codebase is not available. Try another way to locate the relevant files.".to_owned(),

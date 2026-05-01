@@ -55,7 +55,6 @@ use crate::ai::blocklist::permissions::is_agent_mode_autonomy_allowed;
 use crate::ai::control_code_parser::{parse_control_codes_from_bytes, ParsedControlCodeOutput};
 use crate::code::editor::view::{CodeEditorEvent, CodeEditorRenderOptions};
 use crate::menu::MenuItemFields;
-use crate::send_telemetry_from_ctx;
 use crate::server::telemetry::TelemetryEvent;
 use crate::settings::AISettings;
 use crate::terminal::input::SET_INPUT_MODE_TERMINAL_ACTION_NAME;
@@ -529,14 +528,6 @@ impl CLISubagentView {
             self.enable_autoexecute_override(ctx);
         }
 
-        send_telemetry_from_ctx!(
-            TelemetryEvent::CLISubagentActionExecuted {
-                conversation_id: self.conversation_id,
-                block_id: self.block_id.clone(),
-                is_autoexecuted,
-            },
-            ctx
-        );
     }
 
     fn handle_reject_blocked_action(
@@ -546,14 +537,6 @@ impl CLISubagentView {
     ) {
         self.reject_blocked_action(should_user_take_over, ctx);
 
-        send_telemetry_from_ctx!(
-            TelemetryEvent::CLISubagentActionRejected {
-                conversation_id: self.conversation_id,
-                block_id: self.block_id.clone(),
-                user_took_over: should_user_take_over,
-            },
-            ctx
-        );
     }
 
     fn take_control_of_running_command(&mut self, ctx: &mut ViewContext<Self>) {
@@ -1503,13 +1486,6 @@ impl TypedActionView for CLISubagentView {
                     handle.abort();
                 }
                 ctx.notify();
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::CLISubagentInputDismissed {
-                        conversation_id: self.conversation_id,
-                        block_id: self.block_id.clone(),
-                    },
-                    ctx
-                );
             }
             CLISubagentAction::SelectText => {
                 self.clear_other_selections(None, ctx);

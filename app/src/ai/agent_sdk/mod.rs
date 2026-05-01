@@ -52,7 +52,6 @@ use crate::{
     ai::ambient_agents::{task::HarnessConfig, AmbientAgentTaskId},
     ai::cloud_environments::CloudAmbientAgentEnvironment,
     auth::AuthStateProvider,
-    send_telemetry_sync_from_app_ctx,
     server::{
         ids::{ServerId, SyncId},
         server_api::{ai::AgentConfigSnapshot, ServerApiProvider},
@@ -126,7 +125,6 @@ pub fn run(
     global_options: GlobalOptions,
 ) -> anyhow::Result<()> {
     let event = command_to_telemetry_event(&command);
-    send_telemetry_sync_from_app_ctx!(event, ctx);
 
     launch_command(ctx, command, global_options)
 }
