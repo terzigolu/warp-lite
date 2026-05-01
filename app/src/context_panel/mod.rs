@@ -7,6 +7,7 @@
 //! The AI Panel struct is still present but defaults to closed; the Context
 //! Panel is a sibling right-side panel toggled by `Cmd+Shift+K`.
 
+pub mod foreground_process;
 pub mod git_state;
 pub mod panel;
 pub mod widgets;

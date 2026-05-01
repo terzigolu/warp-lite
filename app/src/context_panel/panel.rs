@@ -44,7 +44,10 @@ impl ContextPanelView {
         let claude_model = working_directories_model.clone();
         let claude_code =
             ctx.add_view(move |child_ctx| ClaudeCodeWidget::new(claude_model, child_ctx));
-        let foreground_process = ctx.add_view(|_| ForegroundProcessWidget::new());
+        let fg_model = working_directories_model.clone();
+        let foreground_process = ctx.add_view(move |child_ctx| {
+            ForegroundProcessWidget::new(fg_model, child_ctx)
+        });
         Self {
             working_directory,
             git,
