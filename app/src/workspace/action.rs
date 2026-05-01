@@ -217,6 +217,8 @@ pub enum WorkspaceAction {
     ToggleResourceCenter,
     ToggleUserMenu,
     ToggleAIAssistant,
+    /// warp-lite v0.3: open/close the Context Panel (terminal-context widgets).
+    ToggleContextPanel,
     ClickedAIAssistantIcon,
     ToggleKeybindingsPage,
     ShowCommandSearch(CommandSearchOptions),
@@ -800,6 +802,7 @@ impl WorkspaceAction {
             | ToggleUserMenu
             | ClickedAIAssistantIcon
             | ToggleAIAssistant
+            | ToggleContextPanel
             | OpenCloudAgentSetupGuide
             | ToggleKeybindingsPage
             | ShowCommandSearch(_)

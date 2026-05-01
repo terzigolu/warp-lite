@@ -113,6 +113,7 @@ mod workspaces;
 pub mod ai_assistant;
 pub mod appearance;
 pub mod channel;
+pub mod context_panel; // warp-lite v0.3
 pub mod editor;
 pub mod features;
 pub mod input_suggestions;

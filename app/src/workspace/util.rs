@@ -100,6 +100,8 @@ pub struct WorkspaceState {
     pub is_command_search_open: bool,
     pub is_warp_drive_open: bool,
     pub is_ai_assistant_panel_open: bool,
+    /// warp-lite v0.3: Context Panel — terminal-context-aware widgets.
+    pub is_context_panel_open: bool,
     pub is_agent_management_popup_open: bool,
     pub is_auth_override_modal_open: bool,
     pub is_require_login_modal_open: bool,
@@ -136,6 +138,7 @@ impl WorkspaceState {
         self.is_any_modal_open(app)
             || self.is_theme_chooser_open
             || self.is_ai_assistant_panel_open
+            || self.is_context_panel_open
             || self.is_workflow_modal_open
             || self.is_warp_drive_open
     }
@@ -211,7 +214,9 @@ impl WorkspaceState {
     }
 
     pub fn is_right_panel_open(&self) -> bool {
-        self.is_resource_center_open || self.is_ai_assistant_panel_open
+        self.is_resource_center_open
+            || self.is_ai_assistant_panel_open
+            || self.is_context_panel_open
     }
 
     pub fn is_left_panel_open(&self) -> bool {

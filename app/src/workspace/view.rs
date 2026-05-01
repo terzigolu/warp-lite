@@ -952,6 +952,8 @@ pub struct Workspace {
     settings_file_error: Option<crate::settings::SettingsFileError>,
     settings_error_banner_dismissed: bool,
     ai_assistant_panel: ViewHandle<AIAssistantPanelView>,
+    /// warp-lite v0.3: Context Panel — sibling of resource_center / ai_assistant_panel.
+    context_panel: ViewHandle<crate::context_panel::panel::ContextPanelView>,
     should_show_ai_assistant_warm_welcome: bool,
     ai_assistant_close_warm_welcome_mouse_state_handle: MouseStateHandle,
     auth_override_warning_modal: ViewHandle<AuthOverrideWarningModal>,
@@ -2754,6 +2756,10 @@ impl Workspace {
         let ai_assistant_panel =
             Self::build_ai_assistant_panel_view(ctx, server_api.clone(), ai_client.clone());
 
+        // warp-lite v0.3: Context Panel host view.
+        let context_panel =
+            ctx.add_view(crate::context_panel::panel::ContextPanelView::new);
+
         ctx.observe(&tips_completed, Workspace::on_tips_model_changed);
 
         let autoupdate_handle = AutoupdateState::handle(ctx);
@@ -3054,6 +3060,7 @@ impl Workspace {
             settings_file_error,
             settings_error_banner_dismissed: false,
             ai_assistant_panel,
+            context_panel,
             should_show_ai_assistant_warm_welcome,
             ai_assistant_close_warm_welcome_mouse_state_handle: Default::default(),
             auth_override_warning_modal,
@@ -4313,6 +4320,34 @@ impl Workspace {
                 });
             }
         });
+    }
+
+    /// warp-lite v0.3: toggle the Context Panel (terminal-context widgets).
+    fn toggle_context_panel(&mut self, ctx: &mut ViewContext<Self>) {
+        // If already open and not focused, just refocus (no toggle).
+        if self.current_workspace_state.is_context_panel_open
+            && !self.context_panel.is_self_or_child_focused(ctx)
+            && !self.current_workspace_state.is_any_modal_open(ctx)
+        {
+            ctx.focus(&self.context_panel);
+            return;
+        }
+
+        self.current_workspace_state.is_context_panel_open =
+            !self.current_workspace_state.is_context_panel_open;
+
+        // Close any other modals/panels that could overlap.
+        self.current_workspace_state.close_all_modals();
+
+        if self.current_workspace_state.is_context_panel_open {
+            // Right-side panel slot is mutually exclusive.
+            self.current_workspace_state.is_resource_center_open = false;
+            self.current_workspace_state.is_ai_assistant_panel_open = false;
+            ctx.focus(&self.context_panel);
+        } else {
+            self.focus_active_tab(ctx);
+        }
+        ctx.notify();
     }
 
     fn toggle_ai_assistant_panel(&mut self, ctx: &mut ViewContext<Self>) {
@@ -18613,6 +18648,13 @@ impl Workspace {
         if self.current_workspace_state.is_right_panel_open() {
             let right_panel_content = if self.current_workspace_state.is_resource_center_open {
                 Some(self.render_panel(app, self.render_resource_center(), &PanelPosition::Right))
+            } else if self.current_workspace_state.is_context_panel_open {
+                // warp-lite v0.3: Context Panel takes precedence when toggled.
+                Some(self.render_panel(
+                    app,
+                    ChildView::new(&self.context_panel).finish(),
+                    &PanelPosition::Right,
+                ))
             } else if self.current_workspace_state.is_ai_assistant_panel_open {
                 Some(self.render_panel(
                     app,
@@ -18621,8 +18663,7 @@ impl Workspace {
                 ))
             } else {
                 log::warn!(
-                    "is_right_panel_open() returned true, but neither the resource center nor AI \
-                    assistant are open"
+                    "is_right_panel_open() returned true, but no right-side panel is open"
                 );
                 None
             };
@@ -20221,6 +20262,9 @@ impl TypedActionView for Workspace {
             }
             ToggleAIAssistant => {
                 self.toggle_ai_assistant_panel(ctx);
+            }
+            ToggleContextPanel => {
+                self.toggle_context_panel(ctx);
             }
             ClickedAIAssistantIcon => {
                 if !FeatureFlag::AgentMode.is_enabled() {

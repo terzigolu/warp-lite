@@ -1131,6 +1131,19 @@ pub fn init(app: &mut AppContext) {
         ]);
     }
 
+    // warp-lite v0.3: Context Panel toggle (Cmd+Shift+K).
+    app.register_editable_bindings([
+        EditableBinding::new(
+            "workspace:toggle_context_panel",
+            "Toggle Context Panel",
+            WorkspaceAction::ToggleContextPanel,
+        )
+        .with_context_predicate(id!("Workspace"))
+        .with_mac_key_binding("cmd-shift-K")
+        .with_linux_or_windows_key_binding("ctrl-shift-K")
+        .with_group(bindings::BindingGroup::WarpAi.as_str()),
+    ]);
+
     // We use the same binding name for the AI Assistant and block list AI to preserve custom
     // keybindings between them.
     app.register_editable_bindings([
