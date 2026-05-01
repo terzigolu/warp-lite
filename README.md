@@ -18,30 +18,35 @@ What this fork is **not**: a closed-source repackage, an MIT relicense (the AGPL
 
 ## Roadmap & Status
 
-The work is split into compile-driven phases. Each phase commit must keep `cargo check --workspace` green on `warp-lite/main`. **`v0.1.0-lite` is tagged and shipped** — the build is green, telemetry is silenced at runtime, and all Warp Cloud endpoints are blanked. The deeper crate-level removal of AI/Cloud subsystems is targeted at v0.2.
+The work is split into compile-driven phases. Each phase commit must keep `cargo check --workspace` green on `warp-lite/main`. **`v0.1.0-lite` and `v0.2.0-lite` are tagged and shipped.** v0.2 lands the runtime privacy + measurable source-level slimming; full crate-level removal of `ai` (22 K LOC) and `onboarding` (11 K LOC) is targeted at v0.3.
 
 | Phase | Subsystem | State | Notes |
 |---|---|---|---|
 | **0** | Default features purge | ✅ v0.1 | `agent_mode`, `agent_mode_computer_use`, `agent_onboarding`, `hoa_onboarding_flow`, `gui = ["voice_input"]` removed from defaults. |
 | **1** | Quick-win crate deletions | ✅ v0.1 | `managed_secrets_wasm`, `prevent_sleep`, `app-installation-detection` removed (~–524 LOC). |
-| **2.2a** | Telemetry macros → no-op | ✅ v0.1 | All `send_telemetry_*!` macros neutralized; runtime emits **0 outbound network calls**. |
-| **2.2b** | Telemetry call-site sweep | 🟡 Deferred to v0.2 | Macros are no-op so runtime is safe; physical deletion of ~176 dead call sites is dead-code cleanup. |
-| **3** | AI surface stub (compile pass) | ✅ v0.1 | `app/src/search/{ai_context_menu, ai_queries, notebook_embedding}` mods replaced with minimal `warpui`-conformant stubs. `cargo check` green. |
-| **3.6** | Integration test crate | ✅ v0.1 | `crates/integration` removed (–18 469 LOC) — e2e tests for cloud/AI flows; useless without backend. |
-| **3.x** | AI/Onboarding crate physical removal | ⏳ v0.2 | `crates/ai`, `computer_use`, `onboarding`, `firebase`, `voice_input`, `handlebars`, `warp_js`, `warp_graphql_schema` etc. still in tree but inert at runtime. |
-| **4** | Cloud endpoint neutralization | ✅ v0.1 | `server_root_url`, `rtc_server_url`, `firebase_auth_api_key`, `oz_root_url` set to `""`; `crates/graphql` dropped from `default-members`. **0 reachable backends.** |
-| **4.x** | Cloud crate physical removal | ⏳ v0.2 | `crates/firebase`, `graphql`, `warp_server_client`, `websocket`, `managed_secrets`, `warp_files` partial — large surface (~5500 LOC, 103 importing files). |
-| **5** | Editor power-feature trim | ⏳ Deferred to v0.3+ | `editor` (Zed fork, ~100 K LOC), `lsp`, `node_runtime`, `vim` stay. |
+| **2.2a** | Telemetry macros → no-op | ✅ v0.1 | All `send_telemetry_*!` macros neutralized at the macro layer. |
+| **2.2b** | Telemetry call-site sweep | ✅ v0.2 | **1 026 `send_telemetry_*!()` call sites physically deleted** across 168 files; macro definitions removed. |
+| **3 (compile pass)** | AI surface stub | ✅ v0.1 | `app/src/search/{ai_context_menu, ai_queries, notebook_embedding}` mods stubbed. |
+| **3.6** | Integration test crate | ✅ v0.1 | `crates/integration` removed (–18 469 LOC). |
+| **3.x (partial)** | Niche AI crate physical removal | ✅ v0.2 | `crates/voice_input`, `handlebars`, `warp_js`, `warp_graphql_schema` deleted (~–1.5 K Rust LOC + assets). `crates/onboarding` decoupled from `ai` (`LLMId` inlined). |
+| **3.x (computer_use)** | AI peripheral gut | ✅ v0.2 | `crates/computer_use` shrunk from 4 K LOC → 200 LOC inert stub. Public API (Action, Screenshot, Vector2I, Actor trait) preserved; runtime is no-op. |
+| **3.x (final)** | `crates/ai`, `crates/onboarding` physical removal | ⏳ v0.3 | `ai` (22 K LOC, 172 import paths) + `onboarding` (11 K LOC, 22 deep consumers). Onboarding is now ai-independent so a future drop is unblocked. |
+| **4 (network silence)** | Cloud endpoint neutralization | ✅ v0.1 | `server_root_url`, `rtc_server_url`, `firebase_auth_api_key`, `oz_root_url` set to RFC-2606 invalid TLDs; **0 reachable backends.** |
+| **4.x (transport)** | Cloud HTTP/WS short-circuit | ✅ v0.2 | `firebase` 145→55 LOC, `websocket` 1080→380 LOC (proxy.rs purged + `connect()` returns Err), `warp_graphql` HTTP transport short-circuited at `client.rs::send_graphql_request`. **0 outbound HTTPS / WS dial.** |
+| **4.x (final)** | Full cloud crate `rm -rf` | ⏳ v0.3 | `firebase`, `graphql`, `warp_server_client`, `managed_secrets`, `warp_files` (partial) — blocked by AI crate's deep cloud type usage; unlocks once `crates/ai` goes. |
+| **5** | Editor power-feature trim | ⏳ Deferred to v0.4+ | `editor` (Zed fork, ~100 K LOC), `lsp`, `node_runtime`, `vim` stay. |
 
-### What `v0.1.0-lite` actually delivers
+### What v0.2.0-lite actually delivers
 
-- ✅ `cargo check --workspace` green on `warp-lite/main`.
-- ✅ Telemetry/crash-reporting macros are no-op — **0 outbound network at idle**.
-- ✅ Warp Cloud endpoint URLs blanked; even if cloud crates fire, they have nowhere to call.
-- ✅ Onboarding/agent-mode default features off.
-- ⚠️ AI/Cloud crates still live in the tree (inert). The "lightweight" goal is half-done at the source level — the runtime promise is fully delivered.
+- ✅ `cargo check --workspace` green on `warp-lite/main` (55 crates, down from 63).
+- ✅ Telemetry physically removed: 1 026 call sites across 168 files, plus the macro definitions themselves.
+- ✅ All cloud endpoint URLs blanked + transport-layer short-circuit (no outbound HTTPS GraphQL, no outbound WS, no Firebase REST). **Idle network call count: 0.**
+- ✅ 4 AI/network crates fully deleted (`voice_input`, `handlebars`, `warp_js`, `warp_graphql_schema`).
+- ✅ `computer_use` reduced 95 % to inert stub (4 K → 200 LOC).
+- ✅ `onboarding` decoupled from `ai`, ready for removal in v0.3.
+- ⚠️ `crates/ai` (22 K LOC) and `crates/onboarding` (11 K LOC) and the cloud type-stack still live in the tree — runtime-inert but on disk. v0.3 is the cleanup release.
 
-The honest summary: **v0.1 is a privacy-respecting Warp**, not yet a slim Warp. Slimness lands in v0.2.
+The honest summary: **v0.2 is a privacy-respecting Warp with most of the bulk gutted at runtime.** True file-level slimness for the two giant crates lands in v0.3.
 
 ## What's been removed (`phase3-wip` branch — pending green compile)
 
