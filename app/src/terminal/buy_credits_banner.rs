@@ -794,28 +794,10 @@ impl View for BuyCreditsBanner {
         "BuyCreditsBanner"
     }
 
-    fn render(&self, app: &AppContext) -> Box<dyn Element> {
-        let appearance = Appearance::as_ref(app);
-        let ai_request_usage = AIRequestUsageModel::as_ref(app);
-
-        // Override with spend limit error if set (from failed purchase attempt)
-        let display_state = if self.should_display_banner {
-            BuyCreditsBannerDisplayState::MonthlyLimitReached
-        } else {
-            ai_request_usage.compute_buy_addon_credits_banner_display_state(app)
-        };
-
-        match display_state {
-            BuyCreditsBannerDisplayState::Hidden => {
-                Container::new(warpui::elements::Empty::new().finish()).finish()
-            }
-            BuyCreditsBannerDisplayState::OutOfCredits => {
-                self.render_out_of_credits(appearance, app)
-            }
-            BuyCreditsBannerDisplayState::MonthlyLimitReached => {
-                self.render_auto_reload_blocked(appearance, app)
-            }
-        }
+    fn render(&self, _app: &AppContext) -> Box<dyn Element> {
+        // warp-lite: BuyCreditsBanner ("out of AI credits" / "buy credits")
+        // is permanently hidden — pure-terminal mode has no billing UI.
+        Container::new(warpui::elements::Empty::new().finish()).finish()
     }
 }
 

@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::auth::AuthStateProvider;
 use crate::features::FeatureFlag;
-use crate::settings::AISettings;
 use crate::ui_components::icons::Icon;
 use crate::workspace::tab_settings::TabSettings;
 
@@ -65,31 +63,19 @@ impl HeaderToolbarItemKind {
                     && *TabSettings::as_ref(app).use_vertical_tabs
             }
             Self::ToolsPanel => true,
-            Self::AgentManagement => {
-                let is_web_anonymous_user = AuthStateProvider::as_ref(app)
-                    .get()
-                    .is_user_web_anonymous_user()
-                    .unwrap_or_default();
-                AISettings::as_ref(app).is_any_ai_enabled(app)
-                    && FeatureFlag::AgentManagementView.is_enabled()
-                    && !is_web_anonymous_user
-            }
-            Self::CodeReview => cfg!(feature = "local_fs"),
-            Self::NotificationsMailbox => FeatureFlag::HOANotifications.is_enabled(),
+            // warp-lite: AI/agent/code-review/notification toolbar items are
+            // unsupported in pure-terminal mode (UI cleanup). Their backing
+            // logic still compiles, but no header buttons surface them.
+            Self::AgentManagement | Self::CodeReview | Self::NotificationsMailbox => false,
         }
     }
 
     /// Whether this item should be shown in the toolbar.
     /// Checks both `is_supported` and user show/hide preferences.
     pub fn is_available(&self, app: &AppContext) -> bool {
-        if !self.is_supported(app) {
-            return false;
-        }
-        match self {
-            Self::CodeReview => *TabSettings::as_ref(app).show_code_review_button.value(),
-            Self::NotificationsMailbox => *AISettings::as_ref(app).show_agent_notifications,
-            _ => true,
-        }
+        // warp-lite: AI/CodeReview/Notifications are unsupported (see is_supported);
+        // for the remaining variants, no per-user preference gates them off.
+        self.is_supported(app)
     }
 
     /// Whether this item opens a side panel (as opposed to replacing the content
