@@ -17,7 +17,6 @@ use crate::{
         view::{PendingEdit, PendingEditKind},
         FileTreeEvent,
     },
-    send_telemetry_from_ctx,
     server::telemetry::TelemetryEvent,
 };
 
@@ -187,7 +186,6 @@ impl FileTreeView {
                             return;
                         }
 
-                        send_telemetry_from_ctx!(TelemetryEvent::FileTreeItemCreated, ctx);
 
                         FileTreeEntryState::File(metadata.clone())
                     } else {

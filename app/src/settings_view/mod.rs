@@ -50,7 +50,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 use teams_page::{TeamsPageView, TeamsPageViewEvent};
-use warp_core::send_telemetry_from_ctx;
 use warp_core::{
     channel::ChannelState, context_flag::ContextFlag, features::FeatureFlag,
     settings::ToggleableSetting as _, ui::theme::color::internal_colors,
@@ -1879,7 +1878,6 @@ impl SettingsView {
         }
         self.current_settings_page = section;
         if previous_section != section && section == SettingsSection::CloudEnvironments {
-            send_telemetry_from_ctx!(SettingsTelemetryEvent::EnvironmentsPageOpened, ctx);
         }
 
         // When navigating to a subpage, update the backing page's active subpage mode
@@ -2509,12 +2507,6 @@ impl TypedActionView for SettingsView {
                 self.set_and_refresh_current_page_internal(*section, false, true, ctx);
 
                 if *section == SettingsSection::MCPServers {
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::MCPServerCollectionPaneOpened {
-                            entrypoint: MCPServerCollectionPaneEntrypoint::MCPSettingsTab,
-                        },
-                        ctx
-                    );
                 }
             }
             SettingsAction::ToggleUmbrella(nav_index) => {

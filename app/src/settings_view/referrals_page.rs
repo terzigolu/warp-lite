@@ -16,7 +16,7 @@ use crate::{
     appearance::Appearance,
     auth::AuthStateProvider,
     editor::{EditorView, Event as EditorEvent, SingleLineEditorOptions, TextOptions},
-    safe_info, send_telemetry_from_ctx,
+    safe_info,
     server::{
         server_api::referral::{ReferralInfo, ReferralsClient},
         telemetry::TelemetryEvent,
@@ -283,7 +283,6 @@ impl ReferralsPageView {
                 log::warn!("Attempting to copy link before API request is complete");
             }
             ApiState::Ready { referral_info, .. } => {
-                send_telemetry_from_ctx!(TelemetryEvent::CopyInviteLink, ctx);
                 ctx.clipboard()
                     .write(ClipboardContent::plain_text(referral_info.url.to_string()));
                 ctx.emit(ReferralsPageEvent::ShowToast {

@@ -31,7 +31,6 @@ use crate::{
     },
     editor::{EditorView, Event as EditorEvent, SingleLineEditorOptions, TextOptions},
     network::NetworkStatus,
-    send_telemetry_from_ctx,
     server::{
         cloud_objects::update_manager::UpdateManager, ids::ServerId, telemetry::TelemetryEvent,
     },
@@ -591,7 +590,6 @@ impl TypedActionView for TeamsPageView {
         };
 
         if let Ok(event) = TelemetryEvent::try_from(action) {
-            send_telemetry_from_ctx!(event, ctx);
         }
     }
 }

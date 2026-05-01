@@ -12,7 +12,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{cmp, mem};
 use warp_core::platform::SessionPlatform;
-use warp_core::send_telemetry_from_ctx;
 use warp_core::ui::theme::Fill;
 use warp_editor::content::anchor::Anchor;
 use warp_editor::content::edit::EditDelta;
@@ -3818,7 +3817,6 @@ impl CoreEditorModel for CodeEditorModel {
 impl CodeEditorModel {
     pub fn open_comment_line(&mut self, line: &EditorLineLocation, ctx: &mut ModelContext<Self>) {
         // Telemetry: comment editor opened for a new inline review comment.
-        send_telemetry_from_ctx!(CodeReviewTelemetryEvent::CommentEditorOpened, ctx);
 
         self.comments.update(ctx, |comments, ctx| {
             comments.pending_comment = PendingComment::Open { line: line.clone() };
@@ -3835,7 +3833,6 @@ impl CodeEditorModel {
         ctx: &mut ModelContext<Self>,
     ) {
         // Telemetry: comment editor opened for editing an existing inline review comment.
-        send_telemetry_from_ctx!(CodeReviewTelemetryEvent::CommentEditorOpened, ctx);
 
         self.comments.update(ctx, |comments, ctx| {
             comments.pending_comment = PendingComment::Open { line: line.clone() };

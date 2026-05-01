@@ -25,7 +25,6 @@ use warpui::ui_components::button::ButtonVariant;
 use warpui::ui_components::components::{UiComponent, UiComponentStyles};
 use warpui::{AppContext, Element, Entity, SingletonEntity, TypedActionView, View, ViewContext};
 
-use crate::send_telemetry_from_ctx;
 use crate::TelemetryEvent;
 
 const MODAL_WIDTH: f32 = 360.;
@@ -426,15 +425,10 @@ impl TypedActionView for CloudAgentCapacityModal {
     fn handle_action(&mut self, action: &Self::Action, ctx: &mut ViewContext<Self>) {
         match action {
             CloudAgentCapacityModalAction::Close => {
-                send_telemetry_from_ctx!(TelemetryEvent::CloudAgentCapacityModalDismissed, ctx);
                 ctx.emit(CloudAgentCapacityModalEvent::Close);
             }
             CloudAgentCapacityModalAction::Upgrade => {
                 if let Some(upgrade_url) = self.cta_url(ctx) {
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::CloudAgentCapacityModalUpgradeClicked,
-                        ctx
-                    );
                     ctx.open_url(&upgrade_url);
                     ctx.emit(CloudAgentCapacityModalEvent::Close);
                 }

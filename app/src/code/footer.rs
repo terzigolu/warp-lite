@@ -6,7 +6,6 @@ use lsp::{
     LanguageId, LanguageServerId, LspManagerModel, LspManagerModelEvent, LspServerModel,
     LspState as LspModelState,
 };
-use warp_core::send_telemetry_from_ctx;
 
 use crate::code::lsp_telemetry::{LspControlActionType, LspEnablementSource, LspTelemetryEvent};
 use pathfinder_color::ColorU;
@@ -1831,14 +1830,6 @@ impl TypedActionView for CodeFooterView {
                     };
 
                     if let Some(st) = server_type {
-                        send_telemetry_from_ctx!(
-                            LspTelemetryEvent::ServerEnabled {
-                                server_type: st.binary_name().to_string(),
-                                source: LspEnablementSource::FooterButton,
-                                needed_install,
-                            },
-                            ctx
-                        );
                     }
 
                     if needed_install {
@@ -1861,13 +1852,6 @@ impl TypedActionView for CodeFooterView {
                     .first()
                     .and_then(|w| w.upgrade(ctx))
                     .map(|s| s.as_ref(ctx).server_name());
-                send_telemetry_from_ctx!(
-                    LspTelemetryEvent::ControlAction {
-                        action: LspControlActionType::OpenLogs,
-                        server_type: server_name,
-                    },
-                    ctx
-                );
                 ctx.emit(CodeFooterViewEvent::OpenLogs {
                     path: self.mode.path().to_path_buf(),
                 });
@@ -1876,13 +1860,6 @@ impl TypedActionView for CodeFooterView {
             CodeFooterViewAction::RestartServer => {
                 self.is_lsp_menu_open = false;
                 if let Some(server) = self.lsp_servers.first().and_then(|w| w.upgrade(ctx)) {
-                    send_telemetry_from_ctx!(
-                        LspTelemetryEvent::ControlAction {
-                            action: LspControlActionType::Restart,
-                            server_type: Some(server.as_ref(ctx).server_name()),
-                        },
-                        ctx
-                    );
                     ctx.emit(CodeFooterViewEvent::RestartServer {
                         server: server.clone(),
                     });
@@ -1892,13 +1869,6 @@ impl TypedActionView for CodeFooterView {
             CodeFooterViewAction::StopServer => {
                 self.is_lsp_menu_open = false;
                 if let Some(server) = self.lsp_servers.first().and_then(|w| w.upgrade(ctx)) {
-                    send_telemetry_from_ctx!(
-                        LspTelemetryEvent::ControlAction {
-                            action: LspControlActionType::Stop,
-                            server_type: Some(server.as_ref(ctx).server_name()),
-                        },
-                        ctx
-                    );
                     ctx.emit(CodeFooterViewEvent::StopServer {
                         server: server.clone(),
                     });
@@ -1908,13 +1878,6 @@ impl TypedActionView for CodeFooterView {
             CodeFooterViewAction::StartServer => {
                 self.is_lsp_menu_open = false;
                 if let Some(server) = self.lsp_servers.first().and_then(|w| w.upgrade(ctx)) {
-                    send_telemetry_from_ctx!(
-                        LspTelemetryEvent::ControlAction {
-                            action: LspControlActionType::Start,
-                            server_type: Some(server.as_ref(ctx).server_name()),
-                        },
-                        ctx
-                    );
                     ctx.emit(CodeFooterViewEvent::StartServer {
                         server: server.clone(),
                     });
@@ -1927,13 +1890,6 @@ impl TypedActionView for CodeFooterView {
                     let workspace_root = server.as_ref(ctx).initial_workspace().to_path_buf();
                     let server_type = server.as_ref(ctx).server_type();
 
-                    send_telemetry_from_ctx!(
-                        LspTelemetryEvent::ServerRemoved {
-                            server_type: server_type.binary_name().to_string(),
-                            source: LspEnablementSource::FooterButton,
-                        },
-                        ctx
-                    );
 
                     // Remove from manager (stops and removes)
                     LspManagerModel::handle(ctx).update(ctx, |manager, ctx| {
@@ -1949,26 +1905,12 @@ impl TypedActionView for CodeFooterView {
             }
             CodeFooterViewAction::RestartAllServers => {
                 self.is_lsp_menu_open = false;
-                send_telemetry_from_ctx!(
-                    LspTelemetryEvent::ControlAction {
-                        action: LspControlActionType::RestartAll,
-                        server_type: None,
-                    },
-                    ctx
-                );
                 let live = self.live_servers(ctx);
                 ctx.emit(CodeFooterViewEvent::RestartAllServers { servers: live });
                 ctx.notify();
             }
             CodeFooterViewAction::StopAllServers => {
                 self.is_lsp_menu_open = false;
-                send_telemetry_from_ctx!(
-                    LspTelemetryEvent::ControlAction {
-                        action: LspControlActionType::StopAll,
-                        server_type: None,
-                    },
-                    ctx
-                );
                 let live = self.live_servers(ctx);
                 ctx.emit(CodeFooterViewEvent::StopAllServers { servers: live });
                 ctx.notify();

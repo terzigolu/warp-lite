@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
+use warp_core::ui::Icon;
 use warp_core::ui::theme::color::internal_colors;
-use warp_core::{send_telemetry_from_ctx, ui::Icon};
 use warp_util::path::LineAndColumnArg;
 use warpui::{
     elements::{
@@ -719,13 +719,6 @@ impl LeftPanelView {
                     None,
                 );
 
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::CodePanelsFileOpened {
-                        entrypoint: CodePanelsFileOpenEntrypoint::GlobalSearch,
-                        target: target.clone(),
-                    },
-                    ctx
-                );
 
                 ctx.emit(LeftPanelEvent::OpenFileWithTarget {
                     path: path.clone(),
@@ -916,23 +909,7 @@ impl LeftPanelView {
             LeftPanelAction::ProjectExplorer => {
                 active_view_state::set(self, ToolPanelView::ProjectExplorer, ctx);
                 if force_open {
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::FileTreeToggled {
-                            source: FileTreeSource::ForceOpened,
-                            is_code_mode_v2: true,
-                            cli_agent: None,
-                        },
-                        ctx
-                    );
                 } else {
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::FileTreeToggled {
-                            source: FileTreeSource::LeftPanelToolbelt,
-                            is_code_mode_v2: true,
-                            cli_agent: None,
-                        },
-                        ctx
-                    );
                 }
             }
             LeftPanelAction::GlobalSearch { entry_focus } => {
@@ -948,32 +925,16 @@ impl LeftPanelView {
                     ctx,
                 );
                 if !was_active {
-                    send_telemetry_from_ctx!(TelemetryEvent::GlobalSearchOpened, ctx);
                 }
             }
             LeftPanelAction::WarpDrive => {
                 active_view_state::set(self, ToolPanelView::WarpDrive, ctx);
                 if force_open {
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::WarpDriveOpened {
-                            source: WarpDriveSource::ForceOpened,
-                            is_code_mode_v2: true
-                        },
-                        ctx
-                    );
                 } else {
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::WarpDriveOpened {
-                            source: WarpDriveSource::LeftPanelToolbelt,
-                            is_code_mode_v2: true
-                        },
-                        ctx
-                    );
                 }
             }
             LeftPanelAction::ConversationListView => {
                 active_view_state::set(self, ToolPanelView::ConversationListView, ctx);
-                send_telemetry_from_ctx!(TelemetryEvent::ConversationListViewOpened, ctx);
             }
         }
     }

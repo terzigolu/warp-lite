@@ -1,3 +1,4 @@
+use crate::{report_if_error, themes, GlobalResourceHandles};
 use crate::default_terminal::DefaultTerminal;
 use crate::gpu_state::{GPUState, GPUStateEvent};
 use crate::terminal::input::OPEN_COMPLETIONS_KEYBINDING_NAME;
@@ -87,7 +88,6 @@ use crate::workspace::WorkspaceAction;
 use crate::{appearance::Appearance, settings::native_preference::NativePreferenceSettings};
 use crate::{editor::EditorView, settings::native_preference::UserNativePreference};
 use crate::{features::FeatureFlag, terminal::settings::TerminalSettingsChangedEvent};
-use crate::{report_if_error, send_telemetry_from_ctx, themes, GlobalResourceHandles};
 use crate::{root_view::QuakeModePinPosition, workspace::tab_settings::TabSettingsChangedEvent};
 use ::settings::{Setting, ToggleableSetting};
 use std::cell::RefCell;
@@ -1909,7 +1909,6 @@ impl TypedActionView for FeaturesPageView {
             }
         }
 
-        send_telemetry_from_ctx!(action.telemetry_event(ctx), ctx);
     }
 }
 

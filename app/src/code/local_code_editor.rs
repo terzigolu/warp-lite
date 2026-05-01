@@ -94,7 +94,6 @@ use super::find_references_view::{FindReferencesView, FindReferencesViewEvent};
 use super::language_server_extension::ProcessedDiagnostic;
 use super::lsp_telemetry::LspTelemetryEvent;
 use super::ImmediateSaveError;
-use warp_core::send_telemetry_from_ctx;
 
 type SaveCallback =
     Box<dyn FnOnce(SaveOutcome, &mut ViewContext<LocalCodeEditorView>) + Send + Sync + 'static>;
@@ -737,13 +736,6 @@ impl LocalCodeEditorView {
         ctx: &mut ViewContext<Self>,
     ) {
         if let Some(server) = &self.lsp_server {
-            send_telemetry_from_ctx!(
-                LspTelemetryEvent::FindReferencesShown {
-                    server_type: server.as_ref(ctx).server_name(),
-                    num_references: references.len(),
-                },
-                ctx
-            );
         }
 
         // Get workspace root for relative path display from the LSP server
@@ -1940,13 +1932,6 @@ impl LocalCodeEditorView {
                 let had_result = matches!(&result, Ok(locations) if !locations.is_empty());
 
                 if let Some(server_type) = server_type_name {
-                    send_telemetry_from_ctx!(
-                        LspTelemetryEvent::GotoDefinition {
-                            server_type,
-                            had_result,
-                        },
-                        ctx
-                    );
                 }
 
                 match result {

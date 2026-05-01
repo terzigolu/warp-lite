@@ -8,7 +8,7 @@ use warpui::{
 use crate::{
     appearance::Appearance,
     editor::{EditorView, Event, SingleLineEditorOptions, TextOptions},
-    report_if_error, send_telemetry_from_ctx,
+    report_if_error,
     server::telemetry::TelemetryEvent,
     terminal::{
         available_shells::{AvailableShell, AvailableShells},
@@ -269,6 +269,5 @@ impl TypedActionView for StartupShellView {
                 });
             }
         }
-        send_telemetry_from_ctx!(action.telemetry_event(), ctx);
     }
 }

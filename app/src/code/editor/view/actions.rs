@@ -9,7 +9,7 @@ use crate::code::editor::{
 use crate::{
     cmd_or_ctrl_shift, code_review::comments::CommentId,
     code_review::telemetry_event::CodeReviewTelemetryEvent, editor::InteractionState,
-    features::FeatureFlag, notebooks::editor::model::word_unit, send_telemetry_from_ctx,
+    features::FeatureFlag, notebooks::editor::model::word_unit,
     util::bindings::CustomAction,
 };
 use lazy_static::lazy_static;
@@ -1045,7 +1045,6 @@ impl TypedActionView for CodeEditorView {
             }
             RevertDiffHunk { line_range } => {
                 if FeatureFlag::RevertDiffHunk.is_enabled() {
-                    send_telemetry_from_ctx!(CodeReviewTelemetryEvent::RevertHunkClicked, ctx);
 
                     // Convert line range to diff hunk index and revert it
                     let hunk_index = self

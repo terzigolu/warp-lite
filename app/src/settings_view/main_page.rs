@@ -9,7 +9,6 @@ use super::{
 };
 use crate::auth::{AuthStateProvider, UserUid};
 use crate::autoupdate::{self, AutoupdateStage, AutoupdateState};
-use crate::send_telemetry_from_ctx;
 use crate::workspaces::user_workspaces::UserWorkspaces;
 use crate::{
     appearance::Appearance,
@@ -212,12 +211,6 @@ impl TypedActionView for MainSettingsPageView {
                             .toggle_and_save_value(ctx));
                         *prefs_settings.settings_sync_enabled
                     });
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::ToggleSettingsSync {
-                        is_settings_sync_enabled: new_value,
-                    },
-                    ctx
-                );
                 ctx.notify();
             }
             MainPageAction::Upgrade { team_uid, user_id } => match team_uid {

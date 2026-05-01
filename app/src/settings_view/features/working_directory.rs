@@ -9,7 +9,7 @@ use warpui::{
 use crate::{
     appearance::Appearance,
     editor::{EditorView, Event as EditorEvent, SingleLineEditorOptions, TextOptions},
-    report_if_error, send_telemetry_from_ctx,
+    report_if_error,
     server::telemetry::TelemetryEvent,
     settings_view::features_page::render_group,
     terminal::session_settings::*,
@@ -207,12 +207,6 @@ impl TypedActionView for WorkingDirectoryView {
                     ));
                 });
 
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::InitialWorkingDirectoryConfigurationChanged {
-                        advanced_mode_enabled: mode.is_none()
-                    },
-                    ctx
-                );
 
                 // Redraw settings in case we switched in or out of advanced mode.
                 ctx.notify();

@@ -30,7 +30,6 @@ use crate::workspace::view::conversation_list::item::{
 use crate::workspace::ToastStack;
 use crate::workspace::WorkspaceAction;
 use warp_core::features::FeatureFlag;
-use warp_core::send_telemetry_from_ctx;
 use warp_core::ui::Icon;
 
 use super::view_model::{ConversationEntry, ConversationListViewModel};
@@ -535,22 +534,8 @@ impl ConversationListView {
     fn send_open_telemetry(id: &ConversationOrTaskId, ctx: &mut ViewContext<Self>) {
         match id {
             ConversationOrTaskId::ConversationId(conversation_id) => {
-                send_telemetry_from_ctx!(
-                    AgentManagementTelemetryEvent::ConversationOpened {
-                        conversation_id: conversation_id.to_string(),
-                        opened_from: OpenedFrom::ConversationList,
-                    },
-                    ctx
-                );
             }
             ConversationOrTaskId::TaskId(task_id) => {
-                send_telemetry_from_ctx!(
-                    AgentManagementTelemetryEvent::CloudRunOpened {
-                        task_id: task_id.to_string(),
-                        opened_from: OpenedFrom::ConversationList,
-                    },
-                    ctx
-                );
             }
         }
     }

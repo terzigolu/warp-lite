@@ -26,7 +26,7 @@ use crate::terminal::warpify::settings::{
 use crate::ui_components::blended_colors;
 use crate::{
     appearance::Appearance,
-    report_if_error, send_telemetry_from_ctx,
+    report_if_error,
     server::telemetry::TelemetryEvent,
     terminal::warpify::settings::WarpifySettings,
     view_components::{SubmittableTextInput, SubmittableTextInputEvent},
@@ -245,7 +245,6 @@ impl WarpifyPageView {
                     warpify_settings.add_subshell_command(new_command, ctx);
                 });
 
-                send_telemetry_from_ctx!(TelemetryEvent::AddAddedSubshellCommand, ctx);
             }
             SubmittableTextInputEvent::Escape => ctx.emit(SettingsPageEvent::FocusModal),
         }
@@ -263,7 +262,6 @@ impl WarpifyPageView {
                     warpify_settings.denylist_subshell_command(new_command, ctx);
                 });
 
-                send_telemetry_from_ctx!(TelemetryEvent::AddDenylistedSubshellCommand, ctx);
             }
             SubmittableTextInputEvent::Escape => ctx.emit(SettingsPageEvent::FocusModal),
         }
@@ -281,28 +279,24 @@ impl WarpifyPageView {
                     warpify_settings.denylist_ssh_host(new_command, ctx);
                 });
 
-                send_telemetry_from_ctx!(TelemetryEvent::AddDenylistedSshTmuxWrapperHost, ctx);
             }
             SubmittableTextInputEvent::Escape => ctx.emit(SettingsPageEvent::FocusModal),
         }
     }
 
     fn remove_denylisted_command(&self, index: usize, ctx: &mut ViewContext<Self>) {
-        send_telemetry_from_ctx!(TelemetryEvent::RemoveDenylistedSubshellCommand, ctx);
         WarpifySettings::handle(ctx).update(ctx, |warpify, ctx| {
             warpify.remove_denylisted_subshell_command(index, ctx)
         });
     }
 
     fn remove_added_command(&self, index: usize, ctx: &mut ViewContext<Self>) {
-        send_telemetry_from_ctx!(TelemetryEvent::RemoveAddedSubshellCommand, ctx);
         WarpifySettings::handle(ctx).update(ctx, |warpify, ctx| {
             warpify.remove_added_subshell_command(index, ctx)
         });
     }
 
     fn remove_denylisted_ssh_host(&self, index: usize, ctx: &mut ViewContext<Self>) {
-        send_telemetry_from_ctx!(TelemetryEvent::RemoveDenylistedSshTmuxWrapperHost, ctx);
         WarpifySettings::handle(ctx).update(ctx, |warpify, ctx| {
             warpify.remove_denylisted_ssh_host(index, ctx)
         });
@@ -442,12 +436,6 @@ impl TypedActionView for WarpifyPageView {
                     report_if_error!(ssh_settings
                         .enable_ssh_warpification
                         .toggle_and_save_value(ctx));
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::ToggleSshWarpification {
-                            enabled: *ssh_settings.enable_ssh_warpification.value(),
-                        },
-                        ctx
-                    );
                 });
                 let enabled = *WarpifySettings::as_ref(ctx)
                     .enable_ssh_warpification
@@ -464,12 +452,6 @@ impl TypedActionView for WarpifyPageView {
             ToggleTmuxWarpification => {
                 WarpifySettings::handle(ctx).update(ctx, |ssh_settings, ctx| {
                     report_if_error!(ssh_settings.use_ssh_tmux_wrapper.toggle_and_save_value(ctx));
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::ToggleSshTmuxWrapper {
-                            enabled: *ssh_settings.use_ssh_tmux_wrapper.value(),
-                        },
-                        ctx
-                    );
                 });
             }
             SetSshExtensionInstallMode(mode) => {
@@ -477,12 +459,6 @@ impl TypedActionView for WarpifyPageView {
                     report_if_error!(warpify_settings
                         .ssh_extension_install_mode
                         .set_value(*mode, ctx));
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::SetSshExtensionInstallMode {
-                            mode: mode.display_name(),
-                        },
-                        ctx
-                    );
                 });
             }
             WarpifyPageAction::RemoveDenylistedSshHost(index) => {
