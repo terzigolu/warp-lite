@@ -45,19 +45,56 @@ impl WorkingDirectoryWidget {
     }
 
     fn project_type_hint(path: &Path) -> Option<&'static str> {
+        // Order matters: prefer the most specific manifest first so a
+        // mixed repo (e.g. Rust with a frontend in a subdir, or Node
+        // with a Cargo.toml for native bindings) gets the dominant
+        // language label.
         if path.join("Cargo.toml").exists() {
             Some("Rust project")
-        } else if path.join("package.json").exists() {
-            Some("Node project")
-        } else if path.join("pyproject.toml").exists() || path.join("setup.py").exists() {
-            Some("Python project")
         } else if path.join("go.mod").exists() {
             Some("Go project")
+        } else if path.join("pyproject.toml").exists()
+            || path.join("setup.py").exists()
+            || path.join("requirements.txt").exists()
+        {
+            Some("Python project")
+        } else if path.join("Gemfile").exists() {
+            Some("Ruby project")
+        } else if path.join("pubspec.yaml").exists() {
+            Some("Dart project")
+        } else if path.join("mix.exs").exists() {
+            Some("Elixir project")
+        } else if path.join("Package.swift").exists() {
+            Some("Swift project")
+        } else if path.join("pom.xml").exists()
+            || path.join("build.gradle").exists()
+            || path.join("build.gradle.kts").exists()
+        {
+            Some("JVM project")
+        } else if path.join("package.json").exists() {
+            Some("Node project")
+        } else if path.join("Dockerfile").exists() {
+            Some("Docker project")
         } else if path.join(".git").exists() {
             Some("Git repository")
         } else {
             None
         }
+    }
+
+    /// Renders the path with the user's home directory abbreviated to
+    /// `~` so deep nested paths stay readable in a narrow side panel.
+    fn display_path(path: &Path) -> String {
+        if let Some(home) = std::env::var_os("HOME") {
+            let home_path = PathBuf::from(home);
+            if let Ok(suffix) = path.strip_prefix(&home_path) {
+                if suffix.as_os_str().is_empty() {
+                    return "~".to_string();
+                }
+                return format!("~/{}", suffix.display());
+            }
+        }
+        path.display().to_string()
     }
 }
 
@@ -97,7 +134,7 @@ impl View for WorkingDirectoryWidget {
             .finish();
 
         let path_text = match &self.cwd {
-            Some(p) => p.display().to_string(),
+            Some(p) => Self::display_path(p),
             None => "(no active terminal)".to_string(),
         };
 

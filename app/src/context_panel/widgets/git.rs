@@ -118,6 +118,9 @@ impl View for GitWidget {
             if let Some(branch) = &state.branch {
                 out.push(format!("{} • {}↑ {}↓", branch, state.ahead, state.behind));
             }
+            if let Some(remote) = state.pretty_remote() {
+                out.push(remote);
+            }
             if state.modified > 0 || state.untracked > 0 {
                 out.push(format!(
                     "{} modified, {} untracked",
@@ -125,6 +128,14 @@ impl View for GitWidget {
                 ));
             } else {
                 out.push("Working tree clean".to_string());
+            }
+            if state.stashes > 0 {
+                out.push(format!("{} stash entr{}", state.stashes,
+                    if state.stashes == 1 { "y" } else { "ies" }));
+            }
+            if state.ahead > 0 {
+                out.push(format!("git push to send {} commit{}", state.ahead,
+                    if state.ahead == 1 { "" } else { "s" }));
             }
             if let Some(commit) = &state.last_commit {
                 out.push(format!("Last: {}", commit));
