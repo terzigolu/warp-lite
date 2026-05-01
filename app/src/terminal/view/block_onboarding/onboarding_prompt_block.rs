@@ -1,7 +1,6 @@
 use crate::appearance::Appearance;
 use crate::context_chips::prompt::Prompt;
 use crate::report_if_error;
-use crate::send_telemetry_from_ctx;
 use crate::server::telemetry::{PromptChoice, TelemetryEvent};
 use crate::settings::EnforceMinimumContrast;
 use crate::terminal::blockgrid_element::BlockGridElement;
@@ -486,13 +485,6 @@ impl TypedActionView for OnboardingPromptBlock {
                             report_if_error!(prompt.reset(ctx));
                         });
                         ctx.notify();
-                        send_telemetry_from_ctx!(
-                            TelemetryEvent::PromptEdited {
-                                prompt: PromptChoice::Default,
-                                entrypoint: "setup_guide".to_string()
-                            },
-                            ctx
-                        );
                     }
                     OnboardingPromptType::PS1 => {
                         self.selected_prompt = Some(OnboardingPromptType::PS1);
@@ -500,13 +492,6 @@ impl TypedActionView for OnboardingPromptBlock {
                             report_if_error!(settings.honor_ps1.set_value(true, ctx));
                         });
                         ctx.notify();
-                        send_telemetry_from_ctx!(
-                            TelemetryEvent::PromptEdited {
-                                prompt: PromptChoice::PS1,
-                                entrypoint: "setup_guide".to_string()
-                            },
-                            ctx
-                        );
                     }
                 }
             }

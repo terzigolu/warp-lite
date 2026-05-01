@@ -359,22 +359,6 @@ impl Sessions {
             .map(|info| info.was_triggered_by_rc_file_snippet)
             .unwrap_or(false);
 
-        crate::send_telemetry_from_ctx!(
-            TelemetryEvent::BootstrappingSucceeded(BootstrappingInfo {
-                shell: session.shell().shell_type().name(),
-                shell_version: session.shell().version().clone(),
-                is_ssh: session.is_legacy_ssh_session(),
-                was_triggered_by_rc_file,
-                is_subshell: session.subshell_info().is_some(),
-                is_wsl: session.is_wsl(),
-                bootstrap_duration_seconds,
-                rcfiles_duration_seconds,
-                warp_attributed_bootstrap_duration_seconds,
-                is_msys2: session.is_msys2(),
-                terminal_session_id: Some(session.id()),
-            }),
-            ctx
-        );
 
         History::handle(ctx).update(ctx, |history, ctx| {
             let session_id = session.id();

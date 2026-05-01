@@ -10,7 +10,6 @@ use crate::remote_server::ssh_transport::SshTransport;
 use crate::terminal::model::session::{IsLegacySSHSession, SessionInfo};
 use crate::terminal::model_events::{ModelEvent, ModelEventDispatcher};
 use crate::terminal::warpify::settings::WarpifySettings;
-use crate::{send_telemetry_from_ctx, TelemetryEvent};
 use remote_server::setup::RemotePlatform;
 
 use super::pty_controller::{EventLoopSender, PtyController};
@@ -321,15 +320,6 @@ impl<T: EventLoopSender> RemoteServerController<T> {
                 )
             })
             .unwrap_or((None, None));
-        send_telemetry_from_ctx!(
-            TelemetryEvent::RemoteServerSetupDuration {
-                duration_ms,
-                installed_binary: self.did_install,
-                remote_os,
-                remote_arch,
-            },
-            ctx
-        );
     }
 
     /// Called when the remote server connection failed. Flushes the stashed

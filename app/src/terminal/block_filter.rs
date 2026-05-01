@@ -23,7 +23,6 @@ use crate::{
         EditOrigin, EditorView, Event as EditorEvent, PropagateAndNoOpNavigationKeys,
         SingleLineEditorOptions, TextOptions, ValidInputType,
     },
-    send_telemetry_from_ctx,
     server::telemetry::TelemetryEvent,
     themes::theme::Fill,
     ui_components::{blended_colors, icons::Icon},
@@ -295,34 +294,16 @@ impl BlockFilterEditor {
     fn toggle_regex(&mut self, ctx: &mut ViewContext<Self>) {
         self.regex_enabled = !self.regex_enabled;
         self.update_query(ctx);
-        send_telemetry_from_ctx!(
-            TelemetryEvent::ToggleBlockFilterRegex {
-                enabled: self.regex_enabled
-            },
-            ctx
-        );
     }
 
     fn toggle_case_sensitivity(&mut self, ctx: &mut ViewContext<Self>) {
         self.case_sensitivity_enabled = !self.case_sensitivity_enabled;
         self.update_query(ctx);
-        send_telemetry_from_ctx!(
-            TelemetryEvent::ToggleBlockFilterCaseSensitivity {
-                enabled: self.case_sensitivity_enabled
-            },
-            ctx
-        );
     }
 
     fn toggle_invert_filter(&mut self, ctx: &mut ViewContext<Self>) {
         self.invert_filter_enabled = !self.invert_filter_enabled;
         self.update_query(ctx);
-        send_telemetry_from_ctx!(
-            TelemetryEvent::ToggleBlockFilterInvert {
-                enabled: self.invert_filter_enabled
-            },
-            ctx
-        );
     }
 
     /// Sends a block filter query update.
@@ -344,10 +325,6 @@ impl BlockFilterEditor {
         }));
 
         if num_context_lines != self.prev_num_context_lines {
-            send_telemetry_from_ctx!(
-                TelemetryEvent::UpdateBlockFilterQueryContextLines { num_context_lines },
-                ctx
-            );
             self.prev_num_context_lines = num_context_lines;
         }
     }
@@ -374,7 +351,6 @@ impl BlockFilterEditor {
                 if self.previous_editor_event_was_select_all
                     && !self.query_editor_text(ctx).is_empty()
                 {
-                    send_telemetry_from_ctx!(TelemetryEvent::UpdateBlockFilterQuery, ctx);
                 }
                 self.previous_editor_event_was_select_all = false;
             }

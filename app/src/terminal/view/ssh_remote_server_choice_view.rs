@@ -34,7 +34,6 @@ use crate::{
         block::keyboard_navigable_buttons::{rich_navigation_button, KeyboardNavigableButtons},
         inline_action::inline_action_header::{HeaderConfig, INLINE_ACTION_HORIZONTAL_PADDING},
     },
-    send_telemetry_from_ctx,
     server::telemetry::TelemetryEvent,
     terminal::model::session::SessionId,
     terminal::warpify::settings::{SshExtensionInstallMode, WarpifySettings},
@@ -270,12 +269,6 @@ impl TypedActionView for SshRemoteServerChoiceView {
                             log::error!("Failed to persist ssh_extension_install_mode: {e}");
                         }
                     });
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::SetSshExtensionInstallMode {
-                            mode: mode.display_name(),
-                        },
-                        ctx
-                    );
                 }
                 ctx.emit(SshRemoteServerChoiceViewEvent::Install);
             }
@@ -287,23 +280,11 @@ impl TypedActionView for SshRemoteServerChoiceView {
                             log::error!("Failed to persist ssh_extension_install_mode: {e}");
                         }
                     });
-                    send_telemetry_from_ctx!(
-                        TelemetryEvent::SetSshExtensionInstallMode {
-                            mode: mode.display_name(),
-                        },
-                        ctx
-                    );
                 }
                 ctx.emit(SshRemoteServerChoiceViewEvent::Skip);
             }
             SshRemoteServerChoiceViewAction::ToggleDoNotAskAgain => {
                 self.do_not_ask_again = !self.do_not_ask_again;
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::SshRemoteServerChoiceDoNotAskAgainToggled {
-                        checked: self.do_not_ask_again,
-                    },
-                    ctx
-                );
                 ctx.notify();
             }
             SshRemoteServerChoiceViewAction::OpenWarpifySettings => {
