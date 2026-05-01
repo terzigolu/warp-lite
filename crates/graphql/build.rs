@@ -6,7 +6,7 @@ fn main() -> Result<()> {
 
     // We need to register the schema here, even though the code is generated in the schema crate.
     cynic_codegen::register_schema("warp-server")
-        .from_sdl_file("../warp_graphql_schema/api/schema.graphql")
+        .from_sdl_file("schema/schema.graphql")
         .context("Should be able to register schema")?
         .as_default()?;
 
