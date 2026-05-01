@@ -369,7 +369,16 @@ impl View for FreeTierLimitHitModal {
         "FreeTierLimitHitModal"
     }
 
-    fn render(&self, app: &AppContext) -> Box<dyn Element> {
+    fn render(&self, _app: &AppContext) -> Box<dyn Element> {
+        // warp-lite: FreeTierLimitHitModal ("you've hit your free AI limit")
+        // is permanently hidden in pure-terminal mode (UI cleanup).
+        Container::new(warpui::elements::Empty::new().finish()).finish()
+    }
+}
+
+#[allow(dead_code)] // warp-lite: full upstream render retained for parity, unused
+impl FreeTierLimitHitModal {
+    fn render_full(&self, app: &AppContext) -> Box<dyn Element> {
         let appearance = Appearance::handle(app).as_ref(app);
         let theme = appearance.theme();
 
