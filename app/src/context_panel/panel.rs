@@ -14,7 +14,7 @@ use warpui::{
 
 use crate::{appearance::Appearance, pane_group::WorkingDirectoriesModel};
 
-use super::widgets::working_directory::WorkingDirectoryWidget;
+use super::widgets::{git::GitWidget, working_directory::WorkingDirectoryWidget};
 
 pub enum ContextPanelEvent {
     ClosePanel,
@@ -22,6 +22,7 @@ pub enum ContextPanelEvent {
 
 pub struct ContextPanelView {
     working_directory: ViewHandle<WorkingDirectoryWidget>,
+    git: ViewHandle<GitWidget>,
 }
 
 impl ContextPanelView {
@@ -29,11 +30,16 @@ impl ContextPanelView {
         working_directories_model: ModelHandle<WorkingDirectoriesModel>,
         ctx: &mut ViewContext<Self>,
     ) -> Self {
-        let model_for_widget = working_directories_model.clone();
+        let wd_model = working_directories_model.clone();
         let working_directory = ctx.add_view(move |child_ctx| {
-            WorkingDirectoryWidget::new(model_for_widget, child_ctx)
+            WorkingDirectoryWidget::new(wd_model, child_ctx)
         });
-        Self { working_directory }
+        let git_model = working_directories_model.clone();
+        let git = ctx.add_view(move |child_ctx| GitWidget::new(git_model, child_ctx));
+        Self {
+            working_directory,
+            git,
+        }
     }
 }
 
@@ -66,6 +72,7 @@ impl View for ContextPanelView {
             .with_main_axis_size(MainAxisSize::Min)
             .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
             .with_child(ChildView::new(&self.working_directory).finish())
+            .with_child(ChildView::new(&self.git).finish())
             .finish();
 
         Container::new(
