@@ -3,7 +3,6 @@ use std::borrow::Cow;
 use cynic::{GraphQlResponse, QueryFragment, QueryVariables};
 use http::StatusCode;
 use instant::Duration;
-use reqwest::header::CONTENT_TYPE;
 use serde::{de::DeserializeOwned, Serialize};
 use warp_core::{channel::ChannelState, operating_system_info::OperatingSystemInfo};
 
@@ -110,51 +109,30 @@ where
 }
 
 /// Sends a [`Request`] to the server and returns the response.
+///
+/// warp-lite: the original implementation issued an HTTPS POST against the
+/// configured GraphQL endpoint and parsed Cloud Armor / staging-allowlist
+/// errors out of the response. In warp-lite the GraphQL server is gone, so
+/// every request short-circuits to `HttpError { status: 410 GONE }` without
+/// touching the network.
 pub(crate) async fn send_graphql_request<Q>(
-    client: &http_client::Client,
+    _client: &http_client::Client,
     req: Request,
 ) -> Result<GraphQlResponse<Q>, GraphQLError>
 where
     Q: QueryFragment + DeserializeOwned,
 {
     let Request {
-        req,
+        req: _,
         operation_name,
     } = req;
-
-    let response = client
-        .execute(req)
-        .await
-        .map_err(GraphQLError::RequestError)?;
-
-    match response.status() {
-        StatusCode::OK => {
-            log::debug!("{operation_name} request to /graphql/v2 succeeded.");
-        }
-        status_code => {
-            if status_code == StatusCode::FORBIDDEN && ChannelState::uses_staging_server() {
-                // Both our server and Cloud Armor can send back HTTP 403 errors.
-                // Since Cloud Armor sends back an HTML error page, check for that to determine
-                // if we were blocked by the staging allowlist.
-                let is_html = response
-                    .headers()
-                    .get(CONTENT_TYPE)
-                    .and_then(|v| v.to_str().ok())
-                    .is_some_and(|v| v.contains("text/html"));
-
-                if is_html {
-                    return Err(GraphQLError::StagingAccessBlocked);
-                }
-            }
-            let payload = response.text().await.unwrap_or_default();
-            return Err(GraphQLError::HttpError {
-                status: status_code,
-                body: payload,
-            });
-        }
-    }
-
-    response.json().await.map_err(GraphQLError::ResponseError)
+    log::debug!(
+        "warp-lite: short-circuiting GraphQL operation `{operation_name}` (no remote)"
+    );
+    Err(GraphQLError::HttpError {
+        status: StatusCode::GONE,
+        body: String::from("warp-lite: GraphQL server disabled"),
+    })
 }
 
 /// Returns a [`RequestContext`] pre-populated as appropriate for the current client.
