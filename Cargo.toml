@@ -5,9 +5,9 @@ members = [
 ]
 resolver = "2"
 
-# Include all members except serve-wasm (since it's a helper helper for serving
-# wasm binaries and not something we want to regularly compile or run
-# tests against).
+# default-members narrows the set of crates compiled by `cargo build` /
+# `cargo test` without arguments. The full workspace is still discovered
+# via `members = ["crates/*", "app"]`.
 default-members = [
   "app",
   "crates/channel_versions",
