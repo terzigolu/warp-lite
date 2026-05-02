@@ -85,11 +85,13 @@ impl HeaderToolbarItemKind {
     }
 
     pub fn default_left() -> Vec<Self> {
-        vec![Self::TabsPanel, Self::ToolsPanel, Self::AgentManagement]
+        vec![Self::TabsPanel, Self::AgentManagement]
     }
 
     pub fn default_right() -> Vec<Self> {
-        vec![Self::CodeReview, Self::NotificationsMailbox]
+        // warp-lite v0.3.2: ToolsPanel button lives on the right (top-right
+        // toolbar) because it toggles the right-side Context Panel.
+        vec![Self::ToolsPanel, Self::CodeReview, Self::NotificationsMailbox]
     }
 
     /// All toolbar item variants (availability filtering is done at the call site).

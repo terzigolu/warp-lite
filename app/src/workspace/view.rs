@@ -16447,23 +16447,10 @@ impl Workspace {
         appearance: &Appearance,
         ctx: &AppContext,
     ) -> Box<dyn Element> {
-        let is_active = self.active_tab_pane_group().as_ref(ctx).left_panel_open;
-
-        let tooltip_text = if self.left_panel_views.len() <= 1 {
-            match self
-                .left_panel_views
-                .first()
-                .copied()
-                .unwrap_or(ToolPanelView::WarpDrive)
-            {
-                ToolPanelView::ProjectExplorer => "Project explorer",
-                ToolPanelView::GlobalSearch { .. } => "Global search",
-                ToolPanelView::WarpDrive => "Warp Drive",
-                ToolPanelView::ConversationListView => "Agent conversations",
-            }
-        } else {
-            "Tools panel"
-        };
+        // warp-lite v0.3.2: this button toggles the Context Panel (right-side
+        // terminal-context widgets), not the left panel. The Tool2 icon is the
+        // user-visible entry point — keybinding (Cmd+B) is just the secondary path.
+        let is_active = self.current_workspace_state.is_context_panel_open;
 
         SavePosition::new(
             Container::new(
@@ -16472,9 +16459,12 @@ impl Workspace {
                         appearance,
                         icons::Icon::Tool2,
                         &self.mouse_states.tools_panel_icon,
-                        WorkspaceAction::ToggleLeftPanel,
-                        tooltip_text.to_string(),
-                        keybinding_name_to_display_string("workspace:toggle_left_panel", ctx),
+                        WorkspaceAction::ToggleContextPanel,
+                        "Context Panel".to_string(),
+                        keybinding_name_to_display_string(
+                            "workspace:toggle_context_panel",
+                            ctx,
+                        ),
                         is_active,
                         false,
                     )
@@ -16483,7 +16473,7 @@ impl Workspace {
                 .finish(),
             )
             .finish(),
-            "workspace:toggle_left_panel",
+            "workspace:toggle_context_panel",
         )
         .finish()
     }
@@ -16994,14 +16984,10 @@ impl Workspace {
         let inner = match item {
             HeaderToolbarItemKind::TabsPanel => self.render_left_toggle_button(appearance, ctx),
             HeaderToolbarItemKind::ToolsPanel => {
-                if self.left_panel_views.is_empty() {
-                    return None;
-                }
-                if vertical_tabs_active {
-                    self.render_tools_panel_button(appearance, ctx)
-                } else {
-                    self.render_left_toggle_button(appearance, ctx)
-                }
+                // warp-lite v0.3.2: always render the Tools/Context Panel button,
+                // regardless of vertical_tabs or left_panel_views. It targets the
+                // right-side Context Panel.
+                self.render_tools_panel_button(appearance, ctx)
             }
             HeaderToolbarItemKind::AgentManagement => {
                 self.render_agent_management_view_button(appearance, ctx)
@@ -18727,10 +18713,11 @@ impl Workspace {
                 )
             }
             HeaderToolbarItemKind::ToolsPanel => {
-                if !pane_group.left_panel_open || warpui::platform::is_mobile_device() {
-                    return None;
-                }
-                Some(ChildView::new(&self.left_panel_view).finish())
+                // warp-lite v0.3.2: ToolsPanel button toggles the Context Panel,
+                // which is rendered by `render_panels` on the right side — not
+                // here. This branch returns None so the toolbar item shows
+                // its button only.
+                None
             }
             HeaderToolbarItemKind::CodeReview => {
                 if !pane_group.right_panel_open {

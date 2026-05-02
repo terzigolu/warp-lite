@@ -1131,7 +1131,12 @@ pub fn init(app: &mut AppContext) {
         ]);
     }
 
-    // warp-lite v0.3: Context Panel toggle (Cmd+Shift+K).
+    // warp-lite v0.3.2: Context Panel toggle (Cmd+B / Ctrl+B).
+    // Previous binding was Cmd+Shift+K but the editor's "Clear selected lines"
+    // action also binds it with a more specific context predicate (EditorView),
+    // which wins whenever the terminal input is focused — i.e. basically always.
+    // Cmd+B is the de-facto sidebar-toggle binding (VS Code, Cursor, Zed) and
+    // is unbound elsewhere in the workspace.
     app.register_editable_bindings([
         EditableBinding::new(
             "workspace:toggle_context_panel",
@@ -1139,8 +1144,8 @@ pub fn init(app: &mut AppContext) {
             WorkspaceAction::ToggleContextPanel,
         )
         .with_context_predicate(id!("Workspace"))
-        .with_mac_key_binding("cmd-shift-K")
-        .with_linux_or_windows_key_binding("ctrl-shift-K")
+        .with_mac_key_binding("cmd-b")
+        .with_linux_or_windows_key_binding("ctrl-b")
         .with_group(bindings::BindingGroup::WarpAi.as_str()),
     ]);
 
