@@ -13,6 +13,7 @@
 #![allow(clippy::needless_pass_by_value)]
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -147,61 +148,71 @@ impl ManagedSecretManager {
         }
     }
 
-    pub async fn create_secret(
+    // The original methods returned `impl Future + use<>` so that the future
+    // does not borrow `&self`. That property is preserved in the stub —
+    // every method takes `&self` only long enough to be called and returns
+    // a `'static` future, otherwise call sites that do
+    // `ctx.spawn(async move { manager.foo(...).await })` fail to compile
+    // with "borrowed data escapes outside of closure".
+    pub fn create_secret(
         &self,
         _owner: client::SecretOwner,
         _name: String,
         _value: ManagedSecretValue,
         _description: Option<String>,
-    ) -> anyhow::Result<ManagedSecret> {
-        Err(anyhow::anyhow!("warp-lite: managed secrets are disabled"))
+    ) -> impl Future<Output = anyhow::Result<ManagedSecret>> + use<> {
+        async { Err(anyhow::anyhow!("warp-lite: managed secrets are disabled")) }
     }
 
-    pub async fn delete_secret(
+    pub fn delete_secret(
         &self,
         _owner: client::SecretOwner,
         _name: String,
-    ) -> anyhow::Result<()> {
-        Err(anyhow::anyhow!("warp-lite: managed secrets are disabled"))
+    ) -> impl Future<Output = anyhow::Result<()>> + use<> {
+        async { Err(anyhow::anyhow!("warp-lite: managed secrets are disabled")) }
     }
 
-    pub async fn update_secret(
+    pub fn update_secret(
         &self,
         _owner: client::SecretOwner,
         _name: String,
         _value: Option<ManagedSecretValue>,
         _description: Option<String>,
-    ) -> anyhow::Result<ManagedSecret> {
-        Err(anyhow::anyhow!("warp-lite: managed secrets are disabled"))
+    ) -> impl Future<Output = anyhow::Result<ManagedSecret>> + use<> {
+        async { Err(anyhow::anyhow!("warp-lite: managed secrets are disabled")) }
     }
 
-    pub async fn list_secrets(&self) -> anyhow::Result<Vec<ManagedSecret>> {
-        Ok(Vec::new())
+    pub fn list_secrets(&self) -> impl Future<Output = anyhow::Result<Vec<ManagedSecret>>> + use<> {
+        async { Ok(Vec::new()) }
     }
 
-    pub async fn get_task_secrets(
+    pub fn get_task_secrets(
         &self,
         _task_id: String,
-    ) -> anyhow::Result<HashMap<String, ManagedSecretValue>> {
-        Ok(HashMap::new())
+    ) -> impl Future<Output = anyhow::Result<HashMap<String, ManagedSecretValue>>> + use<> {
+        async { Ok(HashMap::new()) }
     }
 
-    pub async fn issue_task_identity_token(
+    pub fn issue_task_identity_token(
         &self,
         _options: client::IdentityTokenOptions,
-    ) -> anyhow::Result<TaskIdentityToken> {
-        Err(anyhow::anyhow!("warp-lite: identity tokens are disabled"))
+    ) -> impl Future<Output = anyhow::Result<TaskIdentityToken>> + use<> {
+        async { Err(anyhow::anyhow!("warp-lite: identity tokens are disabled")) }
     }
 
-    pub async fn issue_gcp_workload_identity_federation_token(
+    pub fn issue_gcp_workload_identity_federation_token(
         &self,
         _audience: String,
         _token_type: String,
         _requested_duration: Duration,
-    ) -> Result<GcpWorkloadIdentityFederationToken, GcpWorkloadIdentityFederationError> {
-        Err(GcpWorkloadIdentityFederationError::new(
-            "warp-lite: identity federation is disabled",
-        ))
+    ) -> impl Future<
+        Output = Result<GcpWorkloadIdentityFederationToken, GcpWorkloadIdentityFederationError>,
+    > + use<> {
+        async {
+            Err(GcpWorkloadIdentityFederationError::new(
+                "warp-lite: identity federation is disabled",
+            ))
+        }
     }
 }
 
