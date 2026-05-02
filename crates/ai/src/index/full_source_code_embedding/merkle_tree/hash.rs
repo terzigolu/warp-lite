@@ -5,9 +5,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{digest::OutputSizeUser, Digest, Sha256};
 use std::{fmt, str::FromStr, sync::Arc};
 
-use crate::index::full_source_code_embedding::chunker::Fragment;
-
-use super::Error;
+use crate::index::full_source_code_embedding::{chunker::Fragment, Error};
 
 /// The hash of an *intermediate* node in the [`MerkleTree`].
 ///
