@@ -1,20 +1,13 @@
 //! Foreground Process widget — Card 4 in the Context Panel stack.
 //!
-//! Subscribes to `WorkingDirectoriesModel::FocusedRepoChanged` to know
-//! which directory to inspect, then samples
-//! `context_panel::foreground_process::fetch` once per second to keep
-//! the elapsed-time / CPU%% display fresh while a long-running command
-//! is happening.
-//!
-//! See `app/src/context_panel/foreground_process.rs` for the polling
-//! strategy. This widget is purposely lazy: when the panel is closed
-//! the timer keeps ticking but the cost is a single `lsof` + `ps` pair
-//! every two seconds, which is negligible.
+//! warp-lite v0.3.4: was a 2-second `lsof`+`ps` poll loop spawned at
+//! widget construction. The loop ran for the lifetime of the
+//! workspace (panel-open state was never consulted) which contributed
+//! to a perceived input-latency stutter. Now: fetch once per
+//! `FocusedRepoChanged` event only — no recurring timer.
 
 use std::path::PathBuf;
-use std::time::Duration;
 
-use warpui::r#async::Timer;
 use warpui::{
     elements::{
         ConstrainedBox, Container, CrossAxisAlignment, Element, Flex, ParentElement, Text,
@@ -28,11 +21,6 @@ use crate::{
     pane_group::{WorkingDirectoriesEvent, WorkingDirectoriesModel},
     ui_components::icons::Icon,
 };
-
-/// How often to re-poll `lsof`/`ps` while the widget has a focused
-/// directory. Every poll spawns two short-lived subprocesses, so
-/// 2 seconds is the sweet spot between "responsive" and "free".
-const POLL_INTERVAL: Duration = Duration::from_secs(2);
 
 pub struct ForegroundProcessWidget {
     cwd: Option<PathBuf>,
@@ -53,7 +41,6 @@ impl ForegroundProcessWidget {
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.subscribe_to_model(&working_directories_model, Self::handle_event);
-        // warp-lite v0.3.2: Pre-populate cwd + start polling on first render.
         let cwd = working_directories_model
             .as_ref(ctx)
             .any_focused_repo()
@@ -65,7 +52,7 @@ impl ForegroundProcessWidget {
             poll_generation: 0,
         };
         if me.cwd.is_some() {
-            me.spawn_poll(ctx);
+            me.spawn_fetch(ctx);
         }
         me
     }
@@ -85,30 +72,30 @@ impl ForegroundProcessWidget {
             self.sampled = false;
             self.poll_generation = self.poll_generation.wrapping_add(1);
             if self.cwd.is_some() {
-                self.spawn_poll(ctx);
+                self.spawn_fetch(ctx);
             }
             ctx.notify();
         }
     }
 
-    fn spawn_poll(&mut self, ctx: &mut ViewContext<Self>) {
+    /// One-shot fetch (no timer). Re-runs only on the next
+    /// `FocusedRepoChanged` event so the widget can never become a
+    /// background loop.
+    fn spawn_fetch(&mut self, ctx: &mut ViewContext<Self>) {
         let Some(cwd) = self.cwd.clone() else { return };
         let generation = self.poll_generation;
         ctx.spawn(
             async move {
                 let process = fg::fetch(&cwd).await.ok().flatten();
-                Timer::after(POLL_INTERVAL).await;
                 (generation, process)
             },
             |me, (generation, process), ctx| {
                 if me.poll_generation != generation {
-                    // Stale — directory changed under us.
                     return;
                 }
                 me.process = process;
                 me.sampled = true;
                 ctx.notify();
-                me.spawn_poll(ctx);
             },
         );
     }

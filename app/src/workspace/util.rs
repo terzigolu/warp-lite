@@ -135,9 +135,12 @@ pub struct WorkspaceState {
 
 impl WorkspaceState {
     pub fn is_any_non_terminal_view_open(&self, app: &AppContext) -> bool {
+        // warp-lite v0.3.4: AI assistant panel is gated off (render branches
+        // disabled). Reading its persisted-true state here used to reserve a
+        // right-panel slot that nothing rendered, then triggered a notify
+        // cycle. Drop it from the predicate.
         self.is_any_modal_open(app)
             || self.is_theme_chooser_open
-            || self.is_ai_assistant_panel_open
             || self.is_context_panel_open
             || self.is_workflow_modal_open
             || self.is_warp_drive_open
@@ -214,9 +217,10 @@ impl WorkspaceState {
     }
 
     pub fn is_right_panel_open(&self) -> bool {
-        self.is_resource_center_open
-            || self.is_ai_assistant_panel_open
-            || self.is_context_panel_open
+        // warp-lite v0.3.4: see note in is_any_non_terminal_view_open — AI
+        // panel state is intentionally excluded from the right-panel slot
+        // computation now that its render branch is gated off.
+        self.is_resource_center_open || self.is_context_panel_open
     }
 
     pub fn is_left_panel_open(&self) -> bool {
