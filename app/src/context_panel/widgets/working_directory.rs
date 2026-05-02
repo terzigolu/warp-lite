@@ -22,6 +22,13 @@ use crate::{
 pub struct WorkingDirectoryWidget {
     working_directories_model: ModelHandle<WorkingDirectoriesModel>,
     cwd: Option<PathBuf>,
+    /// warp-lite v0.3.5: cached display path (`~/foo/bar`) and project-type
+    /// hint. The hint requires up to 11 filesystem stats; recomputing those
+    /// on every `render()` (which fires on every workspace `notify()`,
+    /// including each keystroke) was the dominant input-latency contributor.
+    /// Recomputed only when `cwd` changes.
+    display: String,
+    project_type: Option<&'static str>,
 }
 
 impl WorkingDirectoryWidget {
@@ -30,16 +37,16 @@ impl WorkingDirectoryWidget {
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.subscribe_to_model(&working_directories_model, Self::handle_event);
-        // warp-lite v0.3.2: Pre-populate cwd from current model state so the
-        // widget renders correctly the first time the panel opens (subscription
-        // events only fire on change).
         let cwd = working_directories_model
             .as_ref(ctx)
             .any_focused_repo()
             .cloned();
+        let (display, project_type) = Self::derive_cached(cwd.as_deref());
         Self {
             working_directories_model,
             cwd,
+            display,
+            project_type,
         }
     }
 
@@ -50,14 +57,21 @@ impl WorkingDirectoryWidget {
         ctx: &mut ViewContext<Self>,
     ) {
         if let WorkingDirectoriesEvent::FocusedRepoChanged { focused_repo, .. } = event {
-            // Prefer the event's focused_repo if it's Some; otherwise re-read
-            // from the model so we stay in sync with whichever pane group
-            // currently has a focused repo.
             self.cwd = focused_repo
                 .clone()
                 .or_else(|| model.as_ref(ctx).any_focused_repo().cloned());
             let _ = self.working_directories_model.id();
+            let (display, project_type) = Self::derive_cached(self.cwd.as_deref());
+            self.display = display;
+            self.project_type = project_type;
             ctx.notify();
+        }
+    }
+
+    fn derive_cached(cwd: Option<&Path>) -> (String, Option<&'static str>) {
+        match cwd {
+            Some(p) => (Self::display_path(p), Self::project_type_hint(p)),
+            None => ("(no active terminal)".to_string(), None),
         }
     }
 
@@ -150,16 +164,8 @@ impl View for WorkingDirectoryWidget {
             )
             .finish();
 
-        let path_text = match &self.cwd {
-            Some(p) => Self::display_path(p),
-            None => "(no active terminal)".to_string(),
-        };
-
-        let project_hint = self
-            .cwd
-            .as_deref()
-            .and_then(Self::project_type_hint)
-            .map(|s| s.to_string());
+        let path_text = self.display.clone();
+        let project_hint = self.project_type.map(|s| s.to_string());
 
         let mut body = Flex::column()
             .with_cross_axis_alignment(CrossAxisAlignment::Start)
