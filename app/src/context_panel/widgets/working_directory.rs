@@ -20,6 +20,7 @@ use crate::{
 
 /// Card-style widget that shows the focused tab's working directory.
 pub struct WorkingDirectoryWidget {
+    working_directories_model: ModelHandle<WorkingDirectoriesModel>,
     cwd: Option<PathBuf>,
 }
 
@@ -29,17 +30,33 @@ impl WorkingDirectoryWidget {
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.subscribe_to_model(&working_directories_model, Self::handle_event);
-        Self { cwd: None }
+        // warp-lite v0.3.2: Pre-populate cwd from current model state so the
+        // widget renders correctly the first time the panel opens (subscription
+        // events only fire on change).
+        let cwd = working_directories_model
+            .as_ref(ctx)
+            .any_focused_repo()
+            .cloned();
+        Self {
+            working_directories_model,
+            cwd,
+        }
     }
 
     fn handle_event(
         &mut self,
-        _model: ModelHandle<WorkingDirectoriesModel>,
+        model: ModelHandle<WorkingDirectoriesModel>,
         event: &WorkingDirectoriesEvent,
         ctx: &mut ViewContext<Self>,
     ) {
         if let WorkingDirectoriesEvent::FocusedRepoChanged { focused_repo, .. } = event {
-            self.cwd = focused_repo.clone();
+            // Prefer the event's focused_repo if it's Some; otherwise re-read
+            // from the model so we stay in sync with whichever pane group
+            // currently has a focused repo.
+            self.cwd = focused_repo
+                .clone()
+                .or_else(|| model.as_ref(ctx).any_focused_repo().cloned());
+            let _ = self.working_directories_model.id();
             ctx.notify();
         }
     }

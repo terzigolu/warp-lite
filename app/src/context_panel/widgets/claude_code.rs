@@ -40,10 +40,13 @@ impl ClaudeCodeWidget {
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.subscribe_to_model(&working_directories_model, Self::handle_event);
-        Self {
-            cwd: None,
-            summary: SessionsSummary::default(),
-        }
+        // warp-lite v0.3.2: Pre-populate cwd + scan sessions on first render.
+        let cwd = working_directories_model
+            .as_ref(ctx)
+            .any_focused_repo()
+            .cloned();
+        let summary = cwd.as_deref().map(scan_sessions_for_cwd).unwrap_or_default();
+        Self { cwd, summary }
     }
 
     fn handle_event(

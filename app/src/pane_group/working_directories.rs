@@ -122,6 +122,15 @@ impl WorkingDirectoriesModel {
         Self::default()
     }
 
+    /// warp-lite v0.3.2: Returns any non-None focused repo from any tracked pane
+    /// group. Used by Context Panel widgets that need an initial value before
+    /// the first `FocusedRepoChanged` event fires (subscriptions only fire on
+    /// change, so without this freshly-created widgets show empty state
+    /// indefinitely while a tab is already focused).
+    pub fn any_focused_repo(&self) -> Option<&PathBuf> {
+        self.focused_repo.values().filter_map(|v| v.as_ref()).next()
+    }
+
     /// Get the unique directories for a specific pane group in insertion order (oldest first).
     fn least_recent_directories_for_pane_group(
         &self,

@@ -53,12 +53,21 @@ impl ForegroundProcessWidget {
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.subscribe_to_model(&working_directories_model, Self::handle_event);
-        Self {
-            cwd: None,
+        // warp-lite v0.3.2: Pre-populate cwd + start polling on first render.
+        let cwd = working_directories_model
+            .as_ref(ctx)
+            .any_focused_repo()
+            .cloned();
+        let mut me = Self {
+            cwd,
             process: None,
             sampled: false,
             poll_generation: 0,
+        };
+        if me.cwd.is_some() {
+            me.spawn_poll(ctx);
         }
+        me
     }
 
     fn handle_event(

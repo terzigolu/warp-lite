@@ -32,11 +32,22 @@ impl GitWidget {
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.subscribe_to_model(&working_directories_model, Self::handle_event);
-        Self {
-            repo: None,
+        // warp-lite v0.3.2: Pre-populate from current model state and kick off
+        // the initial fetch so the widget shows real data the first time the
+        // panel opens (subscriptions only fire on change).
+        let initial_repo = working_directories_model
+            .as_ref(ctx)
+            .any_focused_repo()
+            .cloned();
+        let mut me = Self {
+            repo: initial_repo.clone(),
             state: None,
             loading: false,
+        };
+        if let Some(repo) = initial_repo {
+            me.kick_off_fetch(repo, ctx);
         }
+        me
     }
 
     fn handle_event(
