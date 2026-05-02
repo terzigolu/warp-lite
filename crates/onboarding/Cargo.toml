@@ -6,19 +6,9 @@ authors.workspace = true
 publish.workspace = true
 license.workspace = true
 
+# warp-lite v0.4 — onboarding gutted to an inert stub. See `src/lib.rs`.
+
 [dependencies]
-anyhow.workspace = true
-instant.workspace = true
-log.workspace = true
-pathfinder_color.workspace = true
-pathfinder_geometry.workspace = true
-rust-embed.workspace = true
 serde.workspace = true
-ui_components.workspace = true
-serde_json.workspace = true
-strum.workspace = true
-strum_macros.workspace = true
-uuid.workspace = true
 warp_core = { workspace = true }
 warpui.workspace = true
-warp_logging.workspace = true
