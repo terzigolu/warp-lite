@@ -6,9 +6,6 @@
 
 use std::path::PathBuf;
 
-use repo_metadata::repositories::{
-    DetectedRepositories, DetectedRepositoriesEvent, RepoDetectionSource,
-};
 use warpui::{
     elements::{
         ConstrainedBox, Container, CrossAxisAlignment, Element, Flex, ParentElement, Text,
@@ -35,19 +32,13 @@ impl GitWidget {
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.subscribe_to_model(&working_directories_model, Self::handle_event);
-        // warp-lite v0.4: also subscribe to repo discovery — see
-        // working_directory.rs for the rationale.
-        let detected = DetectedRepositories::handle(ctx);
-        ctx.subscribe_to_model(&detected, Self::handle_repo_event);
+        // warp-lite v0.3.2: Pre-populate from current model state and kick off
+        // the initial fetch so the widget shows real data the first time the
+        // panel opens (subscriptions only fire on change).
         let initial_repo = working_directories_model
             .as_ref(ctx)
             .any_focused_repo()
-            .cloned()
-            .or_else(|| {
-                DetectedRepositories::as_ref(ctx)
-                    .detected_root_paths()
-                    .next()
-            });
+            .cloned();
         let mut me = Self {
             repo: initial_repo.clone(),
             state: None,
@@ -77,29 +68,6 @@ impl GitWidget {
             }
             ctx.notify();
         }
-    }
-
-    fn handle_repo_event(
-        &mut self,
-        _model: ModelHandle<DetectedRepositories>,
-        event: &DetectedRepositoriesEvent,
-        ctx: &mut ViewContext<Self>,
-    ) {
-        let DetectedRepositoriesEvent::DetectedGitRepo { repository, source } = event;
-        if !matches!(source, RepoDetectionSource::TerminalNavigation) {
-            return;
-        }
-        let new_repo = repository.as_ref(ctx).root_dir().to_local_path();
-        if new_repo == self.repo {
-            return;
-        }
-        self.repo = new_repo;
-        self.state = None;
-        self.loading = false;
-        if let Some(repo) = self.repo.clone() {
-            self.kick_off_fetch(repo, ctx);
-        }
-        ctx.notify();
     }
 
     fn kick_off_fetch(&mut self, repo: PathBuf, ctx: &mut ViewContext<Self>) {

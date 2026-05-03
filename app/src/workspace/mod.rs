@@ -1131,20 +1131,11 @@ pub fn init(app: &mut AppContext) {
         ]);
     }
 
-    // warp-lite v0.4: Context Panel toggle re-enabled (Cmd+B / Ctrl+B).
-    // Sidebar-toggle convention used by VS Code / Cursor / Zed; unbound
-    // elsewhere in the workspace.
-    app.register_editable_bindings([
-        EditableBinding::new(
-            "workspace:toggle_context_panel",
-            "Toggle Context Panel",
-            WorkspaceAction::ToggleContextPanel,
-        )
-        .with_context_predicate(id!("Workspace"))
-        .with_mac_key_binding("cmd-b")
-        .with_linux_or_windows_key_binding("ctrl-b")
-        .with_group(bindings::BindingGroup::WarpAi.as_str()),
-    ]);
+    // warp-lite v0.3.6: Context Panel keybinding disabled — the panel is
+    // hidden from the toolbar pending a real wire-up to repo_metadata /
+    // WorkingDirectoriesModel. Leaving the action registered so internal
+    // callers (settings, command palette) still compile, just no global
+    // shortcut. Re-enable once widgets render real data.
 
     // We use the same binding name for the AI Assistant and block list AI to preserve custom
     // keybindings between them.
