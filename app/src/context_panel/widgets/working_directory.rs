@@ -5,6 +5,9 @@
 
 use std::path::{Path, PathBuf};
 
+use repo_metadata::repositories::{
+    DetectedRepositories, DetectedRepositoriesEvent, RepoDetectionSource,
+};
 use warpui::{
     elements::{
         ConstrainedBox, Container, CrossAxisAlignment, Element, Flex, ParentElement, Text,
@@ -37,10 +40,26 @@ impl WorkingDirectoryWidget {
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.subscribe_to_model(&working_directories_model, Self::handle_event);
+        // warp-lite v0.4: subscribe to repo discovery as a fallback signal.
+        // `WorkingDirectoriesModel::focused_repo` only populates after a
+        // pane-group refresh with a focused terminal id; in many real
+        // sessions the user opens the panel before that fires. Repo
+        // detection is the more reliable "the user is in repo X" signal.
+        let detected = DetectedRepositories::handle(ctx);
+        ctx.subscribe_to_model(&detected, Self::handle_repo_event);
         let cwd = working_directories_model
             .as_ref(ctx)
             .any_focused_repo()
-            .cloned();
+            .cloned()
+            // warp-lite v0.4: bootstrap fallback. Subscriptions only deliver
+            // future events, so if the panel mounts before the first
+            // FocusedRepoChanged or DetectedGitRepo event fires, fall back
+            // to whatever the singleton already discovered at startup.
+            .or_else(|| {
+                DetectedRepositories::as_ref(ctx)
+                    .detected_root_paths()
+                    .next()
+            });
         let (display, project_type) = Self::derive_cached(cwd.as_deref());
         Self {
             working_directories_model,
@@ -61,6 +80,30 @@ impl WorkingDirectoryWidget {
                 .clone()
                 .or_else(|| model.as_ref(ctx).any_focused_repo().cloned());
             let _ = self.working_directories_model.id();
+            let (display, project_type) = Self::derive_cached(self.cwd.as_deref());
+            self.display = display;
+            self.project_type = project_type;
+            ctx.notify();
+        }
+    }
+
+    fn handle_repo_event(
+        &mut self,
+        _model: ModelHandle<DetectedRepositories>,
+        event: &DetectedRepositoriesEvent,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        let DetectedRepositoriesEvent::DetectedGitRepo { repository, source } = event;
+        // Only surface the repo that the user just navigated to. Other
+        // detection sources (code review, project rules indexing) can fire
+        // for repos the user is *not* currently in and would mislead the
+        // widget.
+        if !matches!(source, RepoDetectionSource::TerminalNavigation) {
+            return;
+        }
+        let new_cwd = repository.as_ref(ctx).root_dir().to_local_path();
+        if new_cwd != self.cwd {
+            self.cwd = new_cwd;
             let (display, project_type) = Self::derive_cached(self.cwd.as_deref());
             self.display = display;
             self.project_type = project_type;

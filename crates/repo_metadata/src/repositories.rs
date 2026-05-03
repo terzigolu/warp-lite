@@ -162,6 +162,16 @@ impl DetectedRepositories {
         DirectoryWatcher::as_ref(ctx).get_watched_directory_for_path(&root)
     }
 
+    /// warp-lite v0.4: Returns an iterator over all currently-detected
+    /// repository root paths. Used by Context Panel widgets to bootstrap
+    /// their state when they start up after at least one repo has already
+    /// been detected (subscriptions only deliver future events).
+    pub fn detected_root_paths(&self) -> impl Iterator<Item = PathBuf> + '_ {
+        self.repository_roots
+            .iter()
+            .filter_map(|p| p.to_local_path())
+    }
+
     /// Given a path, return its corresponding repo root. Note that this does not run the check
     /// against the actual file system. Instead it checks against our cached path to root mapping.
     pub fn get_root_for_path(&self, path: &Path) -> Option<PathBuf> {

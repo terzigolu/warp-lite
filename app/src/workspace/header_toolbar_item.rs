@@ -89,13 +89,11 @@ impl HeaderToolbarItemKind {
     }
 
     pub fn default_right() -> Vec<Self> {
-        // warp-lite v0.3.6: ToolsPanel button hidden from the toolbar. The
-        // Context Panel widgets do not yet read from Warp's existing
-        // repo/cwd infrastructure (`repo_metadata`/`WorkingDirectoriesModel`)
-        // reliably, so an empty panel was worse than no panel at all.
-        // Keeping the variant in the enum so the rest of the codebase still
-        // compiles; just removing it from the default set.
-        vec![Self::CodeReview, Self::NotificationsMailbox]
+        // warp-lite v0.4: ToolsPanel re-enabled — widgets now bootstrap
+        // their cwd from `DetectedRepositories::detected_root_paths()` in
+        // addition to subscribing to `FocusedRepoChanged` and
+        // `DetectedGitRepo` events.
+        vec![Self::ToolsPanel, Self::CodeReview, Self::NotificationsMailbox]
     }
 
     /// All toolbar item variants (availability filtering is done at the call site).

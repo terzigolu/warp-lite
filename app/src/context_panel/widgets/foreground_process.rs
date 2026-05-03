@@ -8,6 +8,9 @@
 
 use std::path::PathBuf;
 
+use repo_metadata::repositories::{
+    DetectedRepositories, DetectedRepositoriesEvent, RepoDetectionSource,
+};
 use warpui::{
     elements::{
         ConstrainedBox, Container, CrossAxisAlignment, Element, Flex, ParentElement, Text,
@@ -41,10 +44,17 @@ impl ForegroundProcessWidget {
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.subscribe_to_model(&working_directories_model, Self::handle_event);
+        let detected = DetectedRepositories::handle(ctx);
+        ctx.subscribe_to_model(&detected, Self::handle_repo_event);
         let cwd = working_directories_model
             .as_ref(ctx)
             .any_focused_repo()
-            .cloned();
+            .cloned()
+            .or_else(|| {
+                DetectedRepositories::as_ref(ctx)
+                    .detected_root_paths()
+                    .next()
+            });
         let mut me = Self {
             cwd,
             process: None,
@@ -55,6 +65,30 @@ impl ForegroundProcessWidget {
             me.spawn_fetch(ctx);
         }
         me
+    }
+
+    fn handle_repo_event(
+        &mut self,
+        _model: ModelHandle<DetectedRepositories>,
+        event: &DetectedRepositoriesEvent,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        let DetectedRepositoriesEvent::DetectedGitRepo { repository, source } = event;
+        if !matches!(source, RepoDetectionSource::TerminalNavigation) {
+            return;
+        }
+        let new_cwd = repository.as_ref(ctx).root_dir().to_local_path();
+        if new_cwd == self.cwd {
+            return;
+        }
+        self.cwd = new_cwd;
+        self.process = None;
+        self.sampled = false;
+        self.poll_generation = self.poll_generation.wrapping_add(1);
+        if self.cwd.is_some() {
+            self.spawn_fetch(ctx);
+        }
+        ctx.notify();
     }
 
     fn handle_event(

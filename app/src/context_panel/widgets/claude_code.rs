@@ -6,6 +6,9 @@
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+use repo_metadata::repositories::{
+    DetectedRepositories, DetectedRepositoriesEvent, RepoDetectionSource,
+};
 use warpui::{
     elements::{
         ConstrainedBox, Container, CrossAxisAlignment, Element, Flex, ParentElement, Text,
@@ -40,11 +43,17 @@ impl ClaudeCodeWidget {
         ctx: &mut ViewContext<Self>,
     ) -> Self {
         ctx.subscribe_to_model(&working_directories_model, Self::handle_event);
-        // warp-lite v0.3.2: Pre-populate cwd + scan sessions on first render.
+        let detected = DetectedRepositories::handle(ctx);
+        ctx.subscribe_to_model(&detected, Self::handle_repo_event);
         let cwd = working_directories_model
             .as_ref(ctx)
             .any_focused_repo()
-            .cloned();
+            .cloned()
+            .or_else(|| {
+                DetectedRepositories::as_ref(ctx)
+                    .detected_root_paths()
+                    .next()
+            });
         let summary = cwd.as_deref().map(scan_sessions_for_cwd).unwrap_or_default();
         Self { cwd, summary }
     }
@@ -67,6 +76,29 @@ impl ClaudeCodeWidget {
                 .unwrap_or_default();
             ctx.notify();
         }
+    }
+
+    fn handle_repo_event(
+        &mut self,
+        _model: ModelHandle<DetectedRepositories>,
+        event: &DetectedRepositoriesEvent,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        let DetectedRepositoriesEvent::DetectedGitRepo { repository, source } = event;
+        if !matches!(source, RepoDetectionSource::TerminalNavigation) {
+            return;
+        }
+        let new_cwd = repository.as_ref(ctx).root_dir().to_local_path();
+        if new_cwd == self.cwd {
+            return;
+        }
+        self.cwd = new_cwd;
+        self.summary = self
+            .cwd
+            .as_deref()
+            .map(scan_sessions_for_cwd)
+            .unwrap_or_default();
+        ctx.notify();
     }
 }
 
