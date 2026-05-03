@@ -89,9 +89,13 @@ impl HeaderToolbarItemKind {
     }
 
     pub fn default_right() -> Vec<Self> {
-        // warp-lite v0.3.2: ToolsPanel button lives on the right (top-right
-        // toolbar) because it toggles the right-side Context Panel.
-        vec![Self::ToolsPanel, Self::CodeReview, Self::NotificationsMailbox]
+        // warp-lite v0.3.6: ToolsPanel button hidden from the toolbar. The
+        // Context Panel widgets do not yet read from Warp's existing
+        // repo/cwd infrastructure (`repo_metadata`/`WorkingDirectoriesModel`)
+        // reliably, so an empty panel was worse than no panel at all.
+        // Keeping the variant in the enum so the rest of the codebase still
+        // compiles; just removing it from the default set.
+        vec![Self::CodeReview, Self::NotificationsMailbox]
     }
 
     /// All toolbar item variants (availability filtering is done at the call site).
