@@ -18,6 +18,7 @@ use async_channel::Receiver;
 use warpui::r#async::executor;
 
 use crate::client::{ClientEvent, RemoteServerClient};
+use crate::manager::RemoteServerExitStatus;
 use crate::setup::RemotePlatform;
 
 /// A successful return from [`RemoteTransport::connect`].
@@ -108,4 +109,13 @@ pub trait RemoteTransport: Send + Sync + std::fmt::Debug {
         &self,
         executor: std::sync::Arc<executor::Background>,
     ) -> Pin<Box<dyn std::future::Future<Output = anyhow::Result<Connection>> + Send>>;
+
+    /// Returns `true` if the transport considers a reconnect viable after
+    /// a spontaneous disconnect with the given exit status.
+    ///
+    /// Transports that can determine the underlying connection is
+    /// unrecoverable (e.g. SSH detecting a dead ControlMaster via exit
+    /// code 255) should return `false`, which tells the manager to skip
+    /// the reconnect loop entirely.
+    fn is_reconnectable(&self, exit_status: Option<&RemoteServerExitStatus>) -> bool;
 }

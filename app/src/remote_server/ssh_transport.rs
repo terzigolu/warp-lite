@@ -13,6 +13,7 @@ use anyhow::Result;
 use warpui::r#async::executor;
 
 use remote_server::client::RemoteServerClient;
+use remote_server::manager::RemoteServerExitStatus;
 use remote_server::setup::{self, RemotePlatform, CHECK_TIMEOUT, INSTALL_TIMEOUT};
 use remote_server::ssh::{run_ssh_command, run_ssh_script, ssh_args};
 use remote_server::transport::{Connection, RemoteTransport};
@@ -140,5 +141,18 @@ impl RemoteTransport for SshTransport {
                 control_path: Some(socket_path),
             })
         })
+    }
+
+    /// SSH exit code 255 indicates a connection-level error (broken pipe,
+    /// connection reset, host unreachable) — the ControlMaster's TCP
+    /// connection is dead. A signal kill also suggests the transport was
+    /// torn down. In either case, reconnecting through the same
+    /// ControlMaster is futile.
+    fn is_reconnectable(&self, exit_status: Option<&RemoteServerExitStatus>) -> bool {
+        match exit_status {
+            Some(s) => s.code != Some(255) && !s.signal_killed,
+            // No exit status available — optimistically allow reconnect.
+            None => true,
+        }
     }
 }
