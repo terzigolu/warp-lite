@@ -396,9 +396,11 @@ impl RemoteServerManager {
             let spawner = self.spawner.clone();
             ctx.background_executor()
                 .spawn(async move {
-                    // Run platform detection and binary check concurrently.
-                    let (platform_result, check_result) =
-                        futures::join!(transport.detect_platform(), transport.check_binary(),);
+                    // Run platform detection and binary check sequentially
+                    // so that each step reuses the same SSH ControlMaster
+                    // connection instead of opening parallel channels.
+                    let platform_result = transport.detect_platform().await;
+                    let check_result = transport.check_binary().await;
                     let platform = match platform_result {
                         Ok(p) => Some(p),
                         Err(e) => {
