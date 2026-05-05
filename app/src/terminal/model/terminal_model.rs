@@ -63,8 +63,6 @@ use crate::terminal::shell::{ShellName, ShellType};
 use crate::terminal::model::secrets::ObfuscateSecrets;
 use session_sharing_protocol::sharer::SessionSourceType;
 use warp_core::report_error;
-#[cfg(not(target_family = "wasm"))]
-use warpui::util::save_as_file;
 
 use async_channel::Sender;
 use base64::Engine;
@@ -3330,16 +3328,9 @@ impl ansi::Handler for TerminalModel {
                 pending.data = decoded_bytes;
 
                 if !pending.metadata.inline {
-                    #[cfg(not(target_family = "wasm"))]
-                    if let Some(cwd) = self
-                        .active_block_metadata()
-                        .current_working_directory()
-                        .map(|cwd| cwd.to_string())
-                    {
-                        let mut path = PathBuf::from(cwd);
-                        path.push(pending.metadata.name);
-                        let _ = save_as_file(&pending.data[..], path);
-                    }
+                    log::warn!(
+                        "Ignoring non-inline iTerm file payload; automatic local file writes are disabled."
+                    );
                     return;
                 }
 
