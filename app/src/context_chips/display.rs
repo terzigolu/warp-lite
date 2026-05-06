@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::ai::blocklist::agent_view::AgentViewController;
 use crate::ai::blocklist::{BlocklistAIHistoryEvent, BlocklistAIHistoryModel};
 use crate::ai::document::ai_document_model::{AIDocumentId, AIDocumentVersion};
-use crate::context_chips::display_chip::format_git_branch_command;
+use crate::context_chips::display_chip::PromptChipShellCommand;
 use crate::settings::InputSettings;
 use crate::terminal::model_events::ModelEventDispatcher;
 use crate::{
@@ -29,7 +29,6 @@ use super::{
     prompt_type::PromptType,
     ChipResult, ContextChipKind,
 };
-
 /// Enum introduced to abstract over the different row types we use for the prompt display,
 /// between the non-UDI and UDI cases.
 enum RowBuilder {
@@ -91,7 +90,7 @@ pub enum PromptDisplayEvent {
     OpenConversationHistory,
     OpenCommandPaletteFiles,
     RunAgentQuery(String),
-    TryExecuteCommand(String),
+    TryExecuteCommand(PromptChipShellCommand),
     OpenAIDocument {
         document_id: AIDocumentId,
         document_version: AIDocumentVersion,
@@ -375,7 +374,9 @@ impl TypedActionView for PromptDisplay {
         match action {
             PromptDisplayAction::SelectGitBranch { value } => {
                 ctx.emit(PromptDisplayEvent::TryExecuteCommand(
-                    format_git_branch_command(value),
+                    PromptChipShellCommand::GitCheckout {
+                        branch_name: value.clone(),
+                    },
                 ));
             }
         }
