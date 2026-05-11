@@ -145,11 +145,28 @@ pub fn remote_server_binary() -> String {
     format!("{}/{}", remote_server_dir(), binary_name())
 }
 
-/// Returns the shell command to check if the remote server binary exists and
-/// is executable.
+/// Returns the shell command to verify the remote server binary is
+/// installed and functional by running it with `--version`.
+///
+/// Exits 0 when the binary is present, executable, and can parse its
+/// own arguments. A missing binary produces exit 127 (command not
+/// found) or 126 (not executable), and a corrupted binary will fail
+/// with a non-zero exit of its own.
 pub fn binary_check_command() -> String {
-    let bin = remote_server_binary();
-    format!("test -x {bin}")
+    format!("{} --version", remote_server_binary())
+}
+
+/// Returns the version string used to pin remote-server installs on
+/// channels that take the versioned path (i.e. everything except
+/// [`Channel::Local`] and [`Channel::Oss`]). Prefers the baked-in
+/// `GIT_RELEASE_TAG` from [`ChannelState::app_version`]; falls back to
+/// `CARGO_PKG_VERSION` so the path / install URL is deterministic even on
+/// dev `cargo run` builds without a release tag. The `CARGO_PKG_VERSION`
+/// fallback is not expected to map to a real `/download/cli` artifact —
+/// it exists to produce a clean install-time failure rather than silently
+/// fall through to the unversioned (Local/Oss-only) path.
+fn pinned_version() -> &'static str {
+    ChannelState::app_version().unwrap_or(env!("CARGO_PKG_VERSION"))
 }
 
 /// The install script template, loaded from a standalone `.sh` file for

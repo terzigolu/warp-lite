@@ -64,7 +64,10 @@ impl RemoteTransport for SshTransport {
             {
                 Ok(output) => match output.status.code() {
                     Some(0) => Ok(true),
-                    Some(1) => Ok(false),
+                    // `<binary> --version` exits 127 when not found and 126
+                    // when present but not executable; both mean the binary
+                    // needs to be (re)installed.
+                    Some(126) | Some(127) => Ok(false),
                     Some(code) => {
                         let stderr = String::from_utf8_lossy(&output.stderr);
                         Err(format!("binary check exited with code {code}: {stderr}"))
@@ -80,12 +83,32 @@ impl RemoteTransport for SshTransport {
         let socket_path = self.socket_path.clone();
         Box::pin(async move {
             let script = setup::install_script();
-            log::info!(
-                "Installing remote server binary to {}",
-                setup::remote_server_binary()
-            );
+            let binary_path = setup::remote_server_binary();
+            log::info!("Installing remote server binary to {binary_path}");
             match run_ssh_script(&socket_path, &script, INSTALL_TIMEOUT).await {
-                Ok(output) if output.status.success() => Ok(()),
+                Ok(output) if output.status.success() => {
+                    // Post-install verification: confirm the binary actually
+                    // landed at the expected path and is functional. This
+                    // catches silent install failures (e.g. tilde-expansion
+                    // bugs) that would otherwise surface as a cryptic
+                    // "Response channel closed" error during the IPC handshake.
+                    log::info!("Running post-install verification for {binary_path}");
+                    match run_ssh_command(&socket_path, &setup::binary_check_command(), CHECK_TIMEOUT)
+                        .await
+                    {
+                        Ok(output) if output.status.success() => Ok(()),
+                        Ok(output) => {
+                            let code = output.status.code().unwrap_or(-1);
+                            let stderr =
+                                String::from_utf8_lossy(&output.stderr).trim().to_string();
+                            Err(format!(
+                                "Post-install verification failed: binary not found or not \
+                                 executable at {binary_path} (exit {code}): {stderr}"
+                            ))
+                        }
+                        Err(e) => Err(format!("Post-install verification failed: {e:#}")),
+                    }
+                }
                 Ok(output) => {
                     let code = output.status.code().unwrap_or(-1);
                     let stderr = String::from_utf8_lossy(&output.stderr);
