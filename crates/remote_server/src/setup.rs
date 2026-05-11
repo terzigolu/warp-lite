@@ -204,7 +204,7 @@ fn download_channel() -> &'static str {
 pub const CHECK_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Timeout for the install script.
-pub const INSTALL_TIMEOUT: Duration = Duration::from_secs(60);
+pub const INSTALL_TIMEOUT: Duration = Duration::from_secs(180);
 
 #[cfg(test)]
 #[path = "setup_tests.rs"]
