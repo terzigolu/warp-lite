@@ -25,6 +25,11 @@ const MAX_RECONNECT_ATTEMPTS: u32 = 2;
 /// Delay between reconnection attempts.
 #[cfg(not(target_family = "wasm"))]
 const RECONNECT_DELAY: Duration = Duration::from_secs(2);
+/// Brief timeout for awaiting a child process's exit status after a
+/// connection failure. Gives the SSH subprocess time to report its exit
+/// code and signal status before we give up and report `None`.
+#[cfg(not(target_family = "wasm"))]
+const EXIT_STATUS_WAIT_TIMEOUT: Duration = Duration::from_millis(200);
 
 /// Parameters that travel together through the reconnection flow.
 #[cfg(not(target_family = "wasm"))]
@@ -168,6 +173,12 @@ pub enum RemoteSessionState {
         host_id: HostId,
         control_path: Option<PathBuf>,
     },
+    /// The connection failed and the background task is briefly awaiting
+    /// the child process's exit status before emitting the failure event.
+    /// Preserves the `control_path` so `deregister_session` can still
+    /// call `stop_control_master` if the user exits during this window.
+    #[cfg(not(target_family = "wasm"))]
+    AwaitingExitStatus { control_path: Option<PathBuf> },
     /// Connection dropped (EOF/error from the reader task).
     Disconnected,
 }
@@ -535,6 +546,53 @@ impl RemoteServerManager {
                             log::error!("Connection failed for session {session_id:?}: {e}");
                             let phase = e.phase();
                             let error = format!("{e}");
+
+                            // Extract the child process from the Initializing
+                            // session state so we can asynchronously await its
+                            // exit status on this background thread. Transition
+                            // to Disconnected while we wait so the session slot
+                            // is not empty (an empty slot would be misread as
+                            // "user deregistered" by the is_cancelled check).
+                            let maybe_child = spawner
+                                .spawn(move |me, _ctx| {
+                                    match me.sessions.remove(&session_id) {
+                                        Some(RemoteSessionState::Initializing {
+                                            _child,
+                                            control_path,
+                                            ..
+                                        }) => {
+                                            me.sessions.insert(
+                                                session_id,
+                                                RemoteSessionState::AwaitingExitStatus {
+                                                    control_path,
+                                                },
+                                            );
+                                            Some(_child)
+                                        }
+                                        other => {
+                                            // Put back whatever was there
+                                            // (including None for deregistered).
+                                            if let Some(state) = other {
+                                                me.sessions.insert(session_id, state);
+                                            }
+                                            None
+                                        }
+                                    }
+                                })
+                                .await
+                                .ok()
+                                .flatten();
+
+                            // Wait for the subprocess to actually exit (with a
+                            // short timeout) before emitting the failure event,
+                            // so teardown happens after the child is gone. The
+                            // captured status itself is not surfaced in
+                            // warp-lite's connection-failed event.
+                            let _exit_status = match maybe_child {
+                                Some(child) => Self::await_exit_status(child, session_id).await,
+                                None => None,
+                            };
+
                             let _ = spawner
                                 .spawn(move |me, ctx| {
                                     ctx.emit(RemoteServerManagerEvent::SetupStateChanged {
@@ -688,7 +746,10 @@ impl RemoteServerManager {
         #[cfg(not(target_family = "wasm"))]
         let control_path = match &prev {
             Some(RemoteSessionState::Connected { control_path, .. })
-            | Some(RemoteSessionState::Initializing { control_path, .. }) => control_path.clone(),
+            | Some(RemoteSessionState::Initializing { control_path, .. })
+            | Some(RemoteSessionState::AwaitingExitStatus { control_path, .. }) => {
+                control_path.clone()
+            }
             Some(RemoteSessionState::Reconnecting { control_path, .. }) => control_path.clone(),
             _ => None,
         };
@@ -746,6 +807,8 @@ impl RemoteServerManager {
     pub fn is_session_potentially_active(&self, session_id: SessionId) -> bool {
         match self.sessions.get(&session_id) {
             Some(RemoteSessionState::Disconnected) | None => false,
+            #[cfg(not(target_family = "wasm"))]
+            Some(RemoteSessionState::AwaitingExitStatus { .. }) => false,
             Some(
                 RemoteSessionState::Connecting
                 | RemoteSessionState::Initializing { .. }
@@ -1072,6 +1135,56 @@ impl RemoteServerManager {
         }
     }
 
+    /// Asynchronously awaits the exit status of a `Child` process with a
+    /// short timeout.
+    ///
+    /// Unlike [`capture_exit_status`] which uses the non-blocking
+    /// `try_status()`, this method waits for the process to exit, giving
+    /// the SSH subprocess a window to report its exit code and signal
+    /// status. This is important for connection failures like
+    /// `ResponseChannelClosed` where the pipe breaks before the
+    /// subprocess has fully exited, causing `try_status()` to return
+    /// `None` due to the timing race.
+    #[cfg(not(target_family = "wasm"))]
+    async fn await_exit_status(
+        mut child: async_process::Child,
+        session_id: SessionId,
+    ) -> Option<RemoteServerExitStatus> {
+        match child.status().with_timeout(EXIT_STATUS_WAIT_TIMEOUT).await {
+            Ok(Ok(status)) => {
+                let code = status.code();
+                #[cfg(unix)]
+                let signal_killed = {
+                    use std::os::unix::process::ExitStatusExt;
+                    status.signal().is_some()
+                };
+                #[cfg(not(unix))]
+                let signal_killed = false;
+                log::info!(
+                    "Remote server process exited (async): session={session_id:?} \
+                     code={code:?} signal_killed={signal_killed}"
+                );
+                Some(RemoteServerExitStatus {
+                    code,
+                    signal_killed,
+                })
+            }
+            Ok(Err(e)) => {
+                log::warn!(
+                    "Remote server exit status read failed: session={session_id:?} error={e}"
+                );
+                None
+            }
+            Err(_) => {
+                log::warn!(
+                    "Remote server process did not exit within \
+                     {EXIT_STATUS_WAIT_TIMEOUT:?}: session={session_id:?}"
+                );
+                None
+            }
+        }
+    }
+
     #[cfg(not(target_family = "wasm"))]
     pub(crate) fn mark_session_disconnected(
         &mut self,
@@ -1141,8 +1254,9 @@ impl RemoteServerManager {
                 ctx,
             );
         } else {
-            // Non-Connected states (Initializing, Connecting, etc.) —
-            // no reconnect, just mark disconnected.
+            // Non-Connected states (Initializing, Connecting,
+            // AwaitingExitStatus, etc.) — no reconnect, just mark
+            // disconnected.
             self.sessions
                 .insert(session_id, RemoteSessionState::Disconnected);
         }
