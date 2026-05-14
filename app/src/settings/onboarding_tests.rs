@@ -1,5 +1,6 @@
 use ai::LLMId;
 use chrono::{DateTime, Utc};
+use onboarding::llm_id::LLMId as OnboardingLLMId;
 use onboarding::slides::{AgentAutonomy, AgentDevelopmentSettings, ProjectOnboardingSettings};
 use onboarding::SelectedSettings;
 use warpui::{App, SingletonEntity};
@@ -115,7 +116,7 @@ fn apply_onboarding_settings_preserves_existing_cloud_profile_on_existing_user_l
         // map to every `ActionPermission` being `AlwaysAsk`.
         let onboarding_settings = SelectedSettings::AgentDrivenDevelopment {
             agent_settings: AgentDevelopmentSettings {
-                selected_model_id: LLMId::from("onboarding-chosen-model"),
+                selected_model_id: OnboardingLLMId::from("onboarding-chosen-model"),
                 autonomy: Some(AgentAutonomy::None),
                 cli_agent_toolbar_enabled: true,
                 session_default: onboarding::SessionDefault::Agent,

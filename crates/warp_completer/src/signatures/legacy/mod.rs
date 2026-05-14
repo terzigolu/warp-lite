@@ -66,6 +66,9 @@ impl CommandRegistry {
                 crate::signatures::clap::signature_from_clap_command(&mut clap_cmd, bin_name);
             registry.register_signature(signature);
         }
+
+        #[cfg(target_os = "macos")]
+        registry.register_signature(macos_trash_signature());
     }
 
     /// Returns an empty [`CommandRegistry`] that contains no signatures nor
@@ -90,6 +93,35 @@ impl CommandRegistry {
             .into_iter()
             .for_each(|signature| registry.register_signature(signature));
         registry
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn macos_trash_signature() -> warp_command_signatures::Signature {
+    use warp_command_signatures::{
+        Argument, ArgumentType, IsArgumentOptional, Priority, Signature, Template, TemplateType,
+    };
+
+    Signature {
+        name: "trash".to_string(),
+        alias_generator: None,
+        description: Some("Move files and folders to the trash".to_string()),
+        arguments: Some(vec![Argument {
+            display_name: Some("paths".to_string()),
+            description: None,
+            is_variadic: true,
+            is_command: false,
+            argument_types: vec![ArgumentType::Template(Template {
+                type_name: TemplateType::FilesAndFolders,
+                filter_name: None,
+            })],
+            optional: IsArgumentOptional::Required,
+            skip_generator_validation: false,
+        }]),
+        subcommands: None,
+        options: None,
+        priority: Priority::default(),
+        parser_directives: Default::default(),
     }
 }
 

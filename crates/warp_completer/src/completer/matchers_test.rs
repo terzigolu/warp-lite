@@ -92,3 +92,19 @@ fn test_get_match_type_fuzzy() {
     ));
     assert_eq!(matcher.get_match_type("abc", "xyz"), None);
 }
+
+#[test]
+fn test_prefix_remainder() {
+    assert_eq!(
+        MatchStrategy::CaseSensitive.prefix_remainder("cd Warp-", "cd warp-lite/"),
+        None
+    );
+    assert_eq!(
+        MatchStrategy::CaseInsensitive.prefix_remainder("cd Warp-", "cd warp-lite/"),
+        Some("lite/")
+    );
+    assert_eq!(
+        MatchStrategy::Fuzzy.prefix_remainder("wl", "warp-lite"),
+        None
+    );
+}

@@ -18,7 +18,6 @@ pub use {
     },
 };
 
-use warp_core::{safe_error};
 use self::model::{LocalSelections, Selection, UpdateBufferOption};
 use super::soft_wrap::{ClampDirection, DisplayPointAndClampDirection};
 use super::Point;
@@ -39,6 +38,8 @@ use pathfinder_color::ColorU;
 use settings::Setting as _;
 use snapshot::{EditorHeightShrinkDelay, ViewSnapshot};
 use vec1::{vec1, Vec1};
+use warp_completer::completer::MatchStrategy;
+use warp_core::safe_error;
 use warp_util::{path::ShellFamily, user_input::UserInput};
 use warpui::platform::keyboard::KeyCode;
 use warpui::ui_components::button::ButtonTooltipPosition;
@@ -3470,7 +3471,10 @@ impl EditorView {
             if !is_ignored {
                 // If input type is shell, populate with suggested shell command.
                 // The suggestion must contain the current buffer text as a prefix.
-                let Some(autosuggestion) = command.strip_prefix(self.buffer_text(ctx).as_str())
+                let match_strategy =
+                    InputSettings::as_ref(ctx).prefix_completion_match_strategy(self.shell_family);
+                let Some(autosuggestion) =
+                    match_strategy.prefix_remainder(self.buffer_text(ctx).as_str(), &command)
                 else {
                     return;
                 };
@@ -7558,23 +7562,18 @@ impl EditorView {
                 // Update the current autosuggestion text if any of text added to the buffer is a
                 // prefix of the autosuggestion.
                 let mut new_autosuggestion_text = None;
-                // For PowerShell, the prefix may be case-insensitive since PowerShell
-                // values/commands are case-insensitive.
-                if self.shell_family == Some(ShellFamily::PowerShell)
-                    && autosuggestion_state
-                        .original_autosuggestion_text
-                        .to_lowercase()
-                        .starts_with(&added_buffer_text.to_lowercase())
-                {
-                    let suffix = &autosuggestion_state.original_autosuggestion_text
-                        [added_buffer_text.len()..];
-                    new_autosuggestion_text = Some(suffix.to_owned());
-                }
-                // For other shells, do case-sensitive prefix match.
-                else if let Some(suffix) = autosuggestion_state
-                    .original_autosuggestion_text
-                    .strip_prefix(added_buffer_text)
-                {
+                let match_strategy =
+                    if *InputSettings::as_ref(ctx).case_insensitive_completions {
+                        MatchStrategy::CaseInsensitive
+                    } else if self.shell_family == Some(ShellFamily::PowerShell) {
+                        MatchStrategy::CaseInsensitive
+                    } else {
+                        MatchStrategy::CaseSensitive
+                    };
+                if let Some(suffix) = match_strategy.prefix_remainder(
+                    added_buffer_text,
+                    autosuggestion_state.original_autosuggestion_text.as_str(),
+                ) {
                     new_autosuggestion_text = Some(suffix.to_owned());
                 }
 

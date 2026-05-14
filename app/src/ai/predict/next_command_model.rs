@@ -3,7 +3,7 @@ use crate::ai_assistant::execution_context::WarpAiExecutionContext;
 use crate::completer::SessionContext;
 use crate::report_error;
 use crate::server::server_api::{AIApiError, ServerApi};
-use crate::settings::AISettings;
+use crate::settings::{AISettings, InputSettings};
 use crate::terminal::event::UserBlockCompleted;
 use crate::terminal::input::{CompleterData, IntelligentAutosuggestionResult};
 use crate::terminal::model::session::Sessions;
@@ -19,7 +19,7 @@ use std::sync::Arc;
 #[cfg(feature = "local_fs")]
 use std::time::Duration;
 use warp_completer::completer::{
-    self, expand_command_aliases, AliasExpansionResult, CompleterOptions,
+    self, expand_command_aliases, AliasExpansionResult, CompleterOptions, CompletionContext,
     CompletionsFallbackStrategy, MatchStrategy,
 };
 use warp_completer::meta::Spanned;
@@ -310,6 +310,7 @@ impl NextCommandModel {
     /// If no such command exists, returns the most recent command anywhere with a matching prefix.
     pub fn get_reverse_chronological_potential_autosuggestions(
         prefix: &str,
+        match_strategy: MatchStrategy,
         completer_data: &CompleterData,
         app: &AppContext,
     ) -> Option<Vec<HistoryEntry>> {
@@ -322,6 +323,7 @@ impl NextCommandModel {
         Some(find_potential_autosuggestions_from_history(
             history_entries.into_iter(),
             prefix,
+            match_strategy,
             working_dir,
         ))
     }
@@ -344,9 +346,19 @@ impl NextCommandModel {
         let cached_next_command_context = self.cached_zerostate_next_command_context.clone();
 
         let completion_context = completer_data.completion_session_context(ctx);
+        let match_strategy = InputSettings::as_ref(ctx).prefix_completion_match_strategy(
+            completion_context
+                .as_ref()
+                .and_then(|completion_context| completion_context.shell_family()),
+        );
         // This is only needed if we have a prefix.
         let reverse_chronological_potential_autosuggestions = if let Some(prefix) = &prefix {
-            Self::get_reverse_chronological_potential_autosuggestions(prefix, &completer_data, ctx)
+            Self::get_reverse_chronological_potential_autosuggestions(
+                prefix,
+                match_strategy,
+                &completer_data,
+                ctx,
+            )
         } else {
             None
         };
@@ -386,7 +398,14 @@ impl NextCommandModel {
                         next_command_context.history_contexts = next_command_context
                             .history_contexts
                             .into_iter()
-                            .filter(|context| context.next_command.command.starts_with(prefix))
+                            .filter(|context| {
+                                match_strategy
+                                    .prefix_remainder(
+                                        prefix.as_str(),
+                                        context.next_command.command.as_str(),
+                                    )
+                                    .is_some()
+                            })
                             .collect_vec();
                     }
                     // First, use rich history to find commands with a matching prefix that were run
@@ -448,6 +467,7 @@ impl NextCommandModel {
                                     start_ts_ms,
                                     history_based_autosuggestion_state,
                                     false,
+                                    match_strategy,
                                     next_command_context,
                                 );
                             }
@@ -469,6 +489,7 @@ impl NextCommandModel {
                             start_ts_ms,
                             history_based_autosuggestion_state,
                             false,
+                            match_strategy,
                             next_command_context,
                         );
                     };
@@ -486,9 +507,10 @@ impl NextCommandModel {
                             }),
                             request,
                             false,
-                            start_ts_ms,
+                                start_ts_ms,
                                 history_based_autosuggestion_state,
                                 false,
+                                match_strategy,
                                 next_command_context,
                             );
                         }
@@ -501,7 +523,7 @@ impl NextCommandModel {
                             prefix.len(),
                             session_env_vars.as_ref(),
                             CompleterOptions {
-                                match_strategy: MatchStrategy::CaseSensitive,
+                                match_strategy,
                                 fallback_strategy: CompletionsFallbackStrategy::None,
                                 suggest_file_path_completions_only: false,
                                 parse_quotes_as_literals: false,
@@ -537,6 +559,7 @@ impl NextCommandModel {
                                     start_ts_ms,
                                     history_based_autosuggestion_state,
                                     false,
+                                    match_strategy,
                                     next_command_context,
                                 );
                             }
@@ -552,6 +575,7 @@ impl NextCommandModel {
                         start_ts_ms,
                         history_based_autosuggestion_state,
                         false,
+                        match_strategy,
                         next_command_context,
                     )
                 },
@@ -570,6 +594,7 @@ impl NextCommandModel {
             i64,
             HistoryBasedAutosuggestionState,
             bool,
+            MatchStrategy,
             NextCommandContext,
         ),
         ctx: &mut ModelContext<Self>,
@@ -582,6 +607,7 @@ impl NextCommandModel {
             start_ts_ms,
             history_based_autosuggestion_state,
             is_from_cycle,
+            match_strategy,
             next_command_context,
         ) = result;
         let end_ts_ms = Utc::now().timestamp_millis();
@@ -592,7 +618,10 @@ impl NextCommandModel {
         match result {
             Ok(response) => {
                 if let Some(prefix) = &request.prefix {
-                    if !response.most_likely_action.starts_with(prefix) {
+                    if match_strategy
+                        .prefix_remainder(prefix.as_str(), response.most_likely_action.as_str())
+                        .is_none()
+                    {
                         // This is not expected to happen because the server applies its own filtering,
                         // but check just in case.
                         log::warn!(
@@ -803,12 +832,16 @@ pub async fn is_command_valid(
 fn find_potential_autosuggestions_from_history<'a>(
     history_entries: impl DoubleEndedIterator<Item = &'a HistoryEntry>,
     buffer_text: &str,
+    match_strategy: MatchStrategy,
     working_dir: Option<&str>,
 ) -> Vec<HistoryEntry> {
     let mut commands_in_same_dir = vec![];
     let mut commands_in_other_dirs = vec![];
     for entry in history_entries.rev() {
-        if !entry.command.starts_with(buffer_text) {
+        if match_strategy
+            .prefix_remainder(buffer_text, entry.command.as_str())
+            .is_none()
+        {
             continue;
         }
         let same_dir = entry

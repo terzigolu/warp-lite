@@ -46,10 +46,11 @@ use crate::settings::{
 };
 use crate::settings::{
     AliasExpansionEnabled, AliasExpansionSettings, AppEditorSettings, AtContextMenuInTerminalMode,
-    AutocompleteSymbols, AutosuggestionKeybindingHint, ChangelogSettings, CloudPreferencesSettings,
-    CodeSettings, CommandCorrections, CompletionsOpenWhileTyping, CopyOnSelect, CtrlTabBehavior,
-    DefaultSessionMode, EnableSlashCommandsInTerminal, EnableSshWrapper, ErrorUnderliningEnabled,
-    ExtraMetaKeys, GPUSettings, GlobalHotkeyMode, InputSettings, InputSettingsChangedEvent,
+    AutocompleteSymbols, AutosuggestionKeybindingHint, CaseInsensitiveCompletions,
+    ChangelogSettings, CloudPreferencesSettings, CodeSettings, CommandCorrections,
+    CompletionsOpenWhileTyping, CopyOnSelect, CtrlTabBehavior, DefaultSessionMode,
+    EnableSlashCommandsInTerminal, EnableSshWrapper, ErrorUnderliningEnabled, ExtraMetaKeys,
+    GPUSettings, GlobalHotkeyMode, InputSettings, InputSettingsChangedEvent,
     LinuxSelectionClipboard, MiddleClickPasteEnabled, MouseScrollMultiplier,
     OutlineCodebaseSymbolsForAtContextMenu, PreferLowPowerGPU, PreferredGraphicsBackend,
     QuakeModeSettings, ScrollSettings, SelectionSettings, ShowAutosuggestionIgnoreButton,
@@ -571,6 +572,7 @@ pub enum FeaturesPageAction {
     ToggleSnackbar,
     ToggleLinkTooltip,
     ToggleCompletionsOpenWhileTyping,
+    ToggleCaseInsensitiveCompletions,
     ToggleCommandCorrections,
     ToggleErrorUnderlining,
     ToggleSyntaxHighlighting,
@@ -770,6 +772,10 @@ impl FeaturesPageAction {
             Self::ToggleCompletionsOpenWhileTyping => TelemetryEvent::FeaturesPageAction {
                 action: "ToggleCompletionsOpenWhileTyping".to_string(),
                 value: to_string(*input_settings.completions_open_while_typing.value()),
+            },
+            Self::ToggleCaseInsensitiveCompletions => TelemetryEvent::FeaturesPageAction {
+                action: "ToggleCaseInsensitiveCompletions".to_string(),
+                value: to_string(*input_settings.case_insensitive_completions.value()),
             },
             Self::ToggleCommandCorrections => TelemetryEvent::FeaturesPageAction {
                 action: "ToggleCommandCorrections".to_string(),
@@ -1620,6 +1626,13 @@ impl TypedActionView for FeaturesPageView {
                 InputSettings::handle(ctx).update(ctx, |input_settings, ctx| {
                     report_if_error!(input_settings
                         .completions_open_while_typing
+                        .toggle_and_save_value(ctx));
+                });
+            }
+            ToggleCaseInsensitiveCompletions => {
+                InputSettings::handle(ctx).update(ctx, |input_settings, ctx| {
+                    report_if_error!(input_settings
+                        .case_insensitive_completions
                         .toggle_and_save_value(ctx));
                 });
             }
@@ -2615,6 +2628,12 @@ impl FeaturesPageView {
             .is_supported_on_current_platform()
         {
             editor_widgets.push(Box::new(CompletionsMenuWhileTypingWidget::default()));
+        }
+        if input_settings
+            .case_insensitive_completions
+            .is_supported_on_current_platform()
+        {
+            editor_widgets.push(Box::new(CaseInsensitiveCompletionsWidget::default()));
         }
         if input_settings
             .command_corrections
@@ -5658,6 +5677,56 @@ impl SettingsWidget for CompletionsMenuWhileTypingWidget {
                 .build()
                 .on_click(move |ctx, _, _| {
                     ctx.dispatch_typed_action(FeaturesPageAction::ToggleCompletionsOpenWhileTyping);
+                })
+                .finish(),
+            None,
+        )
+    }
+}
+
+#[derive(Default)]
+struct CaseInsensitiveCompletionsWidget {
+    switch_state: SwitchStateHandle,
+}
+
+impl SettingsWidget for CaseInsensitiveCompletionsWidget {
+    type View = FeaturesPageView;
+
+    fn search_terms(&self) -> &str {
+        "case insensitive completions autosuggestions"
+    }
+
+    fn render(
+        &self,
+        view: &Self::View,
+        appearance: &Appearance,
+        app: &AppContext,
+    ) -> Box<dyn Element> {
+        let ui_builder = appearance.ui_builder();
+        render_body_item::<FeaturesPageAction>(
+            "Case-insensitive completions and autosuggestions".into(),
+            None,
+            LocalOnlyIconState::for_setting(
+                CaseInsensitiveCompletions::storage_key(),
+                CaseInsensitiveCompletions::sync_to_cloud(),
+                &mut view
+                    .button_mouse_states
+                    .local_only_icon_tooltip_states
+                    .borrow_mut(),
+                app,
+            ),
+            ToggleState::Enabled,
+            appearance,
+            ui_builder
+                .switch(self.switch_state.clone())
+                .check(
+                    *InputSettings::as_ref(app)
+                        .case_insensitive_completions
+                        .value(),
+                )
+                .build()
+                .on_click(move |ctx, _, _| {
+                    ctx.dispatch_typed_action(FeaturesPageAction::ToggleCaseInsensitiveCompletions);
                 })
                 .finish(),
             None,

@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 /// TODO: move alias_expansion setting into this group.
 use settings::{define_settings_group, RespectUserSyncSetting, SupportedPlatforms, SyncToCloud};
 use std::collections::HashMap;
+use warp_completer::completer::MatchStrategy;
+use warp_util::path::ShellFamily;
 use warpui::{AppContext, SingletonEntity};
 
 use crate::terminal::input::inline_menu::InlineMenuType;
@@ -60,6 +62,15 @@ define_settings_group!(InputSettings,
             private: false,
             toml_path: "terminal.input.completions_open_while_typing",
             description: "Whether the completions menu opens automatically while typing.",
+        },
+        case_insensitive_completions: CaseInsensitiveCompletions {
+            type: bool,
+            default: true,
+            supported_platforms: SupportedPlatforms::ALL,
+            sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
+            private: false,
+            toml_path: "terminal.input.case_insensitive_completions",
+            description: "Whether Warp-owned completions and autosuggestions match prefixes case-insensitively.",
         },
         error_underlining: ErrorUnderliningEnabled {
             type: bool,
@@ -229,5 +240,16 @@ impl InputSettings {
 
     pub fn is_terminal_input_message_bar_enabled(&self) -> bool {
         *self.show_terminal_input_message_bar
+    }
+
+    pub fn prefix_completion_match_strategy(
+        &self,
+        shell_family: Option<ShellFamily>,
+    ) -> MatchStrategy {
+        if shell_family == Some(ShellFamily::PowerShell) || *self.case_insensitive_completions {
+            MatchStrategy::CaseInsensitive
+        } else {
+            MatchStrategy::CaseSensitive
+        }
     }
 }
