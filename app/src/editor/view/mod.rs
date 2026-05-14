@@ -38,7 +38,6 @@ use pathfinder_color::ColorU;
 use settings::Setting as _;
 use snapshot::{EditorHeightShrinkDelay, ViewSnapshot};
 use vec1::{vec1, Vec1};
-use warp_completer::completer::MatchStrategy;
 use warp_core::safe_error;
 use warp_util::{path::ShellFamily, user_input::UserInput};
 use warpui::platform::keyboard::KeyCode;
@@ -7563,13 +7562,7 @@ impl EditorView {
                 // prefix of the autosuggestion.
                 let mut new_autosuggestion_text = None;
                 let match_strategy =
-                    if *InputSettings::as_ref(ctx).case_insensitive_completions {
-                        MatchStrategy::CaseInsensitive
-                    } else if self.shell_family == Some(ShellFamily::PowerShell) {
-                        MatchStrategy::CaseInsensitive
-                    } else {
-                        MatchStrategy::CaseSensitive
-                    };
+                    InputSettings::as_ref(ctx).prefix_completion_match_strategy(self.shell_family);
                 if let Some(suffix) = match_strategy.prefix_remainder(
                     added_buffer_text,
                     autosuggestion_state.original_autosuggestion_text.as_str(),
