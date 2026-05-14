@@ -252,10 +252,7 @@ use crate::drive::{
     CloudObjectTypeAndId, DriveObjectType, DrivePanel, DrivePanelEvent, OpenWarpDriveObjectSettings,
 };
 use crate::experiments::{BlockOnboarding, Experiment};
-use crate::menu::{
-    Event as MenuEvent, Menu, MenuItem, MenuItemFields, MenuSelectionSource,
-    DEFAULT_WIDTH as MENU_DEFAULT_WIDTH,
-};
+use crate::menu::{Event as MenuEvent, Menu, MenuItem, MenuItemFields, MenuSelectionSource};
 use crate::modal::{Modal, ModalEvent, ModalViewState};
 use crate::network::{NetworkStatus, NetworkStatusEvent};
 use crate::notebooks::manager::{NotebookManager, NotebookSource};
@@ -6259,18 +6256,13 @@ impl Workspace {
     fn open_tab_configs_menu(
         &mut self,
         position: Vector2F,
-        is_vertical_tabs: bool,
         open_source: TabConfigsMenuOpenSource,
         ctx: &mut ViewContext<Self>,
     ) {
         let menu_items = self.unified_new_session_menu_items(ctx);
         ctx.update_view(&self.new_session_dropdown_menu, |context_menu, view_ctx| {
-            if is_vertical_tabs {
-                // Match the Figma mock width (OptionMenuItem component is 268px).
-                context_menu.set_width(268.);
-            } else {
-                context_menu.set_width(MENU_DEFAULT_WIDTH);
-            }
+            // Match the Figma mock width (OptionMenuItem component is 268px).
+            context_menu.set_width(268.);
             context_menu.set_items(menu_items, view_ctx);
             match open_source {
                 TabConfigsMenuOpenSource::KeyboardShortcut => {
@@ -6291,7 +6283,7 @@ impl Workspace {
         position: Vector2F,
         ctx: &mut ViewContext<Self>,
     ) {
-        self.open_tab_configs_menu(position, false, TabConfigsMenuOpenSource::Pointer, ctx);
+        self.open_tab_configs_menu(position, TabConfigsMenuOpenSource::Pointer, ctx);
     }
 
     fn toggle_tab_configs_menu(&mut self, ctx: &mut ViewContext<Self>) {
@@ -6309,7 +6301,6 @@ impl Workspace {
             }
             self.open_tab_configs_menu(
                 Vector2F::zero(),
-                true,
                 TabConfigsMenuOpenSource::KeyboardShortcut,
                 ctx,
             );
@@ -6320,18 +6311,12 @@ impl Workspace {
             .element_position_by_id_at_last_frame(self.window_id, NEW_TAB_BUTTON_POSITION_ID)
             .map(|position| position.lower_left())
             .unwrap_or_else(Vector2F::zero);
-        self.open_tab_configs_menu(
-            position,
-            false,
-            TabConfigsMenuOpenSource::KeyboardShortcut,
-            ctx,
-        );
+        self.open_tab_configs_menu(position, TabConfigsMenuOpenSource::KeyboardShortcut, ctx);
     }
 
     pub fn toggle_new_session_dropdown_menu(
         &mut self,
         position: Vector2F,
-        is_vertical_tabs: bool,
         ctx: &mut ViewContext<Self>,
     ) {
         if self.show_new_session_dropdown_menu.is_some() {
@@ -6339,12 +6324,7 @@ impl Workspace {
             return;
         }
 
-        self.open_tab_configs_menu(
-            position,
-            is_vertical_tabs,
-            TabConfigsMenuOpenSource::Pointer,
-            ctx,
-        );
+        self.open_tab_configs_menu(position, TabConfigsMenuOpenSource::Pointer, ctx);
     }
 
     fn open_launch_config_from_menu(
@@ -17526,10 +17506,7 @@ impl Workspace {
                     false,
                 )
                 .on_right_click(move |ctx, _, position| {
-                    ctx.dispatch_typed_action(WorkspaceAction::ToggleNewSessionMenu {
-                        position,
-                        is_vertical_tabs: false,
-                    });
+                    ctx.dispatch_typed_action(WorkspaceAction::ToggleNewSessionMenu { position });
                 })
                 .finish();
             return Container::new(
@@ -17599,7 +17576,6 @@ impl Workspace {
                 {
                     ctx.dispatch_typed_action(WorkspaceAction::ToggleNewSessionMenu {
                         position: position.lower_left(),
-                        is_vertical_tabs: false,
                     });
                 }
             })
@@ -19750,10 +19726,9 @@ impl TypedActionView for Workspace {
             SaveCurrentTabAsNewConfig(tab_index) => {
                 self.save_current_tab_as_new_config(*tab_index, ctx)
             }
-            ToggleNewSessionMenu {
-                position,
-                is_vertical_tabs,
-            } => self.toggle_new_session_dropdown_menu(*position, *is_vertical_tabs, ctx),
+            ToggleNewSessionMenu { position } => {
+                self.toggle_new_session_dropdown_menu(*position, ctx)
+            }
             SelectNewSessionMenuItem(new_session_menu_item) => {
                 self.open_launch_config_from_menu(new_session_menu_item.clone(), ctx)
             }
