@@ -1441,6 +1441,92 @@ fn test_clear_buffer() {
 }
 
 #[test]
+fn test_context_menu_includes_clear_when_block_list_non_empty() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+
+        let terminal = add_window_with_terminal(&mut app, None);
+        terminal.update(&mut app, |view, ctx| {
+            {
+                let mut model = view.model.lock();
+                model.simulate_block("ls", "foo");
+                assert!(!model.is_block_list_empty());
+            }
+
+            let menu_source = BlockListMenuSource::OutsideBlockRightClick {
+                position_in_terminal_view: Vector2F::zero(),
+            };
+            let items = view.context_menu_items(&menu_source, ctx);
+            let labels: Vec<&str> = items
+                .iter()
+                .filter_map(|item| item.fields().map(|fields| fields.label()))
+                .collect();
+            assert!(
+                labels.contains(&"Clear Blocks"),
+                "Expected `Clear Blocks` menu item, got {labels:?}"
+            );
+        });
+    })
+}
+
+#[test]
+fn test_context_menu_omits_clear_when_block_list_empty() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+
+        let terminal = add_window_with_terminal(&mut app, None);
+        terminal.update(&mut app, |view, ctx| {
+            {
+                let model = view.model.lock();
+                assert!(model.is_block_list_empty());
+            }
+
+            let menu_source = BlockListMenuSource::OutsideBlockRightClick {
+                position_in_terminal_view: Vector2F::zero(),
+            };
+            let items = view.context_menu_items(&menu_source, ctx);
+            let labels: Vec<&str> = items
+                .iter()
+                .filter_map(|item| item.fields().map(|fields| fields.label()))
+                .collect();
+            assert!(
+                !labels.contains(&"Clear Blocks"),
+                "Did not expect `Clear Blocks` menu item when block list is empty, got {labels:?}"
+            );
+        });
+    })
+}
+
+#[test]
+fn test_context_menu_omits_clear_for_text_right_click() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+
+        let terminal = add_window_with_terminal(&mut app, None);
+        terminal.update(&mut app, |view, ctx| {
+            {
+                let mut model = view.model.lock();
+                model.simulate_block("ls", "foo");
+                assert!(!model.is_block_list_empty());
+            }
+
+            let menu_source = BlockListMenuSource::RegularTextRightClick {
+                position_in_terminal_view: Vector2F::zero(),
+            };
+            let items = view.context_menu_items(&menu_source, ctx);
+            let labels: Vec<&str> = items
+                .iter()
+                .filter_map(|item| item.fields().map(|fields| fields.label()))
+                .collect();
+            assert!(
+                !labels.contains(&"Clear Blocks"),
+                "Did not expect `Clear Blocks` in text-selection right-click menu, got {labels:?}"
+            );
+        });
+    })
+}
+
+#[test]
 fn test_clear_buffer_clears_autosuggestion() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
