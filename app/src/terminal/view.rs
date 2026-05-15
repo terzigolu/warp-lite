@@ -6383,21 +6383,26 @@ impl TerminalView {
         })
     }
 
+    /// Returns whether a specific session is local, treating shared-session
+    /// viewers and conversation transcript viewers as non-local even when
+    /// their session hasn't been joined yet.
+    pub fn session_is_local<C: ModelAsRef>(&self, session_id: SessionId, ctx: &C) -> bool {
+        let forced_non_local = {
+            let model = self.model.lock();
+            model.is_shared_session_viewer() || model.is_conversation_transcript_viewer()
+        };
+        !forced_non_local
+            && self
+                .sessions
+                .as_ref(ctx)
+                .get(session_id)
+                .is_some_and(|session| session.is_local())
+    }
+
     /// Returns whether or not the active session is a local session.  Returns
     /// None if there is no active session.
     pub fn active_session_is_local<C: ModelAsRef>(&self, ctx: &C) -> Option<bool> {
-        // Ensure shared session viewers and conversation transcript viewers are not
-        // considered local, even if the session hasn't been joined yet.
-        let model = self.model.lock();
-        if model.is_shared_session_viewer() || model.is_conversation_transcript_viewer() {
-            return Some(false);
-        }
-        drop(model);
-
-        self.active_block_session_id().and_then(|session_id| {
-            let current_session = self.sessions.as_ref(ctx).get(session_id)?;
-            Some(current_session.is_local())
-        })
+        Some(self.session_is_local(self.active_block_session_id()?, ctx))
     }
 
     /// Returns the active session's launch shell, if it is specified.
