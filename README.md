@@ -2,12 +2,12 @@
 
 Lightweight AGPL fork of [Warp Terminal](https://github.com/warpdotdev/warp), focused on a local-first terminal experience without Warp account login, bundled AI workflows, cloud onboarding, or telemetry as a product requirement.
 
-> Status: alpha, but usable on macOS. The latest shipped build is **v0.5.3-lite**. It builds, launches, and is published with downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
+> Status: alpha, but usable on macOS. The latest shipped build is **v0.5.4-lite**. It builds, launches, and is published with downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
 
 Latest release:
 
-- [v0.5.3-lite](https://github.com/terzigolu/warp-lite/releases/tag/v0.5.3-lite)
-- Tag: `v0.5.3-lite`
+- [v0.5.4-lite](https://github.com/terzigolu/warp-lite/releases/tag/v0.5.4-lite)
+- Tag: `v0.5.4-lite`
 - macOS artifacts: `WarpLite.dmg` (~124 MB), `WarpLite.app.zip` (~114 MB)
 
 See [`FORK_NOTICE.md`](FORK_NOTICE.md) for the relationship with upstream Warp.
@@ -39,11 +39,11 @@ The packaged app uses:
 
 - Bundle identifier: `dev.warp-lite.WarpLite`
 - App name: `WarpLite`
-- Current bundle version: `0.5.3-lite`
+- Current bundle version: `0.5.4-lite`
 
 ## Current Shipped State
 
-The current release is `v0.5.3-lite`.
+The current release is `v0.5.4-lite`.
 
 | Area | State | Notes |
 |---|---|---|
@@ -59,17 +59,23 @@ The current release is `v0.5.3-lite`.
 
 ## What Changed Recently
 
-### v0.5.2-lite
+### v0.5.4-lite
 
-- Restored `skip_firebase_anonymous_user` in default features.
-- Fixed the regression where the welcome/sign-up modal still appeared and "Skip for now" attempted Warp/Firebase auth.
-- Rebuilt and published fresh `WarpLite.dmg` and `WarpLite.app.zip` release assets.
+- Removed the normal prompt's unsupported AI toolbar in the lite build, including Agent/Auto mode switching, `auto (cost-efficient)`, slash AI commands, `@` AI context, and AI file attach controls.
+- Redirected hidden settings entry points such as Account, billing, teams, Warp Drive, and Warp Agent pages to the supported Appearance settings page.
+- Kept CLI agent rich-input infrastructure separate so Codex/Claude Code notification and context surfaces can continue to work where they are explicitly supported.
 
 ### v0.5.3-lite
 
 - Refreshed this README to match the real v0.5.2-lite state.
 - Hardened the no-login path so the compiled lite feature bypasses auth onboarding even if runtime flags drift.
 - Hid or no-op'd remaining visible sign-up, upgrade, referral, logout, and anonymous-user menu/actions in the lite build.
+
+### v0.5.2-lite
+
+- Restored `skip_firebase_anonymous_user` in default features.
+- Fixed the regression where the welcome/sign-up modal still appeared and "Skip for now" attempted Warp/Firebase auth.
+- Rebuilt and published fresh `WarpLite.dmg` and `WarpLite.app.zip` release assets.
 
 ### v0.5.1-lite
 
@@ -193,6 +199,7 @@ Historical phase branches and tags may still exist, but the public state should 
 
 | Tag | Summary |
 |---|---|
+| `v0.5.4-lite` | Removed unsupported prompt AI controls and redirected hidden settings pages away from Account/signup surfaces. |
 | `v0.5.3-lite` | README refresh, no-login hardening, and remaining visible account/upsell action cleanup. |
 | `v0.5.2-lite` | No-login hotfix; fresh DMG/app zip assets. |
 | `v0.5.1-lite` | Default feature diet and Context Panel removal from shipped app path. |

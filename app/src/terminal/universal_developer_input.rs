@@ -20,7 +20,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use warpui::{
     elements::{
-        ChildView, Clipped, Container, CornerRadius, CrossAxisAlignment, Fill, Flex,
+        ChildView, Clipped, Container, CornerRadius, CrossAxisAlignment, Empty, Fill, Flex,
         MainAxisAlignment, MainAxisSize, ParentElement, Radius, Rect, Shrinkable,
         SizeConstraintCondition, SizeConstraintSwitch,
     },
@@ -236,6 +236,10 @@ pub enum InputToggleMode {
     AutoDetection,
 }
 
+fn hide_warp_lite_unsupported_ai_controls() -> bool {
+    cfg!(feature = "skip_firebase_anonymous_user")
+}
+
 /// Custom disabled theme for UDI buttons that preserves background but changes font color
 struct UDIDisabledButtonTheme;
 
@@ -433,10 +437,21 @@ impl UniversalDeveloperInputButtonBar {
         let ai_settings = AISettings::as_ref(ctx);
         let is_autodetection_enabled = ai_settings.is_ai_autodetection_enabled(ctx);
 
-        let mut options = vec![InputToggleMode::Terminal, InputToggleMode::AgentMode];
+        let mut options = vec![InputToggleMode::Terminal];
+        if !hide_warp_lite_unsupported_ai_controls() {
+            options.push(InputToggleMode::AgentMode);
+        }
 
         let mut default_option = input_model.as_ref(ctx).into();
-        if is_autodetection_enabled {
+        if hide_warp_lite_unsupported_ai_controls()
+            && matches!(
+                default_option,
+                InputToggleMode::AgentMode | InputToggleMode::AutoDetection
+            )
+        {
+            default_option = InputToggleMode::Terminal;
+        }
+        if is_autodetection_enabled && !hide_warp_lite_unsupported_ai_controls() {
             options.push(InputToggleMode::AutoDetection);
         } else if default_option == InputToggleMode::AutoDetection {
             // Don't set the default to auto-detection if it's not enabled.
@@ -477,11 +492,17 @@ impl UniversalDeveloperInputButtonBar {
                     ));
                 }
                 InputToggleMode::AgentMode => {
+                    if hide_warp_lite_unsupported_ai_controls() {
+                        return;
+                    }
                     ctx.emit(UniversalDeveloperInputButtonBarEvent::InputTypeSelected(
                         InputType::AI,
                     ));
                 }
                 InputToggleMode::AutoDetection => {
+                    if hide_warp_lite_unsupported_ai_controls() {
+                        return;
+                    }
                     ctx.emit(UniversalDeveloperInputButtonBarEvent::EnableAutoDetection);
                 }
             },
@@ -501,7 +522,9 @@ impl UniversalDeveloperInputButtonBar {
                 let is_autodection_enabled =
                     ai_settings.as_ref(ctx).is_ai_autodetection_enabled(ctx);
                 me.segmented_control.update(ctx, |segmented_control, ctx| {
-                    if is_autodection_enabled {
+                    if hide_warp_lite_unsupported_ai_controls() {
+                        segmented_control.update_options(vec![InputToggleMode::Terminal], ctx);
+                    } else if is_autodection_enabled {
                         segmented_control.update_options(
                             vec![
                                 InputToggleMode::Terminal,
@@ -788,6 +811,10 @@ impl View for UniversalDeveloperInputButtonBar {
     }
 
     fn render(&self, app: &AppContext) -> Box<dyn warpui::Element> {
+        if hide_warp_lite_unsupported_ai_controls() {
+            return Empty::new().finish();
+        }
+
         let appearance = Appearance::as_ref(app);
         let theme = appearance.theme();
         #[cfg(feature = "voice_input")]
@@ -813,13 +840,16 @@ impl View for UniversalDeveloperInputButtonBar {
             let mut buttons = Flex::row()
                 .with_main_axis_size(MainAxisSize::Max)
                 .with_cross_axis_alignment(CrossAxisAlignment::Center)
-                .with_main_axis_alignment(MainAxisAlignment::Start)
-                .with_child(
+                .with_main_axis_alignment(MainAxisAlignment::Start);
+
+            if !hide_warp_lite_unsupported_ai_controls() {
+                buttons = buttons.with_child(
                     Container::new(ChildView::new(&self.segmented_control).finish())
                         .with_padding_right(4.0)
                         .finish(),
                 );
-            buttons = buttons.with_child(create_divider());
+                buttons = buttons.with_child(create_divider());
+            }
 
             buttons = buttons.with_child(ChildView::new(&self.slash_command_button).finish());
 
@@ -840,8 +870,9 @@ impl View for UniversalDeveloperInputButtonBar {
                 buttons = buttons.with_child(ChildView::new(&self.file_button).finish());
             }
 
-            let show_model_selector = FeatureFlag::ProfilesDesignRevamp.is_enabled()
-                || *SessionSettings::as_ref(app).show_model_selectors_in_prompt;
+            let show_model_selector = !hide_warp_lite_unsupported_ai_controls()
+                && (FeatureFlag::ProfilesDesignRevamp.is_enabled()
+                    || *SessionSettings::as_ref(app).show_model_selectors_in_prompt);
             if show_model_selector {
                 buttons = buttons
                     .with_child(create_divider())

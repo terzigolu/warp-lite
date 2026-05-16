@@ -249,6 +249,30 @@ impl Display for SettingsSection {
 }
 
 impl SettingsSection {
+    fn warp_lite_default() -> Self {
+        SettingsSection::Appearance
+    }
+
+    fn is_hidden_in_warp_lite(&self) -> bool {
+        cfg!(feature = "skip_firebase_anonymous_user")
+            && matches!(
+                self,
+                Self::Account
+                    | Self::BillingAndUsage
+                    | Self::Referrals
+                    | Self::Teams
+                    | Self::WarpDrive
+                    | Self::Warpify
+                    | Self::AI
+                    | Self::WarpAgent
+                    | Self::AgentProfiles
+                    | Self::AgentMCPServers
+                    | Self::Knowledge
+                    | Self::CloudEnvironments
+                    | Self::OzCloudAPIKeys
+            )
+    }
+
     /// Returns true if this section is a subpage under any umbrella.
     pub fn is_subpage(&self) -> bool {
         self.is_ai_subpage() || self.is_code_subpage() || self.is_cloud_platform_subpage()
@@ -1207,6 +1231,11 @@ impl SettingsView {
             Some(section) if section.is_subpage() => section,
             other => other.unwrap_or_default(),
         };
+        let initial_page = if initial_page.is_hidden_in_warp_lite() {
+            SettingsSection::warp_lite_default()
+        } else {
+            initial_page
+        };
 
         // Auto-expand the umbrella if the initial page is one of its subpages.
         if initial_page.is_subpage() {
@@ -1837,6 +1866,11 @@ impl SettingsView {
             SettingsSection::AI => SettingsSection::WarpAgent,
             SettingsSection::Code => SettingsSection::CodeIndexing,
             other => other,
+        };
+        let section = if section.is_hidden_in_warp_lite() {
+            SettingsSection::warp_lite_default()
+        } else {
+            section
         };
 
         // For AI subpages, the backing page is the AI page. Check it exists.
