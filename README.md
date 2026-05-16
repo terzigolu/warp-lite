@@ -2,12 +2,12 @@
 
 Lightweight AGPL fork of [Warp Terminal](https://github.com/warpdotdev/warp), focused on a local-first terminal experience without Warp account login, bundled AI workflows, cloud onboarding, or telemetry as a product requirement.
 
-> Status: alpha, but usable on macOS. The latest shipped build is **v0.5.2-lite**. It builds, launches, and is published with downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
+> Status: alpha, but usable on macOS. The latest shipped build is **v0.5.3-lite**. It builds, launches, and is published with downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
 
 Latest release:
 
-- [v0.5.2-lite](https://github.com/terzigolu/warp-lite/releases/tag/v0.5.2-lite)
-- Commit: `0f6335d3`
+- [v0.5.3-lite](https://github.com/terzigolu/warp-lite/releases/tag/v0.5.3-lite)
+- Tag: `v0.5.3-lite`
 - macOS artifacts: `WarpLite.dmg` (~124 MB), `WarpLite.app.zip` (~114 MB)
 
 See [`FORK_NOTICE.md`](FORK_NOTICE.md) for the relationship with upstream Warp.
@@ -39,11 +39,11 @@ The packaged app uses:
 
 - Bundle identifier: `dev.warp-lite.WarpLite`
 - App name: `WarpLite`
-- Current bundle version: `0.5.2-lite`
+- Current bundle version: `0.5.3-lite`
 
 ## Current Shipped State
 
-The current release is `v0.5.2-lite`.
+The current release is `v0.5.3-lite`.
 
 | Area | State | Notes |
 |---|---|---|
@@ -65,7 +65,7 @@ The current release is `v0.5.2-lite`.
 - Fixed the regression where the welcome/sign-up modal still appeared and "Skip for now" attempted Warp/Firebase auth.
 - Rebuilt and published fresh `WarpLite.dmg` and `WarpLite.app.zip` release assets.
 
-### After v0.5.2-lite on `warp-lite/main`
+### v0.5.3-lite
 
 - Refreshed this README to match the real v0.5.2-lite state.
 - Hardened the no-login path so the compiled lite feature bypasses auth onboarding even if runtime flags drift.
@@ -193,6 +193,7 @@ Historical phase branches and tags may still exist, but the public state should 
 
 | Tag | Summary |
 |---|---|
+| `v0.5.3-lite` | README refresh, no-login hardening, and remaining visible account/upsell action cleanup. |
 | `v0.5.2-lite` | No-login hotfix; fresh DMG/app zip assets. |
 | `v0.5.1-lite` | Default feature diet and Context Panel removal from shipped app path. |
 | `v0.5.0-lite` | AI/codebase-index cleanup and bundle version bump. |
