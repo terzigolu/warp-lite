@@ -24,7 +24,7 @@ use crate::ai::agent_management::cloud_setup_guide_view::{
     CloudSetupGuideEvent, CloudSetupGuideView,
 };
 use crate::ai::agent_management::details_action_buttons::{
-    ActionButtonsConfig, AgentDetailsButtonEvent, ConversationActionButtonsRow,
+    ActionButtonsConfig, AgentDetailsButtonEvent, ConversationActionButtonsRow, ManagementCardItemId,
 };
 use crate::ai::agent_management::telemetry::{
     AgentManagementTelemetryEvent, ArtifactType, FilterType, OpenedFrom,
@@ -123,22 +123,6 @@ pub fn init(app: &mut AppContext) {
 
 fn should_show_artifacts(artifacts: &[Artifact]) -> bool {
     !artifacts.is_empty() && FeatureFlag::ConversationArtifacts.is_enabled()
-}
-
-/// Identifies a card item - either a task ID or a conversation ID
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ManagementCardItemId {
-    Task(AmbientAgentTaskId),
-    Conversation(AIConversationId),
-}
-
-impl ManagementCardItemId {
-    fn as_key(&self) -> String {
-        match self {
-            ManagementCardItemId::Task(id) => format!("task_{id}"),
-            ManagementCardItemId::Conversation(id) => format!("conv_{id}"),
-        }
-    }
 }
 
 /// Store state for a given task row

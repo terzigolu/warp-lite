@@ -4,7 +4,6 @@ use crate::features::FeatureFlag;
 use crate::ui_components::icons::Icon;
 use crate::workspace::tab_settings::TabSettings;
 
-use settings::Setting as _;
 use warpui::{AppContext, SingletonEntity};
 
 /// A configurable item in the vertical tabs header toolbar.
@@ -62,7 +61,7 @@ impl HeaderToolbarItemKind {
                 FeatureFlag::VerticalTabs.is_enabled()
                     && *TabSettings::as_ref(app).use_vertical_tabs
             }
-            Self::ToolsPanel => true,
+            Self::ToolsPanel => false,
             // warp-lite: AI/agent/code-review/notification toolbar items are
             // unsupported in pure-terminal mode (UI cleanup). Their backing
             // logic still compiles, but no header buttons surface them.
@@ -81,7 +80,7 @@ impl HeaderToolbarItemKind {
     /// Whether this item opens a side panel (as opposed to replacing the content
     /// area or opening a popover).
     pub fn is_panel(&self) -> bool {
-        matches!(self, Self::TabsPanel | Self::ToolsPanel | Self::CodeReview)
+        matches!(self, Self::TabsPanel | Self::CodeReview)
     }
 
     pub fn default_left() -> Vec<Self> {

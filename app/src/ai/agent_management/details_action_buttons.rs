@@ -8,13 +8,28 @@ use crate::view_components::copyable_text_field::COPY_FEEDBACK_DURATION;
 
 use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::agent_conversations_model::AgentRunDisplayStatus;
-use crate::ai::agent_management::view::ManagementCardItemId;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 use crate::ui_components::icons::Icon;
 use crate::view_components::action_button::{ActionButton, ButtonSize, SecondaryTheme};
 use crate::workspace::WorkspaceAction;
 
 const BUTTON_SPACING: f32 = 4.;
+
+/// Identifies a card item - either a task ID or a conversation ID.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ManagementCardItemId {
+    Task(AmbientAgentTaskId),
+    Conversation(AIConversationId),
+}
+
+impl ManagementCardItemId {
+    pub(crate) fn as_key(&self) -> String {
+        match self {
+            ManagementCardItemId::Task(id) => format!("task_{id}"),
+            ManagementCardItemId::Conversation(id) => format!("conv_{id}"),
+        }
+    }
+}
 
 /// Per-button config for the action buttons row.
 /// Each field controls one button independently.

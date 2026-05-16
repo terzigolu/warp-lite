@@ -40,7 +40,6 @@ pub(super) struct WorkspaceMouseStates {
     pub(super) right_panel_icon: MouseStateHandle,
     pub(super) notifications_mailbox: MouseStateHandle,
     pub(super) session_config_tab_config_chip_close: MouseStateHandle,
-    pub(super) tools_panel_icon: MouseStateHandle,
     pub(super) title_bar_search_bar: MouseStateHandle,
     #[cfg(target_family = "wasm")]
     pub(super) warp_logo: MouseStateHandle,
@@ -100,8 +99,6 @@ pub struct WorkspaceState {
     pub is_command_search_open: bool,
     pub is_warp_drive_open: bool,
     pub is_ai_assistant_panel_open: bool,
-    /// warp-lite v0.3: Context Panel — terminal-context-aware widgets.
-    pub is_context_panel_open: bool,
     pub is_agent_management_popup_open: bool,
     pub is_auth_override_modal_open: bool,
     pub is_require_login_modal_open: bool,
@@ -141,7 +138,6 @@ impl WorkspaceState {
         // cycle. Drop it from the predicate.
         self.is_any_modal_open(app)
             || self.is_theme_chooser_open
-            || self.is_context_panel_open
             || self.is_workflow_modal_open
             || self.is_warp_drive_open
     }
@@ -220,7 +216,7 @@ impl WorkspaceState {
         // warp-lite v0.3.4: see note in is_any_non_terminal_view_open — AI
         // panel state is intentionally excluded from the right-panel slot
         // computation now that its render branch is gated off.
-        self.is_resource_center_open || self.is_context_panel_open
+        self.is_resource_center_open
     }
 
     pub fn is_left_panel_open(&self) -> bool {

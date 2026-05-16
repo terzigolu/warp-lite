@@ -1,5 +1,15 @@
 mod build_plan_migration_modal;
+#[cfg(feature = "cloud_mode")]
 pub(crate) mod cloud_agent_capacity_modal;
+#[cfg(not(feature = "cloud_mode"))]
+pub(crate) mod cloud_agent_capacity_modal {
+    #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+    pub enum CloudAgentCapacityModalVariant {
+        #[default]
+        ConcurrentLimit,
+        OutOfCredits,
+    }
+}
 pub(crate) mod codex_modal;
 pub mod conversation_list;
 #[cfg(enable_crash_recovery)]
@@ -35,7 +45,7 @@ use crate::ai::agent_management::notifications::view::{
     NotificationMailboxView, NotificationMailboxViewEvent,
 };
 use crate::ai::agent_management::notifications::NotificationFilter;
-use crate::ai::agent_management::telemetry::AgentManagementTelemetryEvent;
+#[cfg(feature = "agent_management_view")]
 use crate::ai::agent_management::view::{AgentManagementView, AgentManagementViewEvent};
 use crate::ai::agent_management::AgentManagementEvent;
 use crate::ai::ambient_agents::telemetry::{CloudAgentTelemetryEvent, CloudModeEntryPoint};
@@ -122,9 +132,11 @@ use crate::workspace::tab_settings::TabCloseButtonPosition;
 use crate::workspace::view::build_plan_migration_modal::{
     BuildPlanMigrationModal, BuildPlanMigrationModalEvent,
 };
+#[cfg(feature = "cloud_mode")]
 use crate::workspace::view::cloud_agent_capacity_modal::{
-    CloudAgentCapacityModal, CloudAgentCapacityModalEvent, CloudAgentCapacityModalVariant,
+    CloudAgentCapacityModal, CloudAgentCapacityModalEvent,
 };
+use crate::workspace::view::cloud_agent_capacity_modal::CloudAgentCapacityModalVariant;
 use crate::workspace::view::codex_modal::{CodexModal, CodexModalEvent};
 use crate::workspace::view::free_tier_limit_hit_modal::{
     FreeTierLimitHitModal, FreeTierLimitHitModalEvent,
@@ -845,8 +857,6 @@ struct CodeReviewPaneContext {
 struct RightPanelUpdateParams<'a> {
     pane_group: &'a ViewHandle<PaneGroup>,
     target_open_state: bool,
-    entrypoint: Option<CodeReviewPaneEntrypoint>,
-    cli_agent: Option<crate::terminal::CLIAgent>,
     review_pane_context: Option<&'a CodeReviewPaneContext>,
 }
 
@@ -952,8 +962,6 @@ pub struct Workspace {
     settings_file_error: Option<crate::settings::SettingsFileError>,
     settings_error_banner_dismissed: bool,
     ai_assistant_panel: ViewHandle<AIAssistantPanelView>,
-    /// warp-lite v0.3: Context Panel — sibling of resource_center / ai_assistant_panel.
-    context_panel: ViewHandle<crate::context_panel::panel::ContextPanelView>,
     should_show_ai_assistant_warm_welcome: bool,
     ai_assistant_close_warm_welcome_mouse_state_handle: MouseStateHandle,
     auth_override_warning_modal: ViewHandle<AuthOverrideWarningModal>,
@@ -973,6 +981,7 @@ pub struct Workspace {
     enable_auto_reload_modal: ViewHandle<EnableAutoReloadModal>,
     build_plan_migration_modal: ViewHandle<BuildPlanMigrationModal>,
     codex_modal: ViewHandle<CodexModal>,
+    #[cfg(feature = "cloud_mode")]
     cloud_agent_capacity_modal: ViewHandle<CloudAgentCapacityModal>,
     free_tier_limit_hit_modal: ViewHandle<FreeTierLimitHitModal>,
     free_tier_limit_check_triggered: bool,
@@ -1014,6 +1023,7 @@ pub struct Workspace {
     left_panel_views: Vec<ToolPanelView>,
     right_panel_view: ViewHandle<RightPanelView>,
     working_directories_model: ModelHandle<pane_group::WorkingDirectoriesModel>,
+    #[cfg(feature = "agent_management_view")]
     agent_management_view: ViewHandle<AgentManagementView>,
     notification_mailbox_view: Option<ViewHandle<NotificationMailboxView>>,
     notification_toast_stack: Option<ViewHandle<AgentNotificationToastStack>>,
@@ -2609,11 +2619,14 @@ impl Workspace {
             me.handle_codex_modal_event(event, ctx);
         });
 
-        let cloud_agent_capacity_modal =
-            ctx.add_typed_action_view(|_| CloudAgentCapacityModal::new());
-        ctx.subscribe_to_view(&cloud_agent_capacity_modal, |me, _, event, ctx| {
-            me.handle_cloud_agent_capacity_modal_event(event, ctx);
-        });
+        #[cfg(feature = "cloud_mode")]
+        let cloud_agent_capacity_modal = {
+            let view = ctx.add_typed_action_view(|_| CloudAgentCapacityModal::new());
+            ctx.subscribe_to_view(&view, |me, _, event, ctx| {
+                me.handle_cloud_agent_capacity_modal_event(event, ctx);
+            });
+            view
+        };
 
         let free_tier_limit_hit_modal = ctx.add_typed_action_view(FreeTierLimitHitModal::new);
         ctx.subscribe_to_view(&free_tier_limit_hit_modal, |me, _, event, ctx| {
@@ -2697,19 +2710,23 @@ impl Workspace {
             me.handle_right_panel_event(event.clone(), ctx);
         });
 
-        // Get persisted filters from window snapshot if restoring.
-        let agent_management_filters = match workspace_setting {
-            NewWorkspaceSource::Restored {
-                ref window_snapshot,
-                ..
-            } => window_snapshot.agent_management_filters.clone(),
-            _ => None,
+        #[cfg(feature = "agent_management_view")]
+        let agent_management_view = {
+            // Get persisted filters from window snapshot if restoring.
+            let agent_management_filters = match workspace_setting {
+                NewWorkspaceSource::Restored {
+                    ref window_snapshot,
+                    ..
+                } => window_snapshot.agent_management_filters.clone(),
+                _ => None,
+            };
+            let view = ctx
+                .add_typed_action_view(|ctx| AgentManagementView::new(agent_management_filters, ctx));
+            ctx.subscribe_to_view(&view, |me, _, event, ctx| {
+                me.handle_agent_management_view_event(event, ctx);
+            });
+            view
         };
-        let agent_management_view = ctx
-            .add_typed_action_view(|ctx| AgentManagementView::new(agent_management_filters, ctx));
-        ctx.subscribe_to_view(&agent_management_view, |me, _, event, ctx| {
-            me.handle_agent_management_view_event(event, ctx);
-        });
 
         let notification_mailbox_view = if FeatureFlag::HOANotifications.is_enabled() {
             let view = ctx.add_typed_action_view(NotificationMailboxView::new);
@@ -2755,14 +2772,6 @@ impl Workspace {
 
         let ai_assistant_panel =
             Self::build_ai_assistant_panel_view(ctx, server_api.clone(), ai_client.clone());
-
-        // warp-lite v0.3: Context Panel host view.
-        let context_panel = {
-            let model_handle = working_directories_model.clone();
-            ctx.add_view(move |child_ctx| {
-                crate::context_panel::panel::ContextPanelView::new(model_handle, child_ctx)
-            })
-        };
 
         ctx.observe(&tips_completed, Workspace::on_tips_model_changed);
 
@@ -3064,7 +3073,6 @@ impl Workspace {
             settings_file_error,
             settings_error_banner_dismissed: false,
             ai_assistant_panel,
-            context_panel,
             should_show_ai_assistant_warm_welcome,
             ai_assistant_close_warm_welcome_mouse_state_handle: Default::default(),
             auth_override_warning_modal,
@@ -3121,10 +3129,12 @@ impl Workspace {
             },
             openwarp_launch_modal: openwarp_launch_view,
             enable_auto_reload_modal,
+            #[cfg(feature = "agent_management_view")]
             agent_management_view,
             notification_mailbox_view,
             notification_toast_stack,
             codex_modal,
+            #[cfg(feature = "cloud_mode")]
             cloud_agent_capacity_modal,
             free_tier_limit_hit_modal,
             free_tier_limit_check_triggered: false,
@@ -4326,34 +4336,6 @@ impl Workspace {
         });
     }
 
-    /// warp-lite v0.3: toggle the Context Panel (terminal-context widgets).
-    fn toggle_context_panel(&mut self, ctx: &mut ViewContext<Self>) {
-        // If already open and not focused, just refocus (no toggle).
-        if self.current_workspace_state.is_context_panel_open
-            && !self.context_panel.is_self_or_child_focused(ctx)
-            && !self.current_workspace_state.is_any_modal_open(ctx)
-        {
-            ctx.focus(&self.context_panel);
-            return;
-        }
-
-        self.current_workspace_state.is_context_panel_open =
-            !self.current_workspace_state.is_context_panel_open;
-
-        // Close any other modals/panels that could overlap.
-        self.current_workspace_state.close_all_modals();
-
-        if self.current_workspace_state.is_context_panel_open {
-            // Right-side panel slot is mutually exclusive.
-            self.current_workspace_state.is_resource_center_open = false;
-            self.current_workspace_state.is_ai_assistant_panel_open = false;
-            ctx.focus(&self.context_panel);
-        } else {
-            self.focus_active_tab(ctx);
-        }
-        ctx.notify();
-    }
-
     fn toggle_ai_assistant_panel(&mut self, ctx: &mut ViewContext<Self>) {
         // Now that the user has interacted with the panel, we can close
         // the dialogue and mark it as dismissed.
@@ -4866,6 +4848,7 @@ impl Workspace {
             }
 
             // If the agent management view is open, we want to close it when we activate a new tab.
+            #[cfg(feature = "agent_management_view")]
             if FeatureFlag::AgentManagementView.is_enabled() {
                 self.set_is_agent_management_view_open(false, ctx);
             }
@@ -5010,6 +4993,7 @@ impl Workspace {
 
         // If the agent management view is open, we want to close it when we change focus to rename a tab.
         // This function doesn't call `activate_tab_internal`, which is why we need the extra check here.
+        #[cfg(feature = "agent_management_view")]
         if FeatureFlag::AgentManagementView.is_enabled() {
             self.set_is_agent_management_view_open(false, ctx);
         }
@@ -5600,6 +5584,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(feature = "agent_management_view")]
     fn handle_agent_management_view_event(
         &mut self,
         event: &AgentManagementViewEvent,
@@ -7786,6 +7771,7 @@ impl Workspace {
 
     /// Sets the visibility state of the agent management view
     /// and updates the AgentConversationsModel to reflect the new state.
+    #[cfg(feature = "agent_management_view")]
     fn set_is_agent_management_view_open(&mut self, is_open: bool, ctx: &mut ViewContext<Self>) {
         let was_open = self.current_workspace_state.is_agent_management_view_open;
         if was_open == is_open {
@@ -8075,8 +8061,6 @@ impl Workspace {
             RightPanelUpdateParams {
                 pane_group: pane_group_handle,
                 target_open_state,
-                entrypoint: Some(CodeReviewPaneEntrypoint::RightPanel),
-                cli_agent: None,
                 review_pane_context: context.as_ref(),
             },
             ctx,
@@ -8088,8 +8072,8 @@ impl Workspace {
         &mut self,
         context: &CodeReviewPaneContext,
         pane_group_handle: &ViewHandle<PaneGroup>,
-        entrypoint: CodeReviewPaneEntrypoint,
-        cli_agent: Option<crate::terminal::CLIAgent>,
+        _entrypoint: CodeReviewPaneEntrypoint,
+        _cli_agent: Option<crate::terminal::CLIAgent>,
         ctx: &mut ViewContext<Self>,
     ) {
         if pane_group_handle.as_ref(ctx).right_panel_open {
@@ -8105,8 +8089,6 @@ impl Workspace {
             RightPanelUpdateParams {
                 pane_group: pane_group_handle,
                 target_open_state: true,
-                entrypoint: Some(entrypoint),
-                cli_agent,
                 review_pane_context: Some(context),
             },
             ctx,
@@ -8138,8 +8120,6 @@ impl Workspace {
             RightPanelUpdateParams {
                 pane_group: pane_group_handle,
                 target_open_state: false,
-                entrypoint: None,
-                cli_agent: None,
                 review_pane_context: None,
             },
             ctx,
@@ -9790,10 +9770,13 @@ impl Workspace {
                 .unwrap_or(DEFAULT_RIGHT_PANEL_WIDTH)
         });
 
+        #[cfg(feature = "agent_management_view")]
         let agent_management_filters = Some(
             self.agent_management_view
                 .read(app, |view, _| view.get_filters()),
         );
+        #[cfg(not(feature = "agent_management_view"))]
+        let agent_management_filters = None;
 
         WindowSnapshot {
             tabs,
@@ -15874,6 +15857,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(feature = "cloud_mode")]
     fn handle_cloud_agent_capacity_modal_event(
         &mut self,
         event: &CloudAgentCapacityModalEvent,
@@ -15894,6 +15878,14 @@ impl Workspace {
         variant: CloudAgentCapacityModalVariant,
         ctx: &mut ViewContext<Self>,
     ) {
+        #[cfg(not(feature = "cloud_mode"))]
+        {
+            let _ = variant;
+            let _ = ctx;
+            return;
+        }
+        #[cfg(feature = "cloud_mode")]
+        {
         if !FeatureFlag::CloudMode.is_enabled() {
             return;
         }
@@ -15905,6 +15897,7 @@ impl Workspace {
             .is_cloud_agent_capacity_modal_open = true;
         ctx.focus(&self.cloud_agent_capacity_modal);
         ctx.notify();
+        }
     }
 
     fn handle_free_tier_limit_modal_event(
@@ -16344,6 +16337,7 @@ impl Workspace {
         .finish()
     }
 
+    #[cfg(feature = "agent_management_view")]
     fn render_agent_management_view_button(
         &self,
         appearance: &Appearance,
@@ -16438,42 +16432,6 @@ impl Workspace {
             )
             .finish(),
             save_position_id,
-        )
-        .finish()
-    }
-
-    fn render_tools_panel_button(
-        &self,
-        appearance: &Appearance,
-        ctx: &AppContext,
-    ) -> Box<dyn Element> {
-        // warp-lite v0.3.2: this button toggles the Context Panel (right-side
-        // terminal-context widgets), not the left panel. The Tool2 icon is the
-        // user-visible entry point — keybinding (Cmd+B) is just the secondary path.
-        let is_active = self.current_workspace_state.is_context_panel_open;
-
-        SavePosition::new(
-            Container::new(
-                Align::new(
-                    self.render_tab_bar_icon_button(
-                        appearance,
-                        icons::Icon::Tool2,
-                        &self.mouse_states.tools_panel_icon,
-                        WorkspaceAction::ToggleContextPanel,
-                        "Context Panel".to_string(),
-                        keybinding_name_to_display_string(
-                            "workspace:toggle_context_panel",
-                            ctx,
-                        ),
-                        is_active,
-                        false,
-                    )
-                    .finish(),
-                )
-                .finish(),
-            )
-            .finish(),
-            "workspace:toggle_context_panel",
         )
         .finish()
     }
@@ -16983,14 +16941,16 @@ impl Workspace {
             FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs;
         let inner = match item {
             HeaderToolbarItemKind::TabsPanel => self.render_left_toggle_button(appearance, ctx),
-            HeaderToolbarItemKind::ToolsPanel => {
-                // warp-lite v0.3.2: always render the Tools/Context Panel button,
-                // regardless of vertical_tabs or left_panel_views. It targets the
-                // right-side Context Panel.
-                self.render_tools_panel_button(appearance, ctx)
-            }
+            HeaderToolbarItemKind::ToolsPanel => return None,
             HeaderToolbarItemKind::AgentManagement => {
-                self.render_agent_management_view_button(appearance, ctx)
+                #[cfg(feature = "agent_management_view")]
+                {
+                    self.render_agent_management_view_button(appearance, ctx)
+                }
+                #[cfg(not(feature = "agent_management_view"))]
+                {
+                    return None;
+                }
             }
             HeaderToolbarItemKind::CodeReview => self.render_right_panel_button(appearance, ctx),
             HeaderToolbarItemKind::NotificationsMailbox => {
@@ -17907,6 +17867,7 @@ impl Workspace {
     ) -> Box<dyn Element> {
         let active_tab_data = &self.tabs[self.active_tab_index];
 
+        #[cfg(feature = "agent_management_view")]
         let active_content = if FeatureFlag::AgentManagementView.is_enabled()
             && self.current_workspace_state.is_agent_management_view_open
         {
@@ -17914,6 +17875,8 @@ impl Workspace {
         } else {
             ChildView::new(&active_tab_data.pane_group).finish()
         };
+        #[cfg(not(feature = "agent_management_view"))]
+        let active_content = ChildView::new(&active_tab_data.pane_group).finish();
 
         let terminal_content = match self.maybe_render_workspace_banner(app, appearance) {
             Some(banner_element) => Flex::column()
@@ -18638,13 +18601,6 @@ impl Workspace {
         if self.current_workspace_state.is_right_panel_open() {
             let right_panel_content = if self.current_workspace_state.is_resource_center_open {
                 Some(self.render_panel(app, self.render_resource_center(), &PanelPosition::Right))
-            } else if self.current_workspace_state.is_context_panel_open {
-                // warp-lite v0.3: Context Panel takes precedence when toggled.
-                Some(self.render_panel(
-                    app,
-                    ChildView::new(&self.context_panel).finish(),
-                    &PanelPosition::Right,
-                ))
             } else if false && self.current_workspace_state.is_ai_assistant_panel_open {
                 // warp-lite v0.3.1: legacy AI assistant panel render disabled.
                 // The Context Panel (Cmd+Shift+K) replaces it. Underlying view
@@ -18712,13 +18668,7 @@ impl Workspace {
                     .finish(),
                 )
             }
-            HeaderToolbarItemKind::ToolsPanel => {
-                // warp-lite v0.3.2: ToolsPanel button toggles the Context Panel,
-                // which is rendered by `render_panels` on the right side — not
-                // here. This branch returns None so the toolbar item shows
-                // its button only.
-                None
-            }
+            HeaderToolbarItemKind::ToolsPanel => None,
             HeaderToolbarItemKind::CodeReview => {
                 if !pane_group.right_panel_open {
                     return None;
@@ -20182,6 +20132,7 @@ impl TypedActionView for Workspace {
                 });
                 ctx.notify();
             }
+            #[cfg(feature = "agent_management_view")]
             ToggleAgentManagementView => {
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
@@ -20199,6 +20150,7 @@ impl TypedActionView for Workspace {
                     ctx.notify();
                 }
             }
+            #[cfg(feature = "agent_management_view")]
             ViewAgentRunsForEnvironment { environment_id } => {
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
@@ -20214,6 +20166,8 @@ impl TypedActionView for Workspace {
                     ctx.notify();
                 }
             }
+            #[cfg(not(feature = "agent_management_view"))]
+            ToggleAgentManagementView | ViewAgentRunsForEnvironment { .. } => {}
             ClosePanel => {
                 if self.left_panel_view.is_self_or_child_focused(ctx) {
                     self.close_left_panel(ctx);
@@ -20242,6 +20196,7 @@ impl TypedActionView for Workspace {
 
                 self.add_terminal_pane_in_ai_mode(*zero_state_prompt_suggestion_type, ctx);
             }
+            #[cfg(feature = "agent_management_view")]
             OpenCloudAgentSetupGuide => {
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
@@ -20254,11 +20209,10 @@ impl TypedActionView for Workspace {
                     ctx.notify();
                 }
             }
+            #[cfg(not(feature = "agent_management_view"))]
+            OpenCloudAgentSetupGuide => {}
             ToggleAIAssistant => {
                 self.toggle_ai_assistant_panel(ctx);
-            }
-            ToggleContextPanel => {
-                self.toggle_context_panel(ctx);
             }
             ClickedAIAssistantIcon => {
                 if !FeatureFlag::AgentMode.is_enabled() {
@@ -22303,6 +22257,7 @@ impl View for Workspace {
             stack.add_child(ChildView::new(&self.codex_modal).finish());
         }
 
+        #[cfg(feature = "cloud_mode")]
         if FeatureFlag::CloudMode.is_enabled()
             && self
                 .current_workspace_state
