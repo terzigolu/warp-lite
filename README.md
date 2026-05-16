@@ -50,7 +50,7 @@ The current release is `v0.5.2-lite`.
 | Terminal core | Works | Core terminal view/input/model files are preserved. Do not wholesale stub them. |
 | macOS app bundle | Works | `script/build-warp-lite-app.sh` builds `WarpLite.app`. |
 | DMG release | Works | `WarpLite.dmg` is published in GitHub Releases. |
-| Warp login gate | Disabled | `skip_firebase_anonymous_user` is enabled by default so startup does not require Warp login. |
+| Warp login gate | Disabled | `skip_firebase_anonymous_user` is enabled by default. Startup, "skip login", and visible account/billing menu entry points are hardened away from Warp auth in the lite build. |
 | Telemetry product goal | Removed/neutralized | Historical telemetry call-site cleanup is part of the fork; keep auditing before claiming perfect network silence. |
 | Context Panel / Tools Panel | Removed from shipped UI | The experimental Context Panel was deleted from the app wiring in `v0.5.1-lite` after causing instability and stale data issues. |
 | Codex / Claude Code notifications | Kept | These are intentionally preserved for the lite fork. |
@@ -64,6 +64,12 @@ The current release is `v0.5.2-lite`.
 - Restored `skip_firebase_anonymous_user` in default features.
 - Fixed the regression where the welcome/sign-up modal still appeared and "Skip for now" attempted Warp/Firebase auth.
 - Rebuilt and published fresh `WarpLite.dmg` and `WarpLite.app.zip` release assets.
+
+### After v0.5.2-lite on `warp-lite/main`
+
+- Refreshed this README to match the real v0.5.2-lite state.
+- Hardened the no-login path so the compiled lite feature bypasses auth onboarding even if runtime flags drift.
+- Hid or no-op'd remaining visible sign-up, upgrade, referral, logout, and anonymous-user menu/actions in the lite build.
 
 ### v0.5.1-lite
 
@@ -104,7 +110,7 @@ These modules still exist and should be treated as the next cleanup targets. Som
 
 | Path | Why it matters | Suggested next move |
 |---|---|---|
-| `app/src/auth` | Login UI and auth flow still exist in source. | Remove or hard-gate remaining auth UI after verifying no startup path depends on it. |
+| `app/src/auth` | Login UI and auth flow still exist in source. Startup/skip/menu paths are hardened in the lite build, but the module is not physically gone. | Continue shrinking or feature-gating auth UI internals after verifying shared `AuthStateProvider` consumers. |
 | `app/src/ai` | Large AI UI/product surface remains. | Continue surgical feature-gating and deletion; avoid terminal core wholesale stubs. |
 | `crates/ai` | Still a major compiled/source dependency. | Continue reducing agent/indexing/ambient modules behind stable APIs. |
 | `crates/onboarding` | Still present even though app onboarding module is gone. | Finish crate-level cleanup if consumers are gone or can be stubbed safely. |

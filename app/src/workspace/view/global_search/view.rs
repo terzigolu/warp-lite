@@ -924,7 +924,6 @@ impl GlobalSearchView {
     fn handle_find_model_event(&mut self, event: &GlobalSearchEvent, ctx: &mut ViewContext<Self>) {
         match event {
             GlobalSearchEvent::Started { search_id } => {
-
                 self.current_search_id = Some(*search_id);
 
                 self.is_search_in_progress = true;

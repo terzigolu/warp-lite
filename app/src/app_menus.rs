@@ -227,22 +227,24 @@ fn make_new_app_menu(ctx: &AppContext) -> Menu {
         },
         None,
     )));
-    menu_items.push(MenuItem::Separator);
-    menu_items.push(MenuItem::Custom(CustomMenuItem::new(
-        "Log out",
-        auth::maybe_log_out,
-        move |_, ctx| {
-            let is_anonymous = AuthStateProvider::handle(ctx)
-                .as_ref(ctx)
-                .get()
-                .is_anonymous_or_logged_out();
-            MenuItemPropertyChanges {
-                disabled: Some(is_anonymous),
-                ..Default::default()
-            }
-        },
-        None,
-    )));
+    if !cfg!(feature = "skip_firebase_anonymous_user") {
+        menu_items.push(MenuItem::Separator);
+        menu_items.push(MenuItem::Custom(CustomMenuItem::new(
+            "Log out",
+            auth::maybe_log_out,
+            move |_, ctx| {
+                let is_anonymous = AuthStateProvider::handle(ctx)
+                    .as_ref(ctx)
+                    .get()
+                    .is_anonymous_or_logged_out();
+                MenuItemPropertyChanges {
+                    disabled: Some(is_anonymous),
+                    ..Default::default()
+                }
+            },
+            None,
+        )));
+    }
     menu_items.push(MenuItem::Standard(StandardAction::Quit));
     Menu::new("Warp", menu_items)
 }
@@ -880,12 +882,14 @@ fn debug_menu_items() -> Vec<MenuItem> {
             None,
         )));
 
-        debug_menu_items.push(MenuItem::Custom(CustomMenuItem::new(
-            "Create anonymous user",
-            move |ctx| ctx.dispatch_global_action("workspace:debug_create_anonymous_user", &()),
-            no_updates,
-            None,
-        )));
+        if !cfg!(feature = "skip_firebase_anonymous_user") {
+            debug_menu_items.push(MenuItem::Custom(CustomMenuItem::new(
+                "Create anonymous user",
+                move |ctx| ctx.dispatch_global_action("workspace:debug_create_anonymous_user", &()),
+                no_updates,
+                None,
+            )));
+        }
     }
 
     if FeatureFlag::RuntimeFeatureFlags.is_enabled() {

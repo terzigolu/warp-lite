@@ -29,12 +29,12 @@ mod vertical_tabs;
 #[cfg(target_family = "wasm")]
 mod wasm_view;
 
-use crate::{ GlobalResourceHandles};
 use self::vertical_tabs::telemetry::{VerticalTabsDisplayOption, VerticalTabsTelemetryEvent};
 use self::vertical_tabs::{
     render_detail_sidecar, render_settings_popup, VerticalTabsPanelState,
     VERTICAL_TABS_SETTINGS_BUTTON_POSITION_ID,
 };
+use crate::GlobalResourceHandles;
 pub(crate) use onboarding::OnboardingTutorial;
 
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
@@ -132,11 +132,11 @@ use crate::workspace::tab_settings::TabCloseButtonPosition;
 use crate::workspace::view::build_plan_migration_modal::{
     BuildPlanMigrationModal, BuildPlanMigrationModalEvent,
 };
+use crate::workspace::view::cloud_agent_capacity_modal::CloudAgentCapacityModalVariant;
 #[cfg(feature = "cloud_mode")]
 use crate::workspace::view::cloud_agent_capacity_modal::{
     CloudAgentCapacityModal, CloudAgentCapacityModalEvent,
 };
-use crate::workspace::view::cloud_agent_capacity_modal::CloudAgentCapacityModalVariant;
 use crate::workspace::view::codex_modal::{CodexModal, CodexModalEvent};
 use crate::workspace::view::free_tier_limit_hit_modal::{
     FreeTierLimitHitModal, FreeTierLimitHitModalEvent,
@@ -2720,8 +2720,9 @@ impl Workspace {
                 } => window_snapshot.agent_management_filters.clone(),
                 _ => None,
             };
-            let view = ctx
-                .add_typed_action_view(|ctx| AgentManagementView::new(agent_management_filters, ctx));
+            let view = ctx.add_typed_action_view(|ctx| {
+                AgentManagementView::new(agent_management_filters, ctx)
+            });
             ctx.subscribe_to_view(&view, |me, _, event, ctx| {
                 me.handle_agent_management_view_event(event, ctx);
             });
@@ -7193,7 +7194,6 @@ impl Workspace {
         additional_paths: &[PathBuf],
         ctx: &mut ViewContext<Self>,
     ) {
-
         let grouping_on = FeatureFlag::TabbedEditorView.is_enabled()
             && *EditorSettings::as_ref(ctx)
                 .prefer_tabbed_editor_view
@@ -7455,7 +7455,6 @@ impl Workspace {
             self.welcome_tips_view.update(ctx, |tips_view, ctx| {
                 tips_view.set_action_target(ctx.window_id(), input_id, ctx)
             });
-
         }
         ctx.focus(&self.welcome_tips_view);
         ctx.notify();
@@ -8234,48 +8233,50 @@ impl Workspace {
             MenuItem::Separator,
         ]);
 
-        if self.auth_state.is_anonymous_or_logged_out() {
+        if !cfg!(feature = "skip_firebase_anonymous_user") {
+            if self.auth_state.is_anonymous_or_logged_out() {
+                items.push(
+                    MenuItemFields::new("Sign up")
+                        .with_on_select_action(WorkspaceAction::SignupAnonymousUser)
+                        .into_item(),
+                );
+            }
+
+            // Check if the user is on any paid plan to determine whether to show "Billing and Usage" or "Upgrade"
+            let is_on_paid_plan = UserWorkspaces::as_ref(app)
+                .current_workspace()
+                .map(|workspace| workspace.billing_metadata.is_user_on_paid_plan())
+                .unwrap_or(false);
+
+            if is_on_paid_plan {
+                items.push(
+                    MenuItemFields::new("Billing and usage")
+                        .with_on_select_action(WorkspaceAction::ShowSettingsPage(
+                            SettingsSection::BillingAndUsage,
+                        ))
+                        .into_item(),
+                );
+            } else {
+                items.push(
+                    MenuItemFields::new("Upgrade")
+                        .with_on_select_action(WorkspaceAction::ShowUpgrade)
+                        .into_item(),
+                );
+            }
+
             items.push(
-                MenuItemFields::new("Sign up")
-                    .with_on_select_action(WorkspaceAction::SignupAnonymousUser)
+                MenuItemFields::new("Invite a friend")
+                    .with_on_select_action(WorkspaceAction::ShowReferralSettingsPage)
                     .into_item(),
             );
-        }
 
-        // Check if the user is on any paid plan to determine whether to show "Billing and Usage" or "Upgrade"
-        let is_on_paid_plan = UserWorkspaces::as_ref(app)
-            .current_workspace()
-            .map(|workspace| workspace.billing_metadata.is_user_on_paid_plan())
-            .unwrap_or(false);
-
-        if is_on_paid_plan {
-            items.push(
-                MenuItemFields::new("Billing and usage")
-                    .with_on_select_action(WorkspaceAction::ShowSettingsPage(
-                        SettingsSection::BillingAndUsage,
-                    ))
-                    .into_item(),
-            );
-        } else {
-            items.push(
-                MenuItemFields::new("Upgrade")
-                    .with_on_select_action(WorkspaceAction::ShowUpgrade)
-                    .into_item(),
-            );
-        }
-
-        items.push(
-            MenuItemFields::new("Invite a friend")
-                .with_on_select_action(WorkspaceAction::ShowReferralSettingsPage)
-                .into_item(),
-        );
-
-        if !self.auth_state.is_anonymous_or_logged_out() {
-            items.push(
-                MenuItemFields::new("Log out")
-                    .with_on_select_action(WorkspaceAction::LogOut)
-                    .into_item(),
-            );
+            if !self.auth_state.is_anonymous_or_logged_out() {
+                items.push(
+                    MenuItemFields::new("Log out")
+                        .with_on_select_action(WorkspaceAction::LogOut)
+                        .into_item(),
+                );
+            }
         }
         items
     }
@@ -8870,8 +8871,7 @@ impl Workspace {
                     worktree_name.as_deref(),
                     ctx,
                 );
-                if should_track_existing_config_open {
-                }
+                if should_track_existing_config_open {}
                 self.close_tab_config_params_modal(ctx);
                 self.complete_pending_session_config_replacement(ctx);
 
@@ -10169,7 +10169,6 @@ impl Workspace {
                     })
                     .build();
 
-
                 if cfg!(all(not(target_family = "wasm"), target_os = "macos")) {
                     AppContext::show_native_platform_modal(ctx, dialog);
                     return false;
@@ -10242,8 +10241,7 @@ impl Workspace {
         );
 
         // Telemetry whenever tabs actually closed, not when confirmation dialog comes up.
-        if tabs_closed {
-        }
+        if tabs_closed {}
     }
 
     /// Opens a confirmation dialog if necessary, or closes immediately if not.
@@ -10273,8 +10271,7 @@ impl Workspace {
         // Telemetry whenever tabs actually closed, not when confirmation dialog comes up.
         if tabs_closed {
             match direction {
-                TabMovement::Right if self.active_tab_index > index => {
-                }
+                TabMovement::Right if self.active_tab_index > index => {}
                 _ => (),
             }
         }
@@ -10454,7 +10451,6 @@ impl Workspace {
         if !FeatureFlag::AgentView.is_enabled() || !FeatureFlag::CloudMode.is_enabled() {
             return;
         }
-
 
         self.add_tab_with_pane_layout(
             PanesLayout::AmbientAgent,
@@ -11934,7 +11930,6 @@ impl Workspace {
                     }
                 }
             });
-
         }
     }
 
@@ -12235,7 +12230,6 @@ impl Workspace {
         }
 
         ctx.focus(&self.palette);
-
 
         ctx.notify();
     }
@@ -12627,7 +12621,6 @@ impl Workspace {
             }
             SettingsViewEvent::OpenMCPServerCollection => {
                 self.show_settings_with_section(Some(SettingsSection::MCPServers), ctx);
-
             }
             SettingsViewEvent::OpenExecutionProfileEditor(profile_id) => {
                 self.open_execution_profile_editor_pane(None, *profile_id, ctx);
@@ -13982,8 +13975,7 @@ impl Workspace {
                     input_handle.read(ctx, |input, ctx| input.menu_positioning(ctx))
                 });
 
-            if !self.current_workspace_state.is_command_search_open {
-            }
+            if !self.current_workspace_state.is_command_search_open {}
 
             // Make sure we close any already-open input suggestions panel.
             if let Some(input_handle) = &active_input_handle {
@@ -14278,7 +14270,6 @@ impl Workspace {
             }
             DrivePanelEvent::OpenMCPServerCollection => {
                 self.show_settings_with_section(Some(SettingsSection::MCPServers), ctx);
-
             }
             DrivePanelEvent::FocusWarpDrive => {
                 ctx.focus(&self.left_panel_view);
@@ -15813,7 +15804,6 @@ impl Workspace {
         args: &crate::linear::LinearIssueWork,
         ctx: &mut ViewContext<Self>,
     ) {
-
         self.add_new_session_tab_internal_with_default_session_mode_behavior(
             NewSessionSource::Tab,
             Some(ctx.window_id()),
@@ -15886,17 +15876,17 @@ impl Workspace {
         }
         #[cfg(feature = "cloud_mode")]
         {
-        if !FeatureFlag::CloudMode.is_enabled() {
-            return;
-        }
-        self.cloud_agent_capacity_modal.update(ctx, |modal, ctx| {
-            modal.set_variant(variant);
+            if !FeatureFlag::CloudMode.is_enabled() {
+                return;
+            }
+            self.cloud_agent_capacity_modal.update(ctx, |modal, ctx| {
+                modal.set_variant(variant);
+                ctx.notify();
+            });
+            self.current_workspace_state
+                .is_cloud_agent_capacity_modal_open = true;
+            ctx.focus(&self.cloud_agent_capacity_modal);
             ctx.notify();
-        });
-        self.current_workspace_state
-            .is_cloud_agent_capacity_modal_open = true;
-        ctx.focus(&self.cloud_agent_capacity_modal);
-        ctx.notify();
         }
     }
 
@@ -15953,7 +15943,6 @@ impl Workspace {
 
         self.current_workspace_state
             .is_free_tier_limit_hit_modal_open = true;
-
 
         ctx.focus(&self.free_tier_limit_hit_modal);
         ctx.notify();
@@ -16036,7 +16025,6 @@ impl Workspace {
         self.close_all_overlays(ctx);
         self.current_workspace_state.is_prompt_editor_open = true;
         ctx.focus(&self.prompt_editor_modal);
-
     }
 
     fn open_agent_toolbar_editor(
@@ -16088,8 +16076,7 @@ impl Workspace {
             // Send telemetry event only if the team is not delinquent. If the team is
             // delinquent, then they haven't technically hit any tier limits are just in a
             // restricted state.
-            if !is_delinquent_due_to_payment_issue {
-            }
+            if !is_delinquent_due_to_payment_issue {}
 
             self.current_workspace_state
                 .is_shared_objects_creation_denied_modal_open = true;
@@ -18611,9 +18598,7 @@ impl Workspace {
                     &PanelPosition::Right,
                 ))
             } else {
-                log::warn!(
-                    "is_right_panel_open() returned true, but no right-side panel is open"
-                );
+                log::warn!("is_right_panel_open() returned true, but no right-side panel is open");
                 None
             };
 
@@ -19702,9 +19687,11 @@ impl TypedActionView for Workspace {
             AutoupdateFailureLink => self.open_autoupdate_failure_link(ctx),
             ApplyUpdate => self.apply_update(ctx),
             LogOut => {
-                // Need to dispatch global action, or else we will not be able to retrieve
-                // the currently active session in the log out modal.
-                ctx.dispatch_global_action("app:maybe_log_out", ());
+                if !cfg!(feature = "skip_firebase_anonymous_user") {
+                    // Need to dispatch global action, or else we will not be able to retrieve
+                    // the currently active session in the log out modal.
+                    ctx.dispatch_global_action("app:maybe_log_out", ());
+                }
             }
             ExportAllWarpDriveObjects => {
                 self.export_all_warp_drive_objects(ctx);
@@ -19738,21 +19725,24 @@ impl TypedActionView for Workspace {
                 source,
             } => self.toggle_palette(*palette_mode, *source, ctx),
             ShowUpgrade => {
+                if !cfg!(feature = "skip_firebase_anonymous_user") {
+                    let auth_state = AuthStateProvider::as_ref(ctx).get();
+                    let user_workspaces = UserWorkspaces::as_ref(ctx);
 
-                let auth_state = AuthStateProvider::as_ref(ctx).get();
-                let user_workspaces = UserWorkspaces::as_ref(ctx);
+                    let upgrade_url = if let Some(team) = user_workspaces.current_team() {
+                        UserWorkspaces::upgrade_link_for_team(team.uid)
+                    } else {
+                        let user_id = auth_state.user_id().unwrap_or_default();
+                        UserWorkspaces::upgrade_link(user_id)
+                    };
 
-                let upgrade_url = if let Some(team) = user_workspaces.current_team() {
-                    UserWorkspaces::upgrade_link_for_team(team.uid)
-                } else {
-                    let user_id = auth_state.user_id().unwrap_or_default();
-                    UserWorkspaces::upgrade_link(user_id)
-                };
-
-                ctx.open_url(&upgrade_url);
+                    ctx.open_url(&upgrade_url);
+                }
             }
             ShowReferralSettingsPage => {
-                self.show_settings_with_section(Some(SettingsSection::Referrals), ctx);
+                if !cfg!(feature = "skip_firebase_anonymous_user") {
+                    self.show_settings_with_section(Some(SettingsSection::Referrals), ctx);
+                }
             }
             JoinSlack => self.join_slack(ctx),
             ViewUserDocs => self.view_user_docs(ctx),
@@ -20140,7 +20130,6 @@ impl TypedActionView for Workspace {
                     let is_open = !self.current_workspace_state.is_agent_management_view_open;
                     self.set_is_agent_management_view_open(is_open, ctx);
 
-
                     if is_open {
                         ctx.focus(&self.agent_management_view);
                     } else {
@@ -20186,14 +20175,12 @@ impl TypedActionView for Workspace {
                 entrypoint,
                 zero_state_prompt_suggestion_type,
             } => {
-
                 self.add_terminal_tab_in_ai_mode(*zero_state_prompt_suggestion_type, ctx);
             }
             NewPaneInAgentMode {
                 entrypoint,
                 zero_state_prompt_suggestion_type,
             } => {
-
                 self.add_terminal_pane_in_ai_mode(*zero_state_prompt_suggestion_type, ctx);
             }
             #[cfg(feature = "agent_management_view")]
@@ -20217,8 +20204,7 @@ impl TypedActionView for Workspace {
             ClickedAIAssistantIcon => {
                 if !FeatureFlag::AgentMode.is_enabled() {
                     self.toggle_ai_assistant_panel(ctx);
-                    if self.current_workspace_state.is_ai_assistant_panel_open {
-                    }
+                    if self.current_workspace_state.is_ai_assistant_panel_open {}
                 }
             }
             ShowAIAssistantWarmWelcome => {
@@ -20288,7 +20274,6 @@ impl TypedActionView for Workspace {
                     view.add_ephemeral_toast(new_toast, ctx);
                 });
 
-
                 self.process_updated_sync_state(ctx);
             }
             ToggleSyncTerminalInputsInTab => {
@@ -20317,7 +20302,6 @@ impl TypedActionView for Workspace {
                     view.add_ephemeral_toast(new_toast, ctx);
                 });
 
-
                 self.process_updated_sync_state(ctx);
             }
             DisableTerminalInputSync => {
@@ -20334,13 +20318,17 @@ impl TypedActionView for Workspace {
                 });
             }
             Reauth => {
-                AuthManager::handle(ctx).update(ctx, |auth_manager, ctx| {
-                    let sign_in_url = auth_manager.sign_in_url();
-                    ctx.open_url(&sign_in_url);
-                });
+                if !cfg!(feature = "skip_firebase_anonymous_user") {
+                    AuthManager::handle(ctx).update(ctx, |auth_manager, ctx| {
+                        let sign_in_url = auth_manager.sign_in_url();
+                        ctx.open_url(&sign_in_url);
+                    });
+                }
             }
             SignupAnonymousUser => {
-                self.initiate_user_signup(AnonymousUserSignupEntrypoint::SignUpButton, ctx);
+                if !cfg!(feature = "skip_firebase_anonymous_user") {
+                    self.initiate_user_signup(AnonymousUserSignupEntrypoint::SignUpButton, ctx);
+                }
             }
             SignInAnonymousWebUser => {
                 self.redirect_to_sign_in();
@@ -20504,7 +20492,6 @@ impl TypedActionView for Workspace {
             }
             OpenMCPServerCollection => {
                 self.show_settings_with_section(Some(SettingsSection::MCPServers), ctx);
-
             }
             OpenEnvironmentManagementPane => {
                 self.open_environment_management_pane(None, EnvironmentsPage::Create, ctx);

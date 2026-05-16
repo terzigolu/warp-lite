@@ -446,13 +446,11 @@ impl TypedActionView for FreeTierLimitHitModal {
         match action {
             FreeTierLimitHitModalAction::Close => {
                 ctx.emit(FreeTierLimitHitModalEvent::Close);
-
             }
             FreeTierLimitHitModalAction::OpenUpgrade => {
                 let upgrade_url = Self::get_upgrade_url(ctx);
                 ctx.open_url(&upgrade_url);
                 ctx.emit(FreeTierLimitHitModalEvent::Close);
-
             }
             FreeTierLimitHitModalAction::OpenUrl(url) => {
                 ctx.open_url(url);

@@ -533,10 +533,8 @@ impl ConversationListView {
     /// Send telemetry for opening a conversation or task
     fn send_open_telemetry(id: &ConversationOrTaskId, ctx: &mut ViewContext<Self>) {
         match id {
-            ConversationOrTaskId::ConversationId(conversation_id) => {
-            }
-            ConversationOrTaskId::TaskId(task_id) => {
-            }
+            ConversationOrTaskId::ConversationId(conversation_id) => {}
+            ConversationOrTaskId::TaskId(task_id) => {}
         }
     }
 

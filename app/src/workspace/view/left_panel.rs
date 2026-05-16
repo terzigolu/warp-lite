@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use warp_core::ui::Icon;
 use warp_core::ui::theme::color::internal_colors;
+use warp_core::ui::Icon;
 use warp_util::path::LineAndColumnArg;
 use warpui::{
     elements::{
@@ -719,7 +719,6 @@ impl LeftPanelView {
                     None,
                 );
 
-
                 ctx.emit(LeftPanelEvent::OpenFileWithTarget {
                     path: path.clone(),
                     target,
@@ -924,8 +923,7 @@ impl LeftPanelView {
                     },
                     ctx,
                 );
-                if !was_active {
-                }
+                if !was_active {}
             }
             LeftPanelAction::WarpDrive => {
                 active_view_state::set(self, ToolPanelView::WarpDrive, ctx);
