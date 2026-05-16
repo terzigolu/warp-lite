@@ -1,130 +1,203 @@
 # warp-lite
 
-Lightweight AGPL fork of [Warp Terminal](https://github.com/warpdotdev/warp) — **no AI, no cloud, no telemetry**.
+Lightweight AGPL fork of [Warp Terminal](https://github.com/warpdotdev/warp), focused on a local-first terminal experience without Warp account login, bundled AI workflows, cloud onboarding, or telemetry as a product requirement.
 
-> ⚠️ **Status: alpha / under construction.** The fork is mid-amputation: terminal core works, AI / cloud / onboarding subsystems are being removed phase-by-phase. The `warp-lite/main` branch is always green and pushable; in-progress work lives on `phase3-wip` until it compiles. See [`FORK_NOTICE.md`](FORK_NOTICE.md) for the relationship with upstream Warp, and the [commit history](https://github.com/terzigolu/warp-lite/commits/warp-lite/main) for the current shipped state.
+> Status: alpha, but usable on macOS. The latest shipped build is **v0.5.2-lite**. It builds, launches, and is published with downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
+
+Latest release:
+
+- [v0.5.2-lite](https://github.com/terzigolu/warp-lite/releases/tag/v0.5.2-lite)
+- Commit: `0f6335d3`
+- macOS artifacts: `WarpLite.dmg` (~124 MB), `WarpLite.app.zip` (~114 MB)
+
+See [`FORK_NOTICE.md`](FORK_NOTICE.md) for the relationship with upstream Warp.
 
 ## Why
 
-Upstream Warp is excellent, but bundles a large agentic-development surface (Warp AI, Warp Drive, session sharing, ambient agents, computer use, voice input, telemetry, crash reporting) that some users do not want. This fork cuts that surface and ships only the terminal.
+Upstream Warp is excellent, but includes a large agentic-development and cloud surface that some users do not want in their terminal. This fork keeps the terminal core and progressively removes or disables the product surfaces around AI, cloud sync, billing, onboarding, telemetry, and account login.
 
 Goals, in order:
 
-1. **Local-first.** Zero outbound network calls at idle. No telemetry. No crash uploads. No backend.
-2. **Lighter.** Smaller binary, faster cold build, lower idle RAM.
-3. **Faithful to the terminal core.** Block model, GPU renderer, shell integrations, Vim mode, editor, LSP, syntax highlighting — all preserved.
+1. **Local-first.** No Warp account required. No login gate for opening a terminal.
+2. **Terminal-first.** Preserve the block terminal, GPU renderer, shell integrations, tabs, panes, settings, themes, command palette, editor basics, completions, and markdown rendering.
+3. **Lighter over time.** Remove AI/cloud code paths carefully without breaking terminal rendering or input.
+4. **Honest status.** Some source modules are still present while the default build avoids their product paths. This README tracks that split explicitly.
 
-What this fork is **not**: a closed-source repackage, an MIT relicense (the AGPL applies and cannot be downgraded), or a project under the Warp Team.
+What this fork is **not**: a closed-source repackage, an MIT relicense, or a project maintained by the Warp Team. The AGPL applies and cannot be downgraded.
 
-## Roadmap & Status
+## Install
 
-The work is split into compile-driven phases. Each phase commit must keep `cargo check --workspace` green on `warp-lite/main`. **`v0.1.0-lite`, `v0.2.0-lite`, `v0.2.1-lite`, and `v0.3.0-lite` are tagged and shipped.** v0.3 introduced the **Context Panel** (a terminal-context-aware Tools Panel that replaces the AI Assistant), additional crate deletions, and hides the legacy AI/Account UI surfaces. v0.4 targets the physical removal of the two giant remaining crates (`ai`, `onboarding`).
+Download the latest macOS build from:
 
-| Phase | Subsystem | State | Notes |
-|---|---|---|---|
-| **0** | Default features purge | ✅ v0.1 | `agent_mode`, `agent_mode_computer_use`, `agent_onboarding`, `hoa_onboarding_flow`, `gui = ["voice_input"]` removed from defaults. |
-| **1** | Quick-win crate deletions | ✅ v0.1 | `managed_secrets_wasm`, `prevent_sleep`, `app-installation-detection` removed (~–524 LOC). |
-| **2.2a** | Telemetry macros → no-op | ✅ v0.1 | All `send_telemetry_*!` macros neutralized at the macro layer. |
-| **2.2b** | Telemetry call-site sweep | ✅ v0.2 | **1 026 `send_telemetry_*!()` call sites physically deleted** across 168 files; macro definitions removed. |
-| **3 (compile pass)** | AI surface stub | ✅ v0.1 | `app/src/search/{ai_context_menu, ai_queries, notebook_embedding}` mods stubbed. |
-| **3.6** | Integration test crate | ✅ v0.1 | `crates/integration` removed (–18 469 LOC). |
-| **3.x (partial)** | Niche AI crate physical removal | ✅ v0.2 | `crates/voice_input`, `handlebars`, `warp_js`, `warp_graphql_schema` deleted (~–1.5 K Rust LOC + assets). `crates/onboarding` decoupled from `ai` (`LLMId` inlined). |
-| **3.x (computer_use)** | AI peripheral gut | ✅ v0.2 | `crates/computer_use` shrunk from 4 K LOC → 200 LOC inert stub. Public API preserved; runtime is no-op. |
-| **3.x (extra crates)** | More physical drops | ✅ v0.3 | `crates/firebase`, `crates/command-signatures-v2`, `crates/serve-wasm` fully deleted. `crates/onboarding` bin/examples/telemetry trimmed (~–10 K LOC total). |
-| **3.x (final)** | `crates/ai`, `crates/onboarding` lib physical removal | ⏳ v0.4 | `ai` (22 K LOC, 172 import paths) + `onboarding` (~9.8 K LOC, 22 deep consumers). |
-| **4 (network silence)** | Cloud endpoint neutralization | ✅ v0.1 | URLs blanked → RFC-2606 invalid TLDs; **0 reachable backends.** |
-| **4.x (transport)** | Cloud HTTP/WS short-circuit | ✅ v0.2 | `firebase` 145→55 LOC, `websocket` 1080→380 LOC (`connect()` returns Err), `warp_graphql` HTTP gated. **0 outbound HTTPS / WS dial.** |
-| **4.x (final)** | Full cloud crate `rm -rf` | ⏳ v0.4 | `graphql`, `warp_server_client`, `managed_secrets`, `warp_files` (partial). Unlocks once `crates/ai` goes. |
-| **5 — Context Panel scaffold** | New right-side Tools Panel | ✅ v0.3 | New `app/src/context_panel/` module + 4 widgets (Working Directory, Git, Claude Code Sessions, Foreground Process). Toggle: `Cmd+Shift+K`. Default closed. |
-| **5.1 — UI polish** | AI Panel + Account hidden | ✅ v0.3.1 | Legacy AI assistant render branch gated with `false &&`; Settings sidebar `Account` entry removed. |
-| **5.2 — Widget polish** | Foreground Process real wiring + collapsible polish + project-type detect | 🚧 in progress | Foreground Process widget is currently a placeholder; real `ps` wiring + 1-second tick deferred to v0.3.2. |
-| **6** | Editor power-feature trim | ⏳ Deferred to v0.5+ | `editor` (Zed fork, ~100 K LOC), `lsp`, `node_runtime`, `vim` stay. |
+```text
+https://github.com/terzigolu/warp-lite/releases/latest
+```
 
-### What ships in v0.3.0-lite (cumulative on top of v0.2)
+Use `WarpLite.dmg`, then drag `WarpLite.app` into `/Applications`.
 
-- ✅ **Context Panel** replaces the AI Assistant — `Cmd+Shift+K` toggles a right-side panel with four collapsible cards: working directory + project type, Git branch / ahead-behind / status / last commit, Claude Code session count for the current cwd, and a foreground-process placeholder.
-- ✅ Legacy `Warp AI` panel render branch is hardcoded off; the Account section is gone from Settings; menus, sidebar, header buttons, and modals previously hidden in v0.2.1 stay clean.
-- ✅ Three more crates physically deleted (`firebase`, `command-signatures-v2`, `serve-wasm`); onboarding bin/examples trimmed.
-- ✅ `cargo check --workspace` green; release binary builds and launches; smoke test passes (`PostBootstrapPrecmd`, terminal hooks fire, no panics).
-- ⚠️ `crates/ai` (22 K LOC) and `crates/onboarding` lib (~9.8 K LOC) still on disk, runtime-inert. v0.4 is the rm-rf release.
+The packaged app uses:
 
-The honest summary: **v0.3 is the first warp-lite release where the user actually sees a "pure terminal" — the AI panel is gone, login is gone, and the new right-side panel surfaces what a terminal user actually wants (cwd, git, running process, Claude Code).** Source-level cleanup of the giant remaining crates lands in v0.4.
+- Bundle identifier: `dev.warp-lite.WarpLite`
+- App name: `WarpLite`
+- Current bundle version: `0.5.2-lite`
 
-## What's been removed (`phase3-wip` branch — pending green compile)
+## Current Shipped State
 
-### Crates deleted (12)
-`ai`, `computer_use`, `onboarding`, `firebase`, `voice_input`, `handlebars`, `warp_js`, `managed_secrets`, `graphql` (warp_graphql), `warp_graphql_schema`, `warp_server_client`, `websocket`.
+The current release is `v0.5.2-lite`.
 
-Plus already on `warp-lite/main`: `integration`, `managed_secrets_wasm`, `prevent_sleep`, `app-installation-detection`.
-
-### App modules deleted (17+)
-`app/src/ai/`, `ai_assistant/`, `auth/`, `billing/`, `drive/`, `pricing/`, `cloud_object/`, `code_review/`, `chip_configurator/`, `context_chips/`, `coding_entrypoints/`, `coding_panel_enablement_state/`, `prompt/`, `referral_theme_status/`, `reward_view/`, `server/`, `voice/`, `voltron/`, `session_management/`.
-
-### Surprises documented along the way
-- `warp_completer` looked AI-coupled but is actually pure shell completion (history / path) — kept.
-- `crates/persistence` carries an AI proto schema (AgentConversation, ModelTokenUsage) baked into local SQLite — surgical deletion required.
-- `app/src/settings/onboarding` is an in-app submodule, distinct from the `crates/onboarding` workspace crate. Easy to confuse.
-
-## Estimated wins after `v0.1.0-lite`
-
-| Metric | Upstream baseline | warp-lite target |
+| Area | State | Notes |
 |---|---|---|
-| Release binary | 180–220 MB | **~90–110 MB** (≈ –60%) |
-| Cold `cargo build --release` | 8–12 min | **3–5 min** |
-| Idle RAM | 350–450 MB | **~200–300 MB** |
-| LOC compiled | ~750 K | **~480 K** (–36%) |
-| Outbound network calls at idle | telemetry + Sentry + RTC | **0** |
+| Terminal core | Works | Core terminal view/input/model files are preserved. Do not wholesale stub them. |
+| macOS app bundle | Works | `script/build-warp-lite-app.sh` builds `WarpLite.app`. |
+| DMG release | Works | `WarpLite.dmg` is published in GitHub Releases. |
+| Warp login gate | Disabled | `skip_firebase_anonymous_user` is enabled by default so startup does not require Warp login. |
+| Telemetry product goal | Removed/neutralized | Historical telemetry call-site cleanup is part of the fork; keep auditing before claiming perfect network silence. |
+| Context Panel / Tools Panel | Removed from shipped UI | The experimental Context Panel was deleted from the app wiring in `v0.5.1-lite` after causing instability and stale data issues. |
+| Codex / Claude Code notifications | Kept | These are intentionally preserved for the lite fork. |
+| Markdown viewer | Kept | `markdown_tables` and `markdown_mermaid` remain in defaults. |
+| Agent mode | Not a target | Agent-mode product surfaces should stay out of the lite app. |
 
-## Branch structure
+## What Changed Recently
 
-```
-origin/warp-lite/main      ← default; always green; cherry-pick target for upstream fixes
-origin/phase3-wip          ← Phase 3 in-flight (cargo check still red, agent-driven)
-origin/upstream-tracking   ← weekly mirror of warpdotdev/warp@master (orphan, never merged)
-upstream/master            ← read-only; cherry-pick source via `git cherry-pick -x <sha>`
-```
+### v0.5.2-lite
 
-Two tags worth knowing during the Phase 3 work:
+- Restored `skip_firebase_anonymous_user` in default features.
+- Fixed the regression where the welcome/sign-up modal still appeared and "Skip for now" attempted Warp/Firebase auth.
+- Rebuilt and published fresh `WarpLite.dmg` and `WarpLite.app.zip` release assets.
 
-- `phase3-progress` — checkpoint after `lib.rs` + `persistence/sqlite.rs` cleared (commit `c218492`).
-- `phase3-progress-2` — checkpoint after the mass cfg-gate pass on `terminal/view.rs` and `workspace/view.rs` (commit `6be4a03`).
+### v0.5.1-lite
 
-## Building (macOS)
+- Slimmed default features.
+- Removed the experimental Context Panel source/wiring from the shipped app path.
+- Gated additional agent/cloud management UI surfaces.
 
-The fork keeps all of upstream's build prerequisites. On macOS:
+### v0.5.0-lite and earlier
 
-1. **Xcode (full)** — not just Command Line Tools. The terminal renderer compiles Metal shaders (`crates/warpui/build.rs`) and `metal` lives only in Xcode.
-2. **Metal Toolchain** — Xcode 26+ ships this as a separate component:
+- Gutted large parts of codebase indexing and AI-adjacent background work.
+- Deleted or stubbed several AI/cloud peripheral crates.
+- Removed large telemetry call-site surface from earlier phases.
+- Preserved the terminal renderer/input stack after a failed over-aggressive stub attempt proved that compile success is not enough.
+
+## Removed From Source
+
+These crates or app modules are no longer present in the current tree:
+
+| Path | Status |
+|---|---|
+| `crates/integration` | Removed |
+| `crates/firebase` | Removed |
+| `crates/voice_input` | Removed |
+| `crates/handlebars` | Removed |
+| `crates/warp_js` | Removed |
+| `crates/warp_graphql` | Removed |
+| `crates/warp_graphql_schema` | Removed |
+| `crates/command-signatures-v2` | Removed |
+| `crates/serve-wasm` | Removed |
+| `crates/prevent_sleep` | Removed |
+| `crates/managed_secrets_wasm` | Removed |
+| `crates/app-installation-detection` | Removed |
+| `app/src/onboarding` | Removed |
+
+## Still Present And Needs Work
+
+These modules still exist and should be treated as the next cleanup targets. Some are default-disabled, partially stubbed, or unreachable in normal lite flows, but they are not physically gone.
+
+| Path | Why it matters | Suggested next move |
+|---|---|---|
+| `app/src/auth` | Login UI and auth flow still exist in source. | Remove or hard-gate remaining auth UI after verifying no startup path depends on it. |
+| `app/src/ai` | Large AI UI/product surface remains. | Continue surgical feature-gating and deletion; avoid terminal core wholesale stubs. |
+| `crates/ai` | Still a major compiled/source dependency. | Continue reducing agent/indexing/ambient modules behind stable APIs. |
+| `crates/onboarding` | Still present even though app onboarding module is gone. | Finish crate-level cleanup if consumers are gone or can be stubbed safely. |
+| `app/src/billing` | Billing UI should not ship in a local-first lite terminal. | Gate/remove visible and reachable billing flows. |
+| `app/src/voice` | Voice feature source remains although `crates/voice_input` is gone. | Remove dead app-side voice surfaces or gate them out. |
+| `crates/websocket` | Network transport crate still exists. | Verify consumers, then stub or delete if no terminal feature needs it. |
+| `crates/warp_server_client` | Warp backend client remains. | Audit call sites and remove once auth/cloud dependencies are gone. |
+| `crates/managed_secrets` | Cloud/secret product surface remains as a stub candidate. | Keep API only if required, otherwise delete. |
+| `crates/warp_files` | Cloud/file integration residue. | Audit dependencies before removal. |
+
+## Guardrails
+
+The terminal works because its core was preserved. Keep these files off any broad deletion or wholesale-stub plan:
+
+- `app/src/terminal/view.rs`
+- `app/src/terminal/input.rs`
+- `app/src/terminal/block_list_element.rs`
+- `app/src/terminal/view/`
+- `app/src/terminal/input/`
+- `app/src/terminal/local_tty/terminal_manager.rs`
+- `app/src/terminal/alt_screen/alt_screen_element.rs`
+- `app/src/terminal/model/`
+
+If a change makes the build green by replacing terminal rendering/input/model code with small stubs, that change is wrong for warp-lite. Verify with launch testing, not just `cargo check`.
+
+## Build
+
+The fork keeps upstream's macOS build prerequisites:
+
+1. Full Xcode, not just Command Line Tools.
+2. Metal Toolchain:
+
    ```sh
    sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
    xcodebuild -downloadComponent MetalToolchain
    ```
-3. **git-lfs** — upstream ships some assets via LFS. `brew install git-lfs && git lfs install`, then a fresh clone or `git lfs pull`.
-4. **Rust toolchain** — pinned by `rust-toolchain.toml` (currently 1.92.0); `rustup` handles it automatically.
 
-Then:
+3. git-lfs:
+
+   ```sh
+   brew install git-lfs
+   git lfs install
+   git lfs pull
+   ```
+
+4. Rust toolchain pinned by `rust-toolchain.toml`.
+
+Common commands:
 
 ```sh
-cargo check --workspace                    # type-check (~2 min cold)
-cargo build --release --bin warp-oss       # release build (target/release/warp-oss)
+cargo check -p warp --bin warp-oss
+CARGO_BUILD_JOBS=4 cargo build --release --bin warp-oss
+script/build-warp-lite-app.sh
+rm -f WarpLite.dmg
+hdiutil create -volname WarpLite -srcfolder WarpLite.app -ov -format UDZO WarpLite.dmg
 ```
 
-The default binary is `warp-oss` (declared via `default-run` in `app/Cargo.toml`).
+Verification used for the latest release:
 
-## Linux / Windows
+```sh
+cargo check -p warp --bin warp-oss
+CARGO_BUILD_JOBS=4 cargo build --release --bin warp-oss
+codesign --verify --deep --strict --verbose=2 WarpLite.app
+hdiutil verify WarpLite.dmg
+```
 
-Upstream supports both. The fork has not yet been smoke-tested on either; the AI / cloud removal touches mostly platform-agnostic code, so they should keep working, but treat first builds on those platforms as "report bugs and we fix" until tagged v0.1.0-lite.
+Known caveat: full `cargo fmt --check` can currently fail because the repository still references disabled/removed upstream files. Prefer targeted formatting/checks until that cleanup is complete.
 
-## Contributing
+## Branch Structure
 
-Issues and PRs welcome. Two ground rules:
+```text
+origin/warp-lite/main      default branch; current shipped work
+origin/upstream-tracking   read-only mirror/cherry-pick source for upstream Warp changes
+upstream/master            upstream Warp source
+```
 
-1. **License.** Contributions are accepted under AGPL-3.0-only. Do not paste code from non-AGPL/MIT-compatible sources.
-2. **Cherry-pick discipline for upstream fixes.** If you want a renderer or shell-integration improvement that landed in `warpdotdev/warp`, port it via `git cherry-pick -x <sha>` from the `upstream-tracking` branch — that preserves AGPL §13 attribution.
+Historical phase branches and tags may still exist, but the public state should be read from `warp-lite/main`, the tags, and the GitHub Releases page.
+
+## Release History
+
+| Tag | Summary |
+|---|---|
+| `v0.5.2-lite` | No-login hotfix; fresh DMG/app zip assets. |
+| `v0.5.1-lite` | Default feature diet and Context Panel removal from shipped app path. |
+| `v0.5.0-lite` | AI/codebase-index cleanup and bundle version bump. |
+| `v0.4.0-lite` | Managed secrets/onboarding reduction work. |
+| `v0.3.x-lite` | Context Panel experiments; later removed from shipped path. |
+| `v0.2.x-lite` | Telemetry call-site cleanup, UI hiding, niche crate removals. |
+| `v0.1.0-lite` | Initial default feature purge and first green lite build. |
 
 ## License
 
-- Source code: **AGPL-3.0-only** (see [`LICENSE-AGPL`](LICENSE-AGPL)). Inherited from upstream Warp; cannot be relicensed.
-- The two crates `warpui` and `warpui_core` retain their original **MIT** license (see [`LICENSE-MIT`](LICENSE-MIT)), matching upstream.
+- Source code: **AGPL-3.0-only** (see [`LICENSE-AGPL`](LICENSE-AGPL)).
+- `warpui` and `warpui_core` retain their original **MIT** license (see [`LICENSE-MIT`](LICENSE-MIT)).
 
-Trademark "Warp" belongs to Denver Technologies, Inc. — see [`FORK_NOTICE.md`](FORK_NOTICE.md).
+Trademark "Warp" belongs to Denver Technologies, Inc. See [`FORK_NOTICE.md`](FORK_NOTICE.md).

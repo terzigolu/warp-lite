@@ -392,7 +392,9 @@ impl LoginSlideView {
     fn handle_login_later(&mut self, ctx: &mut ViewContext<Self>) {
         // Send synchronously since this is an important event in the sign up funnel and we
         // don't want to lose events if the user quits before the event queue is flushed.
-        if FeatureFlag::SkipFirebaseAnonymousUser.is_enabled() {
+        if cfg!(feature = "skip_firebase_anonymous_user")
+            || FeatureFlag::SkipFirebaseAnonymousUser.is_enabled()
+        {
             AuthManager::handle(ctx).update(ctx, |_, ctx| {
                 ctx.emit(AuthManagerEvent::SkippedLogin);
             });

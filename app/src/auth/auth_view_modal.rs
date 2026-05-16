@@ -275,7 +275,9 @@ impl AuthView {
     }
 
     pub fn handle_login_later(&mut self, ctx: &mut ViewContext<Self>) {
-        if FeatureFlag::SkipFirebaseAnonymousUser.is_enabled() {
+        if cfg!(feature = "skip_firebase_anonymous_user")
+            || FeatureFlag::SkipFirebaseAnonymousUser.is_enabled()
+        {
             AuthManager::handle(ctx).update(ctx, |_, ctx| {
                 ctx.emit(AuthManagerEvent::SkippedLogin);
             });
