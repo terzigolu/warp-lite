@@ -493,6 +493,7 @@ default = [
     "codex_notifications",
     "trim_trailing_blank_lines",
     "open_warp_new_settings_modes",
+    "skip_firebase_anonymous_user",
     "settings_file",
 ]
 # Enable this feature to automatically perform heap profiling.  NOTE: This will

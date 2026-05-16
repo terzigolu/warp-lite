@@ -17,8 +17,8 @@ cd "$ROOT"
 
 BIN="target/release/warp-oss"
 APP="WarpLite.app"
-APP_VERSION="0.5.1"
-APP_SHORT_VERSION="0.5.1-lite"
+APP_VERSION="0.5.2"
+APP_SHORT_VERSION="0.5.2-lite"
 APP_IDENTIFIER="dev.warp-lite.WarpLite"
 SRC_PNG="app/channels/oss/icon/no-padding/512x512.png"
 
