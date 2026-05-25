@@ -773,13 +773,14 @@ impl FileNotebookView {
         .finish()
     }
 
-    fn render_body(&self, appearance: &Appearance) -> Box<dyn Element> {
+    fn render_body(&self, appearance: &Appearance, _app: &AppContext) -> Box<dyn Element> {
         let body = match &self.file_state {
             FileState::NoFile => self.render_no_file(appearance),
             FileState::Loading(source) => self.render_loading(source, appearance),
             FileState::Error(source) => self.render_error(source, appearance),
             FileState::Loaded(_) => ChildView::new(&self.editor).finish(),
         };
+
         styles::wrap_body(body)
     }
 }
@@ -806,7 +807,7 @@ impl View for FileNotebookView {
 
         let column = Flex::column().with_children([
             self.render_title(appearance, font_settings),
-            Shrinkable::new(1., self.render_body(appearance)).finish(),
+            Shrinkable::new(1., self.render_body(appearance, app)).finish(),
         ]);
 
         let mut stack = Stack::new().with_child(column.finish());

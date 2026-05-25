@@ -35,6 +35,8 @@ pub enum ImmediateSaveError {
     FailedToSave(#[from] FileSaveError),
     #[error("There is no file tab currently selected")]
     NoActiveFileTab,
+    #[error("Remote session disconnected")]
+    RemoteDisconnected,
 }
 
 /// Trait to determine whether we should show the comment editor based on state held
