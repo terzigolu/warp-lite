@@ -839,6 +839,9 @@ pub enum FeatureFlag {
     /// Enables a faster implementation of terminal find that runs searches on a
     /// background thread to keep the UI responsive on large outputs.
     AsyncFind,
+
+    /// Enables grouping tabs together in the vertical tab list.
+    GroupedTabs,
 }
 
 static FLAG_STATES: [AtomicBool; cardinality::<FeatureFlag>()] =

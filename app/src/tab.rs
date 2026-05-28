@@ -53,6 +53,8 @@ use warpui::ui_components::components::{Coords, UiComponent, UiComponentStyles};
 use warpui::ui_components::text_input::TextInput;
 use warpui::{AppContext, SingletonEntity, ViewHandle};
 
+use crate::workspace::tab_group::TabGroupId;
+
 pub const TAB_BAR_BORDER_HEIGHT: f32 = 1.0;
 const TAB_INDICATOR_HEIGHT: f32 = 14.0;
 
@@ -117,6 +119,7 @@ pub enum NewSessionMenuItem {
     OpenLaunchConfig(LaunchConfig),
     OpenLaunchConfigDocs,
     CreateNewTabConfig,
+    CreateNewTabGroup,
 }
 
 #[derive(Clone, Copy)]
@@ -146,6 +149,8 @@ pub struct TabData {
     pub indicator_hover_state: MouseStateHandle,
     // Used by a later drag-tab branch to distinguish tabs that have moved into detached windows.
     pub detached: bool,
+    /// Tab group this tab belongs to, if any
+    pub group_id: Option<TabGroupId>,
 }
 
 const TAB_COLOR_ICON_PATH: &str = "bundled/svg/ellipse.svg";
@@ -163,6 +168,7 @@ impl TabData {
             selected_color: SelectedTabColor::Unset,
             indicator_hover_state: Default::default(),
             detached: false,
+            group_id: None,
         }
     }
 

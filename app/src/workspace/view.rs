@@ -519,6 +519,7 @@ use warpui::{
     geometry::vector::{vec2f, Vector2F},
     AppContext, Entity, TypedActionView, UpdateView, View, ViewContext, ViewHandle,
 };
+use crate::workspace::tab_group::{TabGroup, TabGroupId};
 use warpui::{
     EntityId, FocusContext, ModelHandle, SingletonEntity, UpdateModel, ViewAsRef, WeakViewHandle,
     WindowId,
@@ -913,6 +914,8 @@ pub struct Workspace {
     tab_bar_hover_state: MouseStateHandle,
     tab_fixed_width: Option<f32>,
     traffic_light_mouse_states: TrafficLightMouseStates,
+    /// Tab groups in this workspace, keyed by id.
+    pub(crate) tab_groups: HashMap<TabGroupId, TabGroup>,
     tab_rename_editor: ViewHandle<EditorView>,
     pane_rename_editor: ViewHandle<EditorView>,
     vertical_tabs_search_input: ViewHandle<EditorView>,
@@ -3055,6 +3058,7 @@ impl Workspace {
             hovered_tab_index: None,
             tab_bar_hover_state: Default::default(),
             traffic_light_mouse_states: Default::default(),
+            tab_groups: HashMap::new(),
             tab_rename_editor: Self::tab_rename_editor(ctx),
             pane_rename_editor: Self::pane_rename_editor(ctx),
             vertical_tabs_search_input: Self::vertical_tabs_search_input(ctx),
@@ -6350,6 +6354,11 @@ impl Workspace {
             }
             #[cfg(not(feature = "local_fs"))]
             NewSessionMenuItem::CreateNewTabConfig => {}
+            NewSessionMenuItem::CreateNewTabGroup => {
+                if FeatureFlag::GroupedTabs.is_enabled() {
+                    self.create_new_tab_group(ctx);
+                }
+            }
         }
     }
 
@@ -6493,6 +6502,71 @@ impl Workspace {
 
     #[cfg(not(feature = "local_fs"))]
     fn save_current_tab_as_new_config(&mut self, _tab_index: usize, _ctx: &mut ViewContext<Self>) {}
+
+    /// Creates a new tab group containing a single new tab.
+    fn create_new_tab_group(&mut self, ctx: &mut ViewContext<Self>) {
+        let group = TabGroup::new();
+        let group_id = group.id;
+        self.tab_groups.insert(group_id, group);
+        self.add_new_session_tab_with_default_mode(
+            NewSessionSource::Tab,
+            Some(ctx.window_id()),
+            None,
+            None,
+            false,
+            ctx,
+        );
+        let new_tab_index = self.active_tab_index;
+        if let Some(tab) = self.tabs.get_mut(new_tab_index) {
+            tab.group_id = Some(group_id);
+        }
+
+        // New tab groups always land at the top of the tab list.
+        if new_tab_index != 0 {
+            let tab = self.tabs.remove(new_tab_index);
+            self.tabs.insert(0, tab);
+            self.active_tab_index = 0;
+        }
+
+        ctx.dispatch_global_action("workspace:save_app", ());
+        ctx.notify();
+    }
+
+    /// Closes every tab in the given group and removes the group.
+    pub fn close_tab_group(&mut self, group_id: TabGroupId, ctx: &mut ViewContext<Self>) {
+        let indices: Vec<usize> = group_member_indices(&self.tabs, group_id).collect();
+        if indices.is_empty() {
+            self.tab_groups.remove(&group_id);
+            ctx.notify();
+            return;
+        }
+        let first_index = indices[0];
+        let closed = self.close_tabs(
+            indices.into_iter(),
+            OpenDialogSource::CloseOtherTabs {
+                tab_index: first_index,
+            },
+            false,
+            true,
+            ctx,
+        );
+        if closed {
+            self.tab_groups.remove(&group_id);
+            ctx.notify();
+        }
+    }
+
+    /// Toggles the collapsed state of the given tab group.
+    pub fn toggle_tab_group_collapsed(
+        &mut self,
+        group_id: TabGroupId,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        if let Some(group) = self.tab_groups.get_mut(&group_id) {
+            group.collapsed = !group.collapsed;
+            ctx.notify();
+        }
+    }
 
     pub fn toggle_tab_right_click_menu(
         &mut self,
@@ -10722,6 +10796,12 @@ impl Workspace {
 
         let is_new_terminal = matches!(panes_layout, PanesLayout::SingleTerminal(_));
         let is_restoration = matches!(panes_layout, PanesLayout::Snapshot(_));
+        // Capture the active tab's group membership so the new tab can inherit it.
+        let active_tab_group_id = if FeatureFlag::GroupedTabs.is_enabled() && !is_restoration {
+            active_tab.and_then(|tab| tab.group_id)
+        } else {
+            None
+        };
         let new_pane_group = ctx.add_typed_action_view(|ctx| {
             let mut pane_group = PaneGroup::new_with_panes_layout(
                 self.tips_completed.clone(),
@@ -10747,10 +10827,20 @@ impl Workspace {
 
         match new_tab_placement_setting {
             NewTabPlacement::AfterAllTabs => {
-                self.tabs.push(TabData::new(new_pane_group));
+                // When inheriting a group, land at the end of the group's
+                // contiguous run instead of past it so the setting is
+                // honored within the group's bounds.
+                let insert_idx = active_tab_group_id
+                    .and_then(|gid| {
+                        group_member_indices(&self.tabs, gid)
+                            .last()
+                            .map(|last| last + 1)
+                    })
+                    .unwrap_or(self.tabs.len());
+                self.tabs.insert(insert_idx, TabData::new(new_pane_group));
                 self.tab_mru_order
-                    .push(self.tabs.last().unwrap().pane_group.id());
-                self.activate_tab_internal(self.tab_count() - 1, ctx);
+                    .push(self.tabs[insert_idx].pane_group.id());
+                self.activate_tab_internal(insert_idx, ctx);
             }
             // Add tab after current tab
             _ => {
@@ -10766,6 +10856,14 @@ impl Workspace {
                         .push(self.tabs[insert_idx].pane_group.id());
                     self.activate_tab_internal(insert_idx, ctx);
                 }
+            }
+        }
+
+        // Inherit the active tab's group membership. D
+        if let Some(group_id) = active_tab_group_id {
+            let new_idx = self.active_tab_index;
+            if let Some(new_tab) = self.tabs.get_mut(new_idx) {
+                new_tab.group_id = Some(group_id);
             }
         }
 
@@ -19660,6 +19758,8 @@ impl TypedActionView for Workspace {
             CloseTabsRightActiveTab => {
                 self.close_tabs_direction(self.active_tab_index, TabMovement::Right, false, ctx)
             }
+            CloseTabGroup(group_id) => self.close_tab_group(*group_id, ctx),
+            ToggleTabGroupCollapsed(group_id) => self.toggle_tab_group_collapsed(*group_id, ctx),
             AddDefaultTab => {
                 let effective_mode = AISettings::as_ref(ctx).default_session_mode(ctx);
                 match effective_mode {
@@ -23606,6 +23706,18 @@ impl Workspace {
 
 fn should_reserve_traffic_light_space_in_tab_bar(side: TrafficLightSide) -> bool {
     side == TrafficLightSide::Right
+}
+
+/// Returns the indices of every tab in `tabs` that belongs to `group_id`,
+/// in ascending order.
+fn group_member_indices(
+    tabs: &[TabData],
+    group_id: TabGroupId,
+) -> impl Iterator<Item = usize> + '_ {
+    tabs.iter()
+        .enumerate()
+        .filter(move |(_, tab)| tab.group_id == Some(group_id))
+        .map(|(idx, _)| idx)
 }
 
 /// Returns every tab-bar-equivalent rect laid out in `window_id` (horizontal
