@@ -26,13 +26,14 @@ use crate::{
     editor::InteractionState,
     features::FeatureFlag,
     notebooks::editor::rich_text_styles,
-    settings::{AppEditorSettings, FontSettings},
+    settings::{AppEditorSettings, CodeEditorLineNumberMode, FontSettings},
     view_components::find::FindDirection,
 };
 use ai::diff_validation::DiffDelta;
 use lazy_static::lazy_static;
 use num_traits::SaturatingSub;
 use pathfinder_geometry::vector::vec2f;
+use settings::Setting as _;
 use std::fmt::Debug;
 use std::rc::Rc;
 use std::{collections::HashMap, ops::Range};
@@ -308,6 +309,10 @@ impl CodeEditorView {
         });
         ctx.subscribe_to_model(&font_settings_handle, |me, _, _, ctx| {
             me.handle_appearance_or_font_change(ctx);
+        });
+        let app_editor_settings_handle = AppEditorSettings::handle(ctx);
+        ctx.subscribe_to_model(&app_editor_settings_handle, |_, _, _, ctx| {
+            ctx.notify();
         });
 
         let model = ctx.add_model(|ctx| {
@@ -1204,16 +1209,30 @@ impl CodeEditorView {
         let appearance = Appearance::as_ref(ctx);
         let theme = appearance.theme();
         if self.display_options.show_line_numbers {
+            let editor_settings = AppEditorSettings::as_ref(ctx);
             Some(LineNumberConfig {
                 font_family: appearance.monospace_font_family(),
                 font_size: appearance.monospace_font_size(),
                 text_color: theme.sub_text_color(theme.background()).into(),
                 highlight_text_color: theme.main_text_color(theme.background()).into(),
                 starting_line_number: self.display_options.starting_line_number,
+                mode: *editor_settings.code_editor_line_number_mode.value(),
+                active_line_number: self.active_cursor_line_for_line_numbers(ctx),
+                active_cursor_is_visible: self.is_focused(ctx) && self.is_editable(ctx),
             })
         } else {
             None
         }
+    }
+
+    fn active_cursor_line_for_line_numbers(&self, ctx: &AppContext) -> Option<LineCount> {
+        let model = self.model.as_ref(ctx);
+        let selection = *model.selections(ctx).first();
+        let buffer = model.content().as_ref(ctx);
+        let point = selection.head.to_buffer_point(buffer);
+        // `LineCount`s used by render blocks are zero-based, while buffer points report rows using
+        // the editor's one-based convention.
+        Some(LineCount::from(point.row.saturating_sub(1) as usize))
     }
 
     fn run_find(&mut self, query: &str, ctx: &mut ViewContext<Self>) {
@@ -1241,6 +1260,14 @@ impl CodeEditorView {
                 self.reset_for_editing_change();
                 self.vim_maybe_enforce_cursor_line_cap(ctx);
                 ctx.emit(CodeEditorEvent::SelectionChanged);
+                if *AppEditorSettings::as_ref(ctx)
+                    .code_editor_line_number_mode
+                    .value()
+                    == CodeEditorLineNumberMode::Relative
+                {
+                    // Repaint relative line-number gutters when the cursor origin changes.
+                    ctx.notify();
+                }
             }
             CodeEditorModelEvent::ContentChanged { origin } => {
                 if origin.from_user() {
@@ -2418,6 +2445,17 @@ impl CodeEditorView {
             input: input.to_string(),
         };
         self.handle_goto_line_event(&event, ctx);
+    }
+
+    pub fn displayed_line_number_for_test(
+        &self,
+        one_based_line_number: usize,
+        ctx: &AppContext,
+    ) -> Option<usize> {
+        let line_number_config = self.line_number_config(ctx)?;
+        let line_count = LineCount::from(one_based_line_number.checked_sub(1)?);
+
+        Some(line_number_config.display_line_number(line_count))
     }
 }
 

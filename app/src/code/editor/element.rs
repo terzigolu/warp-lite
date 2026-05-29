@@ -54,6 +54,7 @@ use crate::{
         line::EditorLineLocation,
         view::{CodeEditorViewAction, SavedComment},
     },
+    settings::CodeEditorLineNumberMode,
     view_components::action_button::{ActionButtonTheme, SecondaryTheme},
 };
 use warp_core::features::FeatureFlag;
@@ -367,6 +368,28 @@ pub struct LineNumberConfig {
     pub text_color: ColorU,
     pub highlight_text_color: ColorU,
     pub starting_line_number: Option<usize>,
+    pub mode: CodeEditorLineNumberMode,
+    pub active_line_number: Option<LineCount>,
+    pub active_cursor_is_visible: bool,
+}
+impl LineNumberConfig {
+    pub fn absolute_line_number(&self, line_count: LineCount) -> usize {
+        line_count.as_usize() + self.starting_line_number.unwrap_or(1)
+    }
+
+    pub fn display_line_number(&self, line_count: LineCount) -> usize {
+        if self.mode == CodeEditorLineNumberMode::Relative {
+            if let Some(active_line_number) = self.active_line_number {
+                if active_line_number != line_count {
+                    return active_line_number
+                        .as_usize()
+                        .abs_diff(line_count.as_usize());
+                }
+            }
+        }
+
+        self.absolute_line_number(line_count)
+    }
 }
 
 struct CommentBox {
@@ -567,6 +590,21 @@ impl<V: EditorView> EditorWrapper<V> {
             .cloned()
     }
 
+    fn should_display_relative_line_number(&self) -> bool {
+        let Some(line_number_config) = &self.line_number_config else {
+            return false;
+        };
+        if line_number_config.mode != CodeEditorLineNumberMode::Relative
+            || line_number_config.active_line_number.is_none()
+        {
+            return false;
+        }
+
+        // Relative numbers follow the cursor: only show them when a cursor is
+        // actually drawn (editor focused and editable).
+        line_number_config.active_cursor_is_visible
+    }
+
     /// Returning **no** gutter means the gutter shouldn't be rendered at all.
     /// Returning an **empty** gutter means the gutter should be rendered with no contents.
     fn gutter_elements(&self, app: &AppContext) -> Option<Vec<GutterElement>> {
@@ -602,8 +640,11 @@ impl<V: EditorView> EditorWrapper<V> {
             let diff_hunk = self.diff_status.diff_hunk(line_count, appearance);
             let is_removal = matches!(diff_hunk, Some(DiffHunkDisplay::Remove(_)));
 
-            let current_line =
-                line_count.as_usize() + line_number_config.starting_line_number.unwrap_or(1);
+            let current_line = if self.should_display_relative_line_number() {
+                line_number_config.display_line_number(line_count)
+            } else {
+                line_number_config.absolute_line_number(line_count)
+            };
 
             // If the block is temporary, don't render line number.
             // Currently, all temporary blocks are removal hunks, either from a deleted section,
@@ -1662,3 +1703,7 @@ impl<V: EditorView> NewScrollableElement for EditorWrapper<V> {
         ScrollableAxis::Both
     }
 }
+
+#[cfg(test)]
+#[path = "element_tests.rs"]
+mod tests;
