@@ -149,6 +149,16 @@ pub enum WorkspaceAction {
     CloseTabGroup(TabGroupId),
     /// Toggle collapsed state for the given tab group.
     ToggleTabGroupCollapsed(TabGroupId),
+    /// Creates a new tab group containing the tab at the given index.
+    NewTabGroupFromTab(usize),
+    /// Moves the tab at `tab_index` into `group_id`, appending it to the
+    /// end of the group's contiguous run.
+    MoveTabToGroup {
+        tab_index: usize,
+        group_id: TabGroupId,
+    },
+    /// Removes the tab at the given index from its current group.
+    RemoveTabFromGroup(usize),
     AddDefaultTab,
     AddTerminalTab {
         hide_homepage: bool,
@@ -736,6 +746,9 @@ impl WorkspaceAction {
             | CloseTabsRightActiveTab
             | CloseTabGroup(_)
             | ToggleTabGroupCollapsed(_)
+            | NewTabGroupFromTab(_)
+            | MoveTabToGroup { .. }
+            | RemoveTabFromGroup(_)
             | ToggleTabColor { .. }
             | AddDefaultTab
             | AddTerminalTab { .. }
