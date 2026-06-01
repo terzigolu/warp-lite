@@ -161,6 +161,17 @@ pub enum WorkspaceAction {
     },
     /// Removes the tab at the given index from its current group.
     RemoveTabFromGroup(usize),
+    ToggleTabGroupRightClickMenu {
+        group_id: TabGroupId,
+        anchor: TabContextMenuAnchor,
+    },
+    UngroupTabs(TabGroupId),
+    NewTabInGroup(TabGroupId),
+    MoveTabGroupUp(TabGroupId),
+    MoveTabGroupDown(TabGroupId),
+    CloseTabsOutsideGroup(TabGroupId),
+    CloseTabsAboveGroup(TabGroupId),
+    CloseTabsBelowGroup(TabGroupId),
     AddDefaultTab,
     AddTerminalTab {
         hide_homepage: bool,
@@ -752,6 +763,13 @@ impl WorkspaceAction {
             | NewTabGroupFromTab(_)
             | MoveTabToGroup { .. }
             | RemoveTabFromGroup(_)
+            | UngroupTabs(_)
+            | NewTabInGroup(_)
+            | MoveTabGroupUp(_)
+            | MoveTabGroupDown(_)
+            | CloseTabsOutsideGroup(_)
+            | CloseTabsAboveGroup(_)
+            | CloseTabsBelowGroup(_)
             | ToggleTabColor { .. }
             | AddDefaultTab
             | AddTerminalTab { .. }
@@ -811,6 +829,7 @@ impl WorkspaceAction {
             | ToggleSyntaxHighlighting
             | OpenLaunchConfigSaveModal
             | ToggleTabRightClickMenu { .. }
+            | ToggleTabGroupRightClickMenu { .. }
             | ToggleVerticalTabsPaneContextMenu { .. }
             | OpenNewSessionMenu { .. }
             | ToggleTabConfigsMenu
