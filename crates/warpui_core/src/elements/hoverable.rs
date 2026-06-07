@@ -1,4 +1,5 @@
 use super::{Point, SelectableElement, Selection, SelectionFragment, ZIndex};
+use crate::event::ModifiersState;
 use crate::platform::Cursor;
 use crate::text::word_boundaries::WordBoundariesPolicy;
 use crate::text::{IsRect, SelectionDirection, SelectionType};
@@ -17,6 +18,11 @@ use std::time::Duration;
 /// First arg is is_hovered. True when hovering in, false when hovering out.
 type HoverHandler = Box<dyn FnMut(bool, &mut EventContext, &AppContext, Vector2F)>;
 type ClickHandler = Box<dyn FnMut(&mut EventContext, &AppContext, Vector2F)>;
+/// Click handler that additionally receives the keyboard modifiers held at
+/// click time, captured from the `LeftMouseUp` event. Used by callers that
+/// need to distinguish plain clicks from shift/cmd/ctrl/alt-clicks.
+type ClickWithModifiersHandler =
+    Box<dyn FnMut(&mut EventContext, &AppContext, Vector2F, ModifiersState)>;
 
 pub struct Hoverable {
     child: Box<dyn Element>,
@@ -26,6 +32,9 @@ pub struct Hoverable {
     // A click is comprised of a mouse down and a mouse up,
     // both within the hoverable.
     click_handler: Option<ClickHandler>,
+    // Fires on the same mouse-down-then-mouse-up sequence as `click_handler`,
+    // but the callback also receives the keyboard modifiers held at click time.
+    click_with_modifiers_handler: Option<ClickWithModifiersHandler>,
     mouse_down_handler: Option<ClickHandler>,
     double_click_handler: Option<ClickHandler>,
     middle_click_handler: Option<ClickHandler>,
@@ -192,6 +201,7 @@ impl Hoverable {
             origin: None,
             hover_handler: None,
             click_handler: None,
+            click_with_modifiers_handler: None,
             mouse_down_handler: None,
             double_click_handler: None,
             middle_click_handler: None,
@@ -243,6 +253,18 @@ impl Hoverable {
         F: 'static + FnMut(&mut EventContext, &AppContext, Vector2F),
     {
         self.click_handler = Some(Box::new(callback));
+        self
+    }
+
+    /// Fires when the mouse is released within the hoverable after it was pressed
+    /// within the hoverable. The callback also receives the keyboard modifiers
+    /// (e.g. `shift`, `cmd`) held at click time, so callers can branch on
+    /// modifier-clicks.
+    pub fn on_click_with_modifiers<F>(mut self, callback: F) -> Self
+    where
+        F: 'static + FnMut(&mut EventContext, &AppContext, Vector2F, ModifiersState),
+    {
+        self.click_with_modifiers_handler = Some(Box::new(callback));
         self
     }
 
@@ -636,13 +658,17 @@ impl Element for Hoverable {
 
                 // We mark this as handled if we have a handler waiting to take action on the mouse-up event.
                 if self.click_handler.is_some()
+                    || self.click_with_modifiers_handler.is_some()
                     || (*click_count == 2 && self.double_click_handler.is_some())
                 {
                     ctx.notify();
                     return true;
                 }
             }
-            Event::LeftMouseUp { position, .. } => {
+            Event::LeftMouseUp {
+                position,
+                modifiers,
+            } => {
                 // Mouse-up should always reset clicked and double-clicked to false.
                 let click_count = self.state().click_count.take();
 
@@ -668,6 +694,14 @@ impl Element for Hoverable {
                 } else if click_count.is_some() && self.click_handler.is_some() {
                     let handler = self.click_handler.as_mut().expect("handler should exist");
                     handler(ctx, app, *position);
+                    ctx.notify();
+                    return true;
+                } else if click_count.is_some() && self.click_with_modifiers_handler.is_some() {
+                    let handler = self
+                        .click_with_modifiers_handler
+                        .as_mut()
+                        .expect("handler should exist");
+                    handler(ctx, app, *position, *modifiers);
                     ctx.notify();
                     return true;
                 }

@@ -155,6 +155,9 @@ pub struct TabData {
     pub detached: bool,
     /// Tab group this tab belongs to, if any
     pub group_id: Option<TabGroupId>,
+    /// True while this tab is in the active multi-selection (shift-click range
+    /// or cmd-click toggle).
+    pub in_multi_selection: bool,
 }
 
 const TAB_COLOR_ICON_PATH: &str = "bundled/svg/ellipse.svg";
@@ -173,6 +176,7 @@ impl TabData {
             indicator_hover_state: Default::default(),
             detached: false,
             group_id: None,
+            in_multi_selection: false,
         }
     }
 

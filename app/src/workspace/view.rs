@@ -24,6 +24,7 @@ pub(crate) mod onboarding;
 pub(crate) mod openwarp_launch_modal;
 pub(crate) mod right_panel;
 mod startup_directory;
+mod tab_grouping;
 #[cfg(test)]
 #[path = "view_test.rs"]
 mod tests;
@@ -5176,6 +5177,10 @@ impl Workspace {
         };
 
         self.active_tab_index = index;
+
+        // The range selection's anchor is the active tab, so any change to
+        // the active tab makes the existing selection stale; clear it.
+        self.clear_tab_multi_selection(ctx);
 
         if let Some(tab) = self.tabs.get(index) {
             let pane_group_id = tab.pane_group.id();
@@ -21005,6 +21010,8 @@ impl TypedActionView for Workspace {
                 group_id,
             } => self.move_tab_to_group(*tab_index, *group_id, ctx),
             RemoveTabFromGroup(tab_index) => self.remove_tab_from_group(*tab_index, ctx),
+            ShiftSelectTabRange { locator } => self.shift_select_tab_range(*locator, ctx),
+            ToggleTabMultiSelection { locator } => self.toggle_tab_multi_selection(*locator, ctx),
             ToggleTabGroupRightClickMenu { group_id, anchor } => {
                 self.toggle_tab_group_right_click_menu(*group_id, *anchor, ctx)
             }
@@ -21505,9 +21512,22 @@ impl TypedActionView for Workspace {
             ToggleScrollReporting => self.toggle_scroll_reporting(ctx),
             ToggleFocusReporting => self.toggle_focus_reporting(ctx),
             StartTabDrag => {
+                // Drag supersedes any multi-selection; clear it to avoid stale highlights.
+                self.clear_tab_multi_selection(ctx);
                 // If we are renaming a tab, finish the rename before dragging.
                 self.finish_tab_rename(ctx);
                 self.current_workspace_state.is_tab_being_dragged = true;
+            }
+            StartGroupDrag(_group_id) => {
+                self.clear_tab_multi_selection(ctx);
+                self.finish_tab_group_rename(ctx);
+            }
+            DragGroup { group_id, position } => {
+                self.on_group_drag(*group_id, *position, ctx);
+            }
+            DropGroup => {
+                send_telemetry_from_ctx!(TelemetryEvent::DragAndDropTabGroup, ctx);
+                ctx.notify();
             }
             OpenWarpDrive => {
                 if WarpDriveSettings::is_warp_drive_enabled(ctx) {
