@@ -149,6 +149,17 @@ pub(crate) fn vtab_group_kebab_position_id(tab_group_id: TabGroupId) -> String {
     format!("vertical_tabs:group_kebab:{tab_group_id:?}")
 }
 
+/// Save-position id for a tab group's full container rect, used for drop hit-testing.
+pub(crate) fn vtab_group_position_id(group_id: TabGroupId) -> String {
+    format!("vertical_tabs:group:{group_id:?}")
+}
+
+/// Save-position id for a horizontal tab group's container rect, used for
+/// drop hit-testing and as the collapsed-group fallback in horizontal-axis
+/// drag math.
+pub(crate) fn htab_group_position_id(group_id: TabGroupId) -> String {
+    format!("horizontal_tabs:group:{group_id:?}")
+}
 fn terminal_title_fallback_font(agent_text: &TerminalAgentText) -> TerminalPrimaryLineFont {
     if agent_text.cli_agent.is_some() {
         TerminalPrimaryLineFont::Ui
@@ -2162,28 +2173,44 @@ fn render_tab_group_internal(
 
     let group_element = group_element.with_defer_events_to_children().finish();
 
-    let draggable = Draggable::new(tab.draggable_state.clone(), group_element)
-        .on_drag_start(|ctx, _, _| {
-            ctx.dispatch_typed_action(WorkspaceAction::StartTabDrag);
-        })
-        .on_drag(move |ctx, _, rect, _| {
-            ctx.dispatch_typed_action(WorkspaceAction::DragTab {
-                tab_index,
-                tab_position: rect,
-            });
-        })
-        .on_drop(|ctx, _, _, _| {
-            ctx.dispatch_typed_action(WorkspaceAction::DropTab);
-        });
-    // Only lock the drag to the vertical axis when cross-window tab drag is
-    // disabled. When it is enabled, the user needs to be able to drag
-    // horizontally out of the panel to detach the tab into a new window.
-    let draggable = if FeatureFlag::DragTabsToWindows.is_enabled() {
-        draggable
+    // Skip the per-tab drag while the enclosing group is already being dragged as a block.
+    let is_parent_group_dragging = tab
+        .group_id
+        .and_then(|gid| workspace.tab_groups.get(&gid))
+        .is_some_and(|group| group.draggable_state.is_dragging());
+
+    // Sole group member: skip the per-tab drag so the outer group drag fires instead.
+    let is_sole_group_member = in_tab_group
+        && tab
+            .group_id
+            .is_some_and(|gid| super::group_has_single_member(&workspace.tabs, gid));
+
+    let draggable: Box<dyn Element> = if is_parent_group_dragging || is_sole_group_member {
+        group_element
     } else {
-        draggable.with_drag_axis(DragAxis::VerticalOnly)
+        let draggable = Draggable::new(tab.draggable_state.clone(), group_element)
+            .on_drag_start(|ctx, _, _| {
+                ctx.dispatch_typed_action(WorkspaceAction::StartTabDrag);
+            })
+            .on_drag(move |ctx, _, rect, _| {
+                ctx.dispatch_typed_action(WorkspaceAction::DragTab {
+                    tab_index,
+                    tab_position: rect,
+                });
+            })
+            .on_drop(|ctx, _, _, _| {
+                ctx.dispatch_typed_action(WorkspaceAction::DropTab);
+            });
+        // Only lock the drag to the vertical axis when cross-window tab drag is
+        // disabled. When it is enabled, the user needs to be able to drag
+        // horizontally out of the panel to detach the tab into a new window.
+        let draggable = if FeatureFlag::DragTabsToWindows.is_enabled() {
+            draggable
+        } else {
+            draggable.with_drag_axis(DragAxis::VerticalOnly)
+        };
+        draggable.finish()
     };
-    let draggable = draggable.finish();
 
     let draggable: Box<dyn Element> = if is_this_tab_dragging {
         Container::new(draggable)

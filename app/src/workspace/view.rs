@@ -414,7 +414,7 @@ use warpui::clipboard::ClipboardContent;
 #[cfg(target_family = "wasm")]
 use warpui::elements::Percentage;
 use warpui::elements::{
-    CacheOption, DispatchEventResult, DraggableState, DropTarget, EventHandler, Image,
+    CacheOption, DispatchEventResult, DragAxis, Draggable, DraggableState, DropTarget, EventHandler, Image,
     MouseInBehavior, Rect,
 };
 use warpui::ui_components::button::{Button, ButtonVariant};
@@ -423,8 +423,8 @@ use warpui::{elements::MouseStateHandle, fonts::Properties};
 
 use self::vertical_tabs::telemetry::{VerticalTabsDisplayOption, VerticalTabsTelemetryEvent};
 use self::vertical_tabs::{
-    pane_summary_kind, render_detail_sidecar, render_settings_popup,
-    render_summary_pane_kind_icon_circle, render_summary_pane_kind_icons,
+    htab_group_position_id, pane_summary_kind, render_detail_sidecar, render_settings_popup,
+    render_summary_pane_kind_icon_circle, render_summary_pane_kind_icons, vtab_group_position_id,
     SummaryPaneKind, SummaryPaneKindIcons, VerticalTabsPanelState,
     VERTICAL_TABS_SETTINGS_BUTTON_POSITION_ID,
 };
@@ -17497,6 +17497,10 @@ impl Workspace {
             } else {
                 TabCloseButtonPosition::default()
             };
+            // When a group has only one member, suppress that member's per-tab
+            // `Draggable` so the parent group's `Draggable` picks up the drag
+            // instead, dragging the whole group rather than orphaning it.
+            let is_sole_member = group_has_single_member(&self.tabs, group.id);
             for idx in member_range {
                 let tab = &self.tabs[idx];
                 let member = TabComponent::new(
@@ -17508,23 +17512,55 @@ impl Workspace {
                     false,
                     ctx,
                 )
-                .for_grouped_member()
+                .for_grouped_member(is_sole_member)
                 .build()
                 .finish();
                 row.add_child(member);
             }
         }
 
-        let container = Container::new(row.finish()).with_border(
-            Border::all(1.)
-                // Left border only on the first slot to avoid double borders.
-                .with_sides(false, is_first_in_bar, false, true)
-                .with_border_fill(internal_colors::fg_overlay_1(theme)),
-        );
+        let container = Container::new(row.finish())
+            .with_border(
+                Border::all(1.)
+                    // Left border only on the first slot to avoid double borders.
+                    .with_sides(false, is_first_in_bar, false, true)
+                    .with_border_fill(internal_colors::fg_overlay_1(theme)),
+            )
+            .finish();
+
+        let group_id = group.id;
+        let group_draggable_state = group.draggable_state.clone();
+        let positioned_container = Draggable::new(group_draggable_state, container)
+            .on_drag_start(move |ctx, _, _| {
+                ctx.dispatch_typed_action(WorkspaceAction::StartGroupDrag(group_id));
+            })
+            .on_drag(move |ctx, _, rect, _| {
+                ctx.dispatch_typed_action(WorkspaceAction::DragGroup {
+                    group_id,
+                    position: rect,
+                });
+            })
+            .on_drop(move |ctx, _, _, _| {
+                ctx.dispatch_typed_action(WorkspaceAction::DropGroup);
+            })
+            .with_drag_axis(DragAxis::HorizontalOnly)
+            // Yield to a nested per-tab `Draggable` when it claims the mouse-down
+            // so dragging a member tab fires `DragTab`, not group drag.
+            .with_defer_to_handled_child_mouse_down()
+            .finish();
+
+        let positioned_container =
+            SavePosition::new(positioned_container, &htab_group_position_id(group_id)).finish();
+
         // Flex = header + one per member so the group shrinks proportionally
-        // with sibling tabs.
-        let group_flex = 1.0 + run_len as f32;
-        Shrinkable::new(group_flex, container.finish()).finish()
+        // with sibling tabs. A collapsed group renders only its header, so it
+        // should claim a single slot's worth of flex.
+        let group_flex = if is_collapsed {
+            1.0
+        } else {
+            1.0 + run_len as f32
+        };
+        Shrinkable::new(group_flex, positioned_container).finish()
     }
 
     /// Header (icon collage + name) for a horizontal tab group. Click
@@ -18267,12 +18303,17 @@ impl Workspace {
             };
 
             let drag_model = CrossWindowTabDrag::as_ref(ctx);
+            let is_any_group_dragging = self
+                .tab_groups
+                .values()
+                .any(|g| g.draggable_state.is_dragging());
             let tab_bar_state = TabBarState {
                 tab_count: self.tabs.len(),
                 active_tab_index,
                 is_any_tab_renaming: self.current_workspace_state.is_tab_being_renamed(),
                 is_any_tab_dragging: self.current_workspace_state.is_tab_being_dragged
-                    || drag_model.is_active(),
+                    || drag_model.is_active()
+                    || is_any_group_dragging,
                 hover_fixed_width,
             };
             // Collapse the detached-placeholder slot to 0 width while it
@@ -24862,9 +24903,42 @@ impl Workspace {
             return;
         }
 
-        let new_index = if FeatureFlag::VerticalTabs.is_enabled()
-            && *TabSettings::as_ref(ctx).use_vertical_tabs
-        {
+        let use_vertical_tabs =
+            FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs;
+        let groups_enabled = FeatureFlag::GroupedTabs.is_enabled();
+
+        if groups_enabled {
+            // Reassign membership when the dragged tab's midpoint enters a
+            // different expanded group. Collapsed groups are handled by the
+            // safety-net hop below so we don't drop into it.
+            let midpoint_drag = if use_vertical_tabs {
+                (position.min_y() + position.max_y()) / 2.
+            } else {
+                (position.min_x() + position.max_x()) / 2.
+            };
+            let hovered_group = self.target_group_at_axis(midpoint_drag, use_vertical_tabs, ctx);
+            let source_group = self.tabs[current_index].group_id;
+            let expanded_target =
+                hovered_group.filter(|gid| !self.tab_groups.get(gid).is_some_and(|g| g.collapsed));
+            if expanded_target != source_group {
+                self.assign_tab_to_group(current_index, expanded_target, ctx);
+                // Hop into the target group's contiguous block so the group
+                // stays one rendered container. Vertical tab rendering only
+                // groups consecutive tabs, so leaving `current_index` outside
+                // the block would split the group across the panel.
+                if let Some(target_gid) = expanded_target {
+                    if let Some((first, last)) = group_member_index_range(&self.tabs, target_gid) {
+                        let insert_at = if current_index < first { first } else { last };
+                        if insert_at != current_index {
+                            self.hop_tab_to_index(current_index, insert_at, ctx);
+                        }
+                    }
+                }
+                return;
+            }
+        }
+
+        let new_index = if use_vertical_tabs {
             self.calculate_updated_tab_index_vertical(current_index, position, ctx)
         } else {
             self.calculate_updated_tab_index(current_index, position, ctx)
@@ -24964,8 +25038,11 @@ impl Workspace {
     ) -> usize {
         let midpoint_drag_x = (drag_position.min_x() + drag_position.max_x()) / 2.;
 
+        // Use `neighbor_drag_rect` (rather than reading `tab_position_id`
+        // directly) so members of a collapsed group fall back to the group's
+        // visible container rect instead of their stale last-expanded rect.
         let maybe_left_tab = if current_index > 0 {
-            ctx.element_position_by_id(tab_position_id(current_index - 1))
+            self.neighbor_drag_rect(current_index - 1, false, ctx)
         } else {
             None
         };
@@ -24976,7 +25053,7 @@ impl Workspace {
         }
 
         let maybe_right_tab = if current_index < self.tabs.len() - 1 {
-            ctx.element_position_by_id(tab_position_id(current_index + 1))
+            self.neighbor_drag_rect(current_index + 1, false, ctx)
         } else {
             None
         };
@@ -25002,7 +25079,7 @@ impl Workspace {
         let midpoint_drag_y = (drag_position.min_y() + drag_position.max_y()) / 2.;
 
         let maybe_above_tab = if current_index > 0 {
-            ctx.element_position_by_id(tab_position_id(current_index - 1))
+            self.neighbor_drag_rect(current_index - 1, true, ctx)
         } else {
             None
         };
@@ -25014,7 +25091,7 @@ impl Workspace {
         }
 
         let maybe_below_tab = if current_index < self.tabs.len() - 1 {
-            ctx.element_position_by_id(tab_position_id(current_index + 1))
+            self.neighbor_drag_rect(current_index + 1, true, ctx)
         } else {
             None
         };
@@ -25026,6 +25103,153 @@ impl Workspace {
         }
 
         current_index
+    }
+
+    /// Returns the group whose saved container rect contains `cursor` along
+    /// the active axis, if any. A small edge margin at each end of the rect
+    /// is treated as "between groups" so the cursor can land in the
+    /// ungrouped zone between adjacent groups. `is_vertical` picks the
+    /// layout-correct `SavePosition` id and the axis to test along.
+    fn target_group_at_axis(
+        &self,
+        cursor: f32,
+        is_vertical: bool,
+        ctx: &mut ViewContext<Self>,
+    ) -> Option<TabGroupId> {
+        const EDGE_MARGIN: f32 = 6.0;
+        self.tab_groups.keys().copied().find(|group_id| {
+            let id = if is_vertical {
+                vtab_group_position_id(*group_id)
+            } else {
+                htab_group_position_id(*group_id)
+            };
+            ctx.element_position_by_id(id).is_some_and(|rect| {
+                let (min, max) = if is_vertical {
+                    (rect.min_y(), rect.max_y())
+                } else {
+                    (rect.min_x(), rect.max_x())
+                };
+                min + EDGE_MARGIN <= cursor && cursor <= max - EDGE_MARGIN
+            })
+        })
+    }
+
+    /// Returns the drag comparison rect for `neighbor_index`.
+    ///
+    /// For members of a collapsed group the per-tab `tab_position_id` rect
+    /// is stale (the tab is no longer painted, but `PositionCache` keeps the
+    /// last painted rect). Use the group container's rect instead so
+    /// midpoint comparisons fire at the visible header. `is_vertical`
+    /// picks the layout-correct save-position id for the collapsed-group
+    /// fallback.
+    fn neighbor_drag_rect(
+        &self,
+        neighbor_index: usize,
+        is_vertical: bool,
+        ctx: &mut ViewContext<Self>,
+    ) -> Option<RectF> {
+        let neighbor_group_id = self.tabs.get(neighbor_index).and_then(|t| t.group_id);
+        let neighbor_in_collapsed_group = neighbor_group_id
+            .and_then(|gid| self.tab_groups.get(&gid))
+            .is_some_and(|g| g.collapsed);
+
+        if neighbor_in_collapsed_group {
+            let group_id = neighbor_group_id.unwrap();
+            let id = if is_vertical {
+                vtab_group_position_id(group_id)
+            } else {
+                htab_group_position_id(group_id)
+            };
+            return ctx.element_position_by_id(id);
+        }
+
+        ctx.element_position_by_id(tab_position_id(neighbor_index))
+    }
+
+    /// Swaps the group's entire member block with its preceding/following
+    /// neighbor when the drag midpoint crosses the appropriate threshold on
+    /// the active axis. Per-axis thresholds match the per-tab swap logic:
+    /// vertical compares against the neighbor's midpoint (mirrors
+    /// `calculate_updated_tab_index_vertical`); horizontal compares against
+    /// the neighbor's leading/trailing edge (mirrors
+    /// `calculate_updated_tab_index`).
+    pub(crate) fn on_group_drag(
+        &mut self,
+        group_id: TabGroupId,
+        position: RectF,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        let Some((first, last)) = group_member_index_range(&self.tabs, group_id) else {
+            return;
+        };
+        let is_vertical = uses_vertical_tabs(ctx);
+        let midpoint_drag = if is_vertical {
+            (position.min_y() + position.max_y()) / 2.
+        } else {
+            (position.min_x() + position.max_x()) / 2.
+        };
+        // Threshold for swapping toward the start of the bar (compared
+        // against the previous neighbor's rect). Vertical uses the
+        // neighbor's midpoint; horizontal uses its trailing edge so the
+        // swap fires as soon as the drag midpoint crosses into the
+        // neighbor, matching the per-tab horizontal swap rule.
+        let swap_before_threshold = |rect: RectF| -> f32 {
+            if is_vertical {
+                (rect.min_y() + rect.max_y()) / 2.
+            } else {
+                rect.max_x()
+            }
+        };
+        // Threshold for swapping toward the end of the bar (compared
+        // against the next neighbor's rect). Vertical uses the neighbor's
+        // midpoint; horizontal uses its leading edge.
+        let swap_after_threshold = |rect: RectF| -> f32 {
+            if is_vertical {
+                (rect.min_y() + rect.max_y()) / 2.
+            } else {
+                rect.min_x()
+            }
+        };
+
+        // Swap toward the start of the bar: check the neighbor directly
+        // before the group's first member.
+        if first > 0 {
+            let before_index = first - 1;
+            if let Some(rect) = self.neighbor_drag_rect(before_index, is_vertical, ctx) {
+                if midpoint_drag < swap_before_threshold(rect) {
+                    let target = if let Some(other_gid) = self.tabs[before_index].group_id {
+                        group_member_index_range(&self.tabs, other_gid)
+                            .map(|(f, _)| f)
+                            .unwrap_or(before_index)
+                    } else {
+                        before_index
+                    };
+                    self.move_group_block(group_id, target, ctx);
+                    return;
+                }
+            }
+        }
+
+        // Swap toward the end of the bar: check the neighbor directly after
+        // the group's last member. Pass `after_block_last + 1` (the
+        // pre-drain target index); `move_group_block` accounts for the
+        // drain internally when `target > last`.
+        if last + 1 < self.tabs.len() {
+            let after_index = last + 1;
+            if let Some(rect) = self.neighbor_drag_rect(after_index, is_vertical, ctx) {
+                if midpoint_drag > swap_after_threshold(rect) {
+                    let after_block_last = if let Some(other_gid) = self.tabs[after_index].group_id
+                    {
+                        group_member_index_range(&self.tabs, other_gid)
+                            .map(|(_, l)| l)
+                            .unwrap_or(after_index)
+                    } else {
+                        after_index
+                    };
+                    self.move_group_block(group_id, after_block_last + 1, ctx);
+                }
+            }
+        }
     }
 }
 
@@ -25159,6 +25383,15 @@ fn group_member_index_range(tabs: &[TabData], group_id: TabGroupId) -> Option<(u
     let first = members.next()?;
     let last = members.last().unwrap_or(first);
     Some((first, last))
+}
+
+/// Returns `true` when `group_id` has exactly one member in `tabs`. Shared
+/// by both horizontal and vertical tab rendering to detect the "sole grouped
+/// member" case, where the per-tab `Draggable` is suppressed so the parent
+/// group's `Draggable` picks up the drag — dragging the only member of a
+/// group drags the entire group rather than orphaning it.
+pub(super) fn group_has_single_member(tabs: &[TabData], group_id: TabGroupId) -> bool {
+    group_member_index_range(tabs, group_id).is_some_and(|(first, last)| first == last)
 }
 
 /// Returns every tab-bar-equivalent rect laid out in `window_id` (horizontal
