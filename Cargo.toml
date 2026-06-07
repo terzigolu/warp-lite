@@ -373,9 +373,13 @@ rmcp = { git = "https://github.com/warpdotdev/rmcp.git", rev = "c0f65dc441af7d71
 # better stack traces in sentry. But there is a cost of about 20% binary size
 # increase.
 [profile.release]
-debug = true
-# Force the rust compiler to create a dSYM. Starting in 1.53 the default on MacOS is "unpacked".
-split-debuginfo = "packed"
+# warp-lite: upstream shipped debug=true so Sentry could symbolicate crash
+# reports. warp-lite disables crash reporting entirely (crash_reporting_config:
+# None in oss.rs), so the embedded debug symbols are pure dead weight — they
+# accounted for ~200MB / a 70MB+ __LINKEDIT segment in the release binary.
+# debug=false + strip removes them with zero behavioural change.
+debug = false
+strip = "symbols"
 
 [profile.dev]
 # Use line-tables-only to speed up dev builds. Change to `debug = true` if you

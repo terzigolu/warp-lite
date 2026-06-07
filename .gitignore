@@ -56,3 +56,10 @@ desired_behavior.md
 # Don't include the python cache for bundled skills.
 __pycache__/
 WarpLite.app/
+
+# warp-lite build artifacts
+WarpLite.app.zip
+WarpLite.dmg
+WarpLite.app/
+nohup.out
+STATUS_REPORT.md

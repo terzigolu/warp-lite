@@ -222,6 +222,15 @@ impl AutoupdateState {
     /// The caller is responsible for checking that we _should_ check for an update. Generally, the
     /// only caller should be [`Self::try_execute_request`].
     fn check_for_update(&mut self, request_type: RequestType, ctx: &mut ModelContext<Self>) {
+        // warp-lite: autoupdate disabled. The original implementation polled
+        // releases.warp.dev every 10 minutes (fetch_version -> dmg download).
+        // Short-circuit here so no version check or binary download ever hits
+        // the network. `if true` keeps the (now unreachable) original body
+        // compiling without an `unreachable_code` warning.
+        if true {
+            log::debug!("warp-lite: autoupdate check disabled (no outbound update check)");
+            return;
+        }
         let current_date = DateTime::now().date_naive();
         let is_daily = self.should_make_daily_request(
             request_type,
