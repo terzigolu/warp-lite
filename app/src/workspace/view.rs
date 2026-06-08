@@ -17507,6 +17507,7 @@ impl Workspace {
             is_drag_target,
             ctx,
         )
+        .with_multi_tab_selection(self.is_tab_in_multi_tab_selection(tab_index))
         .build()
         .finish()
     }
@@ -17570,6 +17571,7 @@ impl Workspace {
                     ctx,
                 )
                 .for_grouped_member(is_sole_member)
+                .with_multi_tab_selection(self.is_tab_in_multi_tab_selection(idx))
                 .build()
                 .finish();
                 row.add_child(member);
@@ -23477,21 +23479,30 @@ impl View for Workspace {
         }
 
         // Multi-tab selection menu (reuses the `tab_right_click_menu` view).
+        // Rendered for both the horizontal tab bar and the vertical tabs panel
+        // — the right-click handlers on both surfaces dispatch the same action.
         if let Some((_tab_idx, anchor)) = self.show_tab_selection_right_click_menu {
             let is_vertical = FeatureFlag::VerticalTabs.is_enabled()
                 && *TabSettings::as_ref(app).use_vertical_tabs
                 && self.vertical_tabs_panel_open;
-            if is_vertical {
+            if tab_bar_mode.has_tab_bar() || is_vertical {
                 let position = match anchor {
                     TabContextMenuAnchor::Pointer(position) => position,
                     // The selection menu is never opened via the kebab button.
                     TabContextMenuAnchor::VerticalTabsKebab => Vector2F::zero(),
                 };
+                // Vertical-tabs anchors against the window; the horizontal tab
+                // bar uses unbounded positioning to match the single-tab menu.
+                let bounds = if is_vertical {
+                    ParentOffsetBounds::WindowByPosition
+                } else {
+                    ParentOffsetBounds::Unbounded
+                };
                 stack.add_positioned_overlay_child(
                     ChildView::new(&self.tab_right_click_menu).finish(),
                     OffsetPositioning::offset_from_parent(
                         position,
-                        ParentOffsetBounds::WindowByPosition,
+                        bounds,
                         ParentAnchor::TopLeft,
                         ChildAnchor::TopLeft,
                     ),
