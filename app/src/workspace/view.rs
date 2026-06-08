@@ -11162,6 +11162,12 @@ impl Workspace {
         let removed_pane_group_id = tab_data.pane_group.id();
         self.tab_mru_order.retain(|id| *id != removed_pane_group_id);
 
+        // If the closed tab was a group member, prune the group when it now
+        // has no remaining members.
+        if let Some(group_id) = tab_data.group_id {
+            self.prune_empty_tab_group(group_id, ctx);
+        }
+
         if add_to_undo_stack {
             let handle = ctx.handle();
             UndoCloseStack::handle(ctx).update(ctx, |stack, ctx| {
