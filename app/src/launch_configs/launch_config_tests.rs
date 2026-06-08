@@ -21,6 +21,7 @@ fn single_tab_snapshot(root: PaneNodeSnapshot) -> AppState {
                 root,
                 left_panel: None,
                 right_panel: None,
+                group_id: None,
             }],
             active_tab_index: 0,
             bounds: None,
@@ -35,6 +36,7 @@ fn single_tab_snapshot(root: PaneNodeSnapshot) -> AppState {
             left_panel_width: None,
             right_panel_width: None,
             agent_management_filters: None,
+            tab_groups: vec![],
         }],
         active_window_index: Some(0),
         block_lists: Default::default(),
@@ -59,6 +61,7 @@ fn multi_tab_snapshot(active_tab_index: usize, tabs: Vec<TabSnapshot>) -> AppSta
             left_panel_width: None,
             right_panel_width: None,
             agent_management_filters: None,
+            tab_groups: vec![],
         }],
         active_window_index: Some(0),
         block_lists: Default::default(),
@@ -257,7 +260,8 @@ fn test_config_with_active_tab_index() {
                     )],
                 }),
                 left_panel: None,
-                right_panel: None
+                right_panel: None,
+                group_id: None,
             };
             3
         ],
@@ -292,6 +296,7 @@ fn test_config_with_active_tab_index_and_filtered_tabs() {
                 }),
                 left_panel: None,
                 right_panel: None,
+                group_id: None,
             },
             TabSnapshot {
                 custom_title: None,
@@ -321,6 +326,7 @@ fn test_config_with_active_tab_index_and_filtered_tabs() {
                 }),
                 left_panel: None,
                 right_panel: None,
+                group_id: None,
             },
         ],
     );
@@ -362,6 +368,7 @@ fn test_config_with_active_tab_being_filtered() {
                 }),
                 left_panel: None,
                 right_panel: None,
+                group_id: None,
             },
             TabSnapshot {
                 custom_title: None,
@@ -383,6 +390,7 @@ fn test_config_with_active_tab_being_filtered() {
                 }),
                 left_panel: None,
                 right_panel: None,
+                group_id: None,
             },
         ],
     );
