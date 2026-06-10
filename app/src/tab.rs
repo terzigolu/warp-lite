@@ -158,6 +158,8 @@ pub struct TabData {
     /// True while this tab is in the active multi-selection (shift-click range
     /// or cmd-click toggle).
     pub in_multi_selection: bool,
+    /// True when this tab is pinned to the front of the tab list.
+    pub pinned: bool,
 }
 
 const TAB_COLOR_ICON_PATH: &str = "bundled/svg/ellipse.svg";
@@ -177,6 +179,7 @@ impl TabData {
             detached: false,
             group_id: None,
             in_multi_selection: false,
+            pinned: false,
         }
     }
 

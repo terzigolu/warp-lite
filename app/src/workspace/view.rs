@@ -3767,6 +3767,8 @@ impl Workspace {
                                     color: group_snapshot.color,
                                     collapsed: group_snapshot.collapsed,
                                     draggable_state: Default::default(),
+                                    // TODO(johnturcoo) persist tab/group pinned state.
+                                    pinned: false,
                                 },
                             )
                         })
