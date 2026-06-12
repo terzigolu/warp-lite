@@ -681,6 +681,7 @@ pub(super) struct VerticalTabsPanelState {
     detail_scroll_state: ClippedScrollStateHandle,
     detail_sidecar_mouse_state: MouseStateHandle,
     detail_overlay_state: Arc<Mutex<VerticalTabsDetailOverlayState>>,
+    panel_right_click_mouse_state: MouseStateHandle,
     new_tab_hover_state: MouseStateHandle,
     new_tab_button_state: MouseStateHandle,
     pub(super) search_query: String,
@@ -717,6 +718,7 @@ impl Default for VerticalTabsPanelState {
             detail_scroll_state: ClippedScrollStateHandle::default(),
             detail_sidecar_mouse_state: Default::default(),
             detail_overlay_state: Arc::new(Mutex::new(VerticalTabsDetailOverlayState::default())),
+            panel_right_click_mouse_state: Default::default(),
             new_tab_hover_state: Default::default(),
             new_tab_button_state: Default::default(),
             search_query: String::new(),
@@ -1581,9 +1583,23 @@ fn render_vertical_tabs_panel(
         super::PanelPosition::Left => DragBarSide::Right,
         super::PanelPosition::Right => DragBarSide::Left,
     };
-    let inner = Container::new(panel_with_popup)
-        .with_background(internal_colors::fg_overlay_1(theme))
-        .finish();
+    // Wrap the panel in a `Hoverable` so right-clicking the empty area of the
+    // vertical tabs panel opens the tab configs dropdown.
+    let inner = Hoverable::new(state.panel_right_click_mouse_state.clone(), |_| {
+        Container::new(panel_with_popup)
+            .with_background(internal_colors::fg_overlay_1(theme))
+            .finish()
+    })
+    .on_right_click(|ctx, _, position| {
+        if FeatureFlag::GroupedTabs.is_enabled() {
+            ctx.dispatch_typed_action(WorkspaceAction::OpenNewSessionMenu { position });
+        }
+    })
+    .on_double_click(|ctx, _, _| {
+        ctx.dispatch_typed_action(WorkspaceAction::AddDefaultTab);
+    })
+    .with_defer_events_to_children()
+    .finish();
 
     Resizable::new(state.resizable_state.clone(), inner)
         .with_dragbar_side(drag_side)
