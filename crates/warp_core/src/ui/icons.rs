@@ -309,6 +309,9 @@ pub enum Icon {
     SwitchHorizontal01,
     HeartHand,
     MessageChatSquare,
+    Pin,
+    PinFilled,
+    PinFilledDiagonal,
     Dataflow04,
     // Language-specific icons for the code block dropdown
     MermaidLang,
@@ -327,6 +330,9 @@ impl From<Icon> for &'static str {
     fn from(icon: Icon) -> &'static str {
         match icon {
             Icon::Menu => "bundled/svg/layout-left.svg",
+            Icon::Pin => "bundled/svg/pin-01.svg",
+            Icon::PinFilled => "bundled/svg/pin-filled.svg",
+            Icon::PinFilledDiagonal => "bundled/svg/pin-filled-diagonal.svg",
             Icon::AtSign => "bundled/svg/at-sign.svg",
             Icon::Plus => "bundled/svg/plus.svg",
             Icon::Copy => "bundled/svg/copy.svg",
