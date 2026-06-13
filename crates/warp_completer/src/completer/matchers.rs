@@ -41,6 +41,25 @@ pub enum MatchStrategy {
 }
 
 impl MatchStrategy {
+    pub fn prefix_remainder<'a>(&self, partial: &str, from: &'a str) -> Option<&'a str> {
+        match self {
+            MatchStrategy::CaseSensitive => from.strip_prefix(partial),
+            MatchStrategy::CaseInsensitive | MatchStrategy::Fuzzy => {
+                let mut from_chars = from.char_indices();
+                let mut end = 0;
+                for partial_char in partial.chars() {
+                    let (from_index, from_char) = from_chars.next()?;
+                    if from_char == partial_char || from_char.eq_ignore_ascii_case(&partial_char) {
+                        end = from_index + from_char.len_utf8();
+                    } else {
+                        return None;
+                    }
+                }
+                Some(&from[end..])
+            }
+        }
+    }
+
     /// Given the matcher variant, return a MatchType if partial matches from.
     /// Note that this function will return the most specific match type (irrespective
     /// of the matcher). For example, a fuzzy matcher will return an Exact match

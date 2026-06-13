@@ -1341,6 +1341,8 @@ impl CompleterData {
 pub struct AutoSuggestionResult {
     /// Text in the editor buffer.
     pub buffer_text: String,
+    /// Prefix strategy used to generate the autosuggestion.
+    pub match_strategy: MatchStrategy,
     /// Generated autosuggestion result.
     pub autosuggestion_result: Option<String>,
 }
@@ -7894,10 +7896,16 @@ impl Input {
         let completion_session = completion_context
             .as_ref()
             .map(|completion_context| completion_context.session.clone());
+        let match_strategy = InputSettings::as_ref(ctx).prefix_completion_match_strategy(
+            completion_context
+                .as_ref()
+                .and_then(|completion_context| completion_context.shell_family()),
+        );
 
         let reverse_chronological_potential_autosuggestions =
             NextCommandModel::get_reverse_chronological_potential_autosuggestions(
                 &buffer_text,
+                match_strategy,
                 &completer_data,
                 ctx,
             );
@@ -7933,10 +7941,12 @@ impl Input {
                                     counter::Counter::<String>::new();
                                 // Find the most likely next command after a similar context, out of those that have a matching prefix and aren't ignored.
                                 for history_context in &similar_history_contexts {
-                                    if history_context
-                                        .next_command
-                                        .command
-                                        .starts_with(&buffer_text)
+                                    if match_strategy
+                                        .prefix_remainder(
+                                            buffer_text.as_str(),
+                                            history_context.next_command.command.as_str(),
+                                        )
+                                        .is_some()
                                         && !ignored_suggestions
                                             .contains(&history_context.next_command.command)
                                     {
@@ -7957,6 +7967,7 @@ impl Input {
                                     {
                                         return AutoSuggestionResult {
                                             buffer_text,
+                                            match_strategy,
                                             autosuggestion_result: Some(
                                                 most_likely_next_command.clone(),
                                             ),
@@ -7982,6 +7993,7 @@ impl Input {
                         {
                             return AutoSuggestionResult {
                                 buffer_text,
+                                match_strategy,
                                 autosuggestion_result: Some(reverse_chronological_command.command),
                             };
                         }
@@ -7991,6 +8003,7 @@ impl Input {
                     let Some(completion_context) = completion_context else {
                         return AutoSuggestionResult {
                             buffer_text,
+                            match_strategy,
                             autosuggestion_result: None,
                         };
                     };
@@ -7999,7 +8012,7 @@ impl Input {
                         buffer_text.len(),
                         session_env_vars.as_ref(),
                         CompleterOptions {
-                            match_strategy: MatchStrategy::CaseSensitive,
+                            match_strategy,
                             fallback_strategy: CompletionsFallbackStrategy::FilePaths,
                             suggest_file_path_completions_only: false,
                             parse_quotes_as_literals: false,
@@ -8027,6 +8040,7 @@ impl Input {
 
                     AutoSuggestionResult {
                         buffer_text,
+                        match_strategy,
                         autosuggestion_result: autosuggestion,
                     }
                 },
@@ -14041,10 +14055,13 @@ impl Autosuggester for Input {
             return;
         }
 
+        let match_strategy = result.match_strategy;
         let autosuggestion_result_substring = result
             .autosuggestion_result
             .as_ref()
-            .and_then(|result| result.strip_prefix(buffer_text.as_str()));
+            .and_then(|suggestion| {
+                match_strategy.prefix_remainder(buffer_text.as_str(), suggestion)
+            });
 
         if let Some(autosuggestion) = autosuggestion_result_substring {
             self.set_autosuggestion(

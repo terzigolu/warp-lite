@@ -40,13 +40,45 @@ impl CommandRegistry {
         GLOBAL_REGISTRY
             .get_or_init(|| {
                 // TODO(wasm): Determine how to asynchronously load command signatures on wasm.
-                Arc::new(CommandRegistry::new())
+                let registry = CommandRegistry::new();
+                #[cfg(target_os = "macos")]
+                registry.register_signature(macos_trash_signature());
+                Arc::new(registry)
             })
             .clone()
     }
 
     pub fn empty() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn macos_trash_signature() -> CommandSignature {
+    use super::{Argument, ArgumentValue, Arity, Command, Priority, TemplateType};
+
+    CommandSignature {
+        command: Command {
+            name: "trash".to_owned(),
+            alias: vec![],
+            description: Some("Move files and folders to the trash".to_owned()),
+            arguments: vec![Argument {
+                name: "paths".to_owned(),
+                values: vec![ArgumentValue::Template {
+                    type_name: TemplateType::FilesAndFolders,
+                    filter_name: None,
+                }],
+                optional: false,
+                arity: Some(Arity {
+                    limit: None,
+                    delimiter: None,
+                }),
+                description: None,
+            }],
+            subcommands: vec![],
+            options: vec![],
+            priority: Priority::default(),
+        },
     }
 }
 

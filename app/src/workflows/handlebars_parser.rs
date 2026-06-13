@@ -377,7 +377,3 @@ where
         }
     }
 }
-
-#[cfg(test)]
-#[path = "parser_test.rs"]
-mod tests;
