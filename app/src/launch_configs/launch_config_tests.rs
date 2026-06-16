@@ -22,6 +22,7 @@ fn single_tab_snapshot(root: PaneNodeSnapshot) -> AppState {
                 left_panel: None,
                 right_panel: None,
                 group_id: None,
+                pinned: false,
             }],
             active_tab_index: 0,
             bounds: None,
@@ -262,6 +263,7 @@ fn test_config_with_active_tab_index() {
                 left_panel: None,
                 right_panel: None,
                 group_id: None,
+                pinned: false,
             };
             3
         ],
@@ -297,6 +299,7 @@ fn test_config_with_active_tab_index_and_filtered_tabs() {
                 left_panel: None,
                 right_panel: None,
                 group_id: None,
+                pinned: false,
             },
             TabSnapshot {
                 custom_title: None,
@@ -327,6 +330,7 @@ fn test_config_with_active_tab_index_and_filtered_tabs() {
                 left_panel: None,
                 right_panel: None,
                 group_id: None,
+                pinned: false,
             },
         ],
     );
@@ -369,6 +373,7 @@ fn test_config_with_active_tab_being_filtered() {
                 left_panel: None,
                 right_panel: None,
                 group_id: None,
+                pinned: false,
             },
             TabSnapshot {
                 custom_title: None,
@@ -391,6 +396,7 @@ fn test_config_with_active_tab_being_filtered() {
                 left_panel: None,
                 right_panel: None,
                 group_id: None,
+                pinned: false,
             },
         ],
     );
