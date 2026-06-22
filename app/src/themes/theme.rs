@@ -450,6 +450,7 @@ impl InMemoryThemeOptions {
                 // Note that, as an invariant, in-memory themes come from local files.
                 source: AssetSource::LocalFile {
                     path: self.path().to_str().unwrap_or_default().to_owned(),
+                    content_version: None,
                 },
                 opacity: 30,
             }),
