@@ -17,7 +17,10 @@ use crate::pane_group::pane::view::header::components::{
     render_three_column_header, CenteredHeaderEdgeWidth,
 };
 use crate::pane_group::pane::PaneStack;
-use crate::pane_group::{pane::view, pane::view::PaneHeaderAction, BackingView, SplitPaneState};
+use crate::pane_group::{
+    pane::view, pane::view::PaneHeaderAction, BackingView, SplitPaneState,
+    TOGGLE_MAXIMIZE_PANE_BINDING_NAME,
+};
 use crate::settings::app_installation_detection::{
     UserAppInstallDetectionSettings, UserAppInstallStatus,
 };
@@ -31,6 +34,7 @@ use crate::terminal::TerminalView;
 use crate::ui_components::blended_colors;
 use crate::ui_components::buttons::icon_button_with_color;
 use crate::ui_components::icons;
+use crate::util::bindings::keybinding_name_to_display_string;
 use crate::workspace::tab_settings::TabSettings;
 use settings::Setting as _;
 use warp_core::context_flag::ContextFlag;
@@ -638,6 +642,10 @@ impl BackingView for TerminalView {
             items.push(
                 MenuItemFields::toggle_pane_action(is_maximized)
                     .with_on_select_action(TerminalAction::ToggleMaximizePane)
+                    .with_key_shortcut_label(keybinding_name_to_display_string(
+                        TOGGLE_MAXIMIZE_PANE_BINDING_NAME,
+                        ctx,
+                    ))
                     .into_item(),
             );
         }
