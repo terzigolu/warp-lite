@@ -7,6 +7,7 @@ use diesel::SqliteConnection;
 #[cfg(not(target_family = "wasm"))]
 use parking_lot::Mutex;
 use pathfinder_geometry::vector::vec2f;
+use settings::Setting as _;
 use uuid::Uuid;
 use warp_core::{
     ui::{appearance::Appearance, theme::color::internal_colors},
@@ -50,12 +51,14 @@ use crate::{
         },
         style, ServerCardItemId,
     },
+    terminal::safe_mode_settings::SafeModeSettings,
     ui_components::{buttons::icon_button, icons::Icon},
     view_components::{
         action_button::{ActionButton, DangerNakedTheme, DangerSecondaryTheme, PrimaryTheme},
         DismissibleToast,
     },
     workspace::ToastStack,
+    workspaces::user_workspaces::UserWorkspaces,
     GlobalResourceHandlesProvider,
 };
 
@@ -530,10 +533,13 @@ impl MCPServersEditPageView {
         ctx: &mut ViewContext<Self>,
         templatable_mcp_server: &TemplatableMCPServer,
     ) -> Result<(), String> {
+        let safe_mode_enabled = *SafeModeSettings::as_ref(ctx).safe_mode_enabled.value();
+        let enterprise_enforced =
+            UserWorkspaces::as_ref(ctx).is_enterprise_secret_redaction_enabled();
         let contains_secrets =
             !find_secrets_in_text(&templatable_mcp_server.template.json).is_empty();
 
-        if contains_secrets {
+        if should_block_save_for_secrets(safe_mode_enabled, enterprise_enforced, contains_secrets) {
             let window_id = ctx.window_id();
             ToastStack::handle(ctx).update(ctx, |toast_stack, ctx| {
                 toast_stack.add_ephemeral_toast(
@@ -940,3 +946,22 @@ impl TypedActionView for MCPServersEditPageView {
         }
     }
 }
+
+/// Decide whether to block saving an MCP server config because secret
+/// redaction is in force AND the parsed config contains secret-shaped strings.
+///
+/// We block only when redaction is actually active — either the user-level
+/// Settings > Privacy > Secret redaction toggle is on, or the user's workspace
+/// has enterprise enforcement enabled. With both off, the user has explicitly
+/// opted to embed secrets in the config and we save it as written (#8761).
+fn should_block_save_for_secrets(
+    safe_mode_enabled: bool,
+    enterprise_enforced: bool,
+    contains_secrets: bool,
+) -> bool {
+    (safe_mode_enabled || enterprise_enforced) && contains_secrets
+}
+
+#[cfg(test)]
+#[path = "edit_page_tests.rs"]
+mod tests;
