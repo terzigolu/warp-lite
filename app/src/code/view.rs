@@ -12,7 +12,7 @@ use crate::pane_group::pane::view::header::components::{
     CenteredHeaderEdgeWidth,
 };
 use crate::pane_group::pane::view::header::render_pane_header_draggable;
-use crate::pane_group::{CodePane, PaneConfigurationEvent, PaneDragDropLocation};
+use crate::pane_group::{CodePane, PaneConfigurationEvent, PaneDragDropLocation, TabBarAxis};
 use crate::quit_warning::UnsavedStateSummary;
 use crate::server::telemetry::CodeContextDestination;
 use crate::terminal::cli_agent::{
@@ -1589,7 +1589,7 @@ impl CodeView {
                         origin: ActionOrigin::EditorTab(index),
                         drag_location: PaneDragDropLocation::TabBar(data.tab_bar_location),
                         drag_position,
-                        precomputed_tab_hover_index: None,
+                        tab_bar_axis: Some(TabBarAxis::Horizontal),
                     },
                 );
             } else {

@@ -31,7 +31,6 @@ use crate::code;
 use crate::features::FeatureFlag;
 use crate::modal;
 use crate::notebooks;
-use crate::pane_group::TabBarHoverIndex;
 use crate::server::telemetry::AgentModeEntrypoint;
 use crate::server::telemetry::PaletteSource;
 use crate::settings::AISettings;
@@ -1656,7 +1655,6 @@ pub struct TabBarDropTargetData {
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct VerticalTabsPaneDropTargetData {
     pub tab_bar_location: TabBarLocation,
-    pub tab_hover_index: TabBarHoverIndex,
 }
 
 #[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
