@@ -303,6 +303,12 @@ pub enum WorkspaceAction {
         color: AnsiColorIdentifier,
         tab_index: usize,
     },
+    /// Toggles the color for a tab group. Clears the color if it was already
+    /// set to `color`; otherwise applies `color` as the uniform group color.
+    ToggleTabGroupColor {
+        color: AnsiColorIdentifier,
+        group_id: TabGroupId,
+    },
     OpenLaunchConfigSaveModal,
     SelectTabConfig(TabConfig),
     DispatchToSettingsTab(SettingsTabAction),
@@ -847,6 +853,7 @@ impl WorkspaceAction {
             | PinActiveTabGroup
             | UnpinActiveTabGroup
             | ToggleTabColor { .. }
+            | ToggleTabGroupColor { .. }
             | AddDefaultTab
             | AddTerminalTab { .. }
             | AddTabWithShell { .. }
