@@ -1362,13 +1362,8 @@ fn initialize_app(
             });
         }
 
-        let emit_incremental_updates = matches!(launch_mode, LaunchMode::RemoteServerDaemon { .. });
         ctx.add_singleton_model(|ctx| {
-            let model = if emit_incremental_updates {
-                RepoMetadataModel::new_with_incremental_updates(ctx)
-            } else {
-                RepoMetadataModel::new(ctx)
-            };
+            let model = RepoMetadataModel::new(ctx);
 
             // Subscribe to RemoteServerManager push events so that remote repo
             // metadata snapshots and incremental updates populate the remote
