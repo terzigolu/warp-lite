@@ -16,6 +16,8 @@ use crate::transport::RemoteTransport;
 use crate::HostId;
 use repo_metadata::RepoMetadataUpdate;
 use serde::Serialize;
+#[cfg(not(target_family = "wasm"))]
+use warpui::r#async::FutureExt as _;
 use warp_core::SessionId;
 use warpui::{Entity, ModelContext, ModelSpawner, SingletonEntity};
 
