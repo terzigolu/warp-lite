@@ -202,7 +202,6 @@ use warp_util::{
     content_version::ContentVersion,
     file::{FileLoadError, FileSaveError},
     path::LineAndColumnArg,
-    standardized_path::StandardizedPath,
 };
 
 pub struct CodeReviewHeaderFields {
@@ -771,18 +770,6 @@ pub struct CodeReviewView {
 impl CodeReviewView {
     pub fn repo_path(&self) -> Option<&PathBuf> {
         self.active_repo.as_ref().map(|repo| &repo.repo_path)
-    }
-
-    fn to_standardized_path(&self, path: &PathBuf) -> Option<StandardizedPath> {
-        if path.is_absolute() {
-            Some(StandardizedPath::from_local_absolute_unchecked(path))
-        } else {
-            let repo_path = self.repo_path()?;
-            let absolute_path = repo_path.join(path);
-            Some(StandardizedPath::from_local_absolute_unchecked(
-                &absolute_path,
-            ))
-        }
     }
 
     pub fn diff_state_model(&self) -> &ModelHandle<DiffStateModel> {
@@ -5882,17 +5869,11 @@ impl CodeReviewView {
             .finish()
     }
 
-    fn create_file_status_info(&self, path: StandardizedPath) -> FileStatusInfo {
-        let Some(local_path) = path.to_local_path() else {
-            return FileStatusInfo {
-                path,
-                status: GitFileStatus::Modified,
-            };
-        };
+    fn create_file_status_info(&self, path: PathBuf) -> FileStatusInfo {
         let status = match self.state() {
             CodeReviewViewState::Loaded(loaded_state) => loaded_state
                 .file_states
-                .get(&local_path)
+                .get(&path)
                 .map(|fs| fs.file_diff.status.clone())
                 .unwrap_or(GitFileStatus::Modified),
             _ => GitFileStatus::Modified,
@@ -5900,13 +5881,8 @@ impl CodeReviewView {
         FileStatusInfo { path, status }
     }
 
-    fn discard_file(
-        &mut self,
-        path: StandardizedPath,
-        should_stash: bool,
-        ctx: &mut ViewContext<Self>,
-    ) {
-        let file_info = self.create_file_status_info(path);
+    fn discard_file(&mut self, path: &Path, should_stash: bool, ctx: &mut ViewContext<Self>) {
+        let file_info = self.create_file_status_info(path.to_path_buf());
 
         let branch_name = match &self.discard_dialog_state.operation_type {
             DiscardOperationType::FileChangesAgainstBranch(None) => {
@@ -5925,7 +5901,7 @@ impl CodeReviewView {
 
     fn discard_multiple_files(
         &mut self,
-        file_paths: Vec<StandardizedPath>,
+        file_paths: Vec<PathBuf>,
         should_stash: bool,
         ctx: &mut ViewContext<Self>,
     ) {
@@ -7488,22 +7464,18 @@ impl TypedActionView for CodeReviewView {
 
                 if is_discard_all {
                     // Get list of selected files
-                    let selected_files: Vec<StandardizedPath> = self
+                    let selected_files: Vec<PathBuf> = self
                         .discard_dialog_state
                         .discard_file_paths
                         .iter()
-                        .filter_map(|path| {
-                            if !*self
+                        .filter(|path| {
+                            *self
                                 .discard_dialog_state
                                 .selected_files
-                                .get(path)
+                                .get(*path)
                                 .unwrap_or(&false)
-                            {
-                                None
-                            } else {
-                                self.to_standardized_path(path)
-                            }
                         })
+                        .cloned()
                         .collect();
 
                     if !selected_files.is_empty() {
@@ -7515,13 +7487,11 @@ impl TypedActionView for CodeReviewView {
                     }
                 } else {
                     let file_path = self.discard_dialog_state.discard_file_paths[0].clone();
-                    if let Some(standardized_path) = self.to_standardized_path(&file_path) {
-                        self.discard_file(
-                            standardized_path,
-                            self.discard_dialog_state.stash_changes_enabled,
-                            ctx,
-                        );
-                    }
+                    self.discard_file(
+                        &file_path,
+                        self.discard_dialog_state.stash_changes_enabled,
+                        ctx,
+                    );
                 }
                 self.discard_dialog_state.show_discard_confirm_dialog = false;
                 self.discard_dialog_state.discard_file_paths.clear();
