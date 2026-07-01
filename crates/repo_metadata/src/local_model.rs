@@ -142,8 +142,10 @@ pub(crate) enum FileTreeMutation {
     },
     /// Add a directory with its fully-built subtree.
     AddDirectorySubtree { dir_path: PathBuf, subtree: Entry },
-    /// Fallback: add a bare (unloaded) directory entry when `build_tree` fails.
-    AddEmptyDirectory { path: PathBuf, is_ignored: bool },
+    /// Add a bare (unloaded) directory placeholder, materialized on demand when
+    /// the user expands it. Used for newly created directories under lazy roots
+    /// and as a fallback when `build_tree` fails.
+    AddUnloadedDirectory { path: PathBuf, is_ignored: bool },
 }
 
 /// A filter function for filtering repo contents during traversal.
@@ -294,6 +296,7 @@ impl LocalRepoMetadataModel {
                         let mutations = Self::compute_file_tree_mutations(
                             &repo_scoped_update,
                             &gitignores_clone,
+                            lazy_load,
                         )
                         .await;
                         (mutations, repo_path_clone, lazy_load)
@@ -566,9 +569,15 @@ impl LocalRepoMetadataModel {
     /// Performs all filesystem I/O (`exists()`, `is_dir()`, `build_tree()`,
     /// gitignore checks) and returns a lightweight list of mutations that can
     /// be applied to the tree on the main thread without cloning it.
+    ///
+    /// When `lazy_load` is true (lazy non-git roots), newly added directories
+    /// are emitted as unloaded placeholders rather than fully-materialized
+    /// subtrees, matching the lazy tree model; the directory is materialized
+    /// (and watched) on demand when the user expands it via `load_directory`.
     async fn compute_file_tree_mutations(
         update: &RepoUpdate,
         gitignores: &[Gitignore],
+        lazy_load: bool,
     ) -> Vec<FileTreeMutation> {
         let mut mutations = Vec::new();
 
@@ -586,10 +595,22 @@ impl LocalRepoMetadataModel {
             let is_ignored = Self::path_is_ignored(path_to_add, gitignores);
 
             if path_to_add.is_dir() {
+                if lazy_load {
+                    // Lazy (non-git) roots are not materialized when a directory
+                    // is created; insert it as an unloaded placeholder and build
+                    // the subtree on demand when the user expands it (see
+                    // `load_directory`).
+                    mutations.push(FileTreeMutation::AddUnloadedDirectory {
+                        path: path_to_add.clone(),
+                        is_ignored,
+                    });
+                    continue;
+                }
+
                 let mut files = Vec::new();
                 let mut gitignores = gitignores.to_owned();
                 let mut file_limit = MAX_FILES_PER_REPO;
-                match Entry::build_tree(
+                match Entry::build_tree_with_ignored_ancestor(
                     path_to_add,
                     &mut files,
                     &mut gitignores,
@@ -597,6 +618,7 @@ impl LocalRepoMetadataModel {
                     MAX_TREE_DEPTH,
                     0,
                     &IgnoredPathStrategy::IncludeLazy,
+                    is_ignored,
                 ) {
                     Ok(subtree) => {
                         mutations.push(FileTreeMutation::AddDirectorySubtree {
@@ -606,7 +628,7 @@ impl LocalRepoMetadataModel {
                     }
                     Err(e) => {
                         log::warn!("Failed to build subtree for directory {path_to_add:?}: {e:?}");
-                        mutations.push(FileTreeMutation::AddEmptyDirectory {
+                        mutations.push(FileTreeMutation::AddUnloadedDirectory {
                             path: path_to_add.clone(),
                             is_ignored,
                         });
@@ -735,7 +757,7 @@ impl LocalRepoMetadataModel {
                         }
                     }
                 }
-                FileTreeMutation::AddEmptyDirectory {
+                FileTreeMutation::AddUnloadedDirectory {
                     ref path,
                     is_ignored,
                 } => {

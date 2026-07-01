@@ -177,7 +177,7 @@ impl warpui::View for View {
         let appearance = Appearance::as_ref(app);
         let theme = appearance.theme();
 
-        let body = if self.search_bar_state.as_ref(app).should_show_zero_state() {
+        let body = if self.search_bar.as_ref(app).should_show_zero_state(app) {
             ChildView::new(&self.zero_state_handle).finish()
         } else {
             self.render_palette_list(theme, app)
@@ -362,15 +362,15 @@ impl View {
     }
 
     pub fn select_next_item(&mut self, ctx: &mut ViewContext<Self>) {
-        self.search_bar_state.update(ctx, |state, ctx| {
-            state.handle_selection_update(SelectionUpdate::Down, ctx);
+        self.search_bar.update(ctx, |search_bar, ctx| {
+            search_bar.handle_selection_update(SelectionUpdate::Down, ctx);
         });
         ctx.notify();
     }
 
     pub fn select_prev_item(&mut self, ctx: &mut ViewContext<Self>) {
-        self.search_bar_state.update(ctx, |state, ctx| {
-            state.handle_selection_update(SelectionUpdate::Up, ctx);
+        self.search_bar.update(ctx, |search_bar, ctx| {
+            search_bar.handle_selection_update(SelectionUpdate::Up, ctx);
         });
         ctx.notify();
     }
@@ -736,10 +736,17 @@ impl View {
         result_action: CommandPaletteItemAction,
         ctx: &mut ViewContext<Self>,
     ) {
-        let selected_items_handle = SelectedItems::handle(ctx);
-        selected_items_handle.update(ctx, |selected_items, _ctx| {
-            selected_items.enqueue(result_action.to_summary())
-        });
+        // Tab navigations don't appear in the main command palette to avoid confusion with session
+        // navigations, so they can't evict real recent items from SelectedItems.
+        if !matches!(
+            result_action,
+            CommandPaletteItemAction::NavigateToTab { .. }
+        ) {
+            let selected_items_handle = SelectedItems::handle(ctx);
+            selected_items_handle.update(ctx, |selected_items, _ctx| {
+                selected_items.enqueue(result_action.to_summary())
+            });
+        }
 
         if let CommandPaletteItemAction::AcceptBinding { binding } = &result_action {
             if let Some(action) = &binding.action {
@@ -807,6 +814,19 @@ impl View {
                     );
                 }
 
+            }
+            CommandPaletteItemAction::NavigateToTab {
+                pane_group_id,
+                window_id,
+            } => {
+                if let Some(root_view_id) = ctx.root_view_id(window_id) {
+                    ctx.dispatch_action_for_view(
+                        window_id,
+                        root_view_id,
+                        "root_view:activate_tab_by_pane_group_id",
+                        &pane_group_id,
+                    );
+                }
             }
             CommandPaletteItemAction::NavigateToConversation {
                 pane_view_locator,

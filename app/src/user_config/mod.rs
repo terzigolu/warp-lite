@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use warp_core::ui::theme::WarpTheme;
 use warpui::{Entity, ModelContext, SingletonEntity};
 
+pub(crate) use imp::load_tab_configs;
 #[cfg(feature = "local_fs")]
 pub use imp::load_workflows;
 pub use imp::{load_launch_configs, load_theme_configs};
@@ -187,7 +188,6 @@ pub fn launch_configs_dir() -> PathBuf {
 }
 
 /// Returns the path to the directory containing the user's tab configs.
-#[cfg_attr(target_family = "wasm", expect(dead_code))]
 pub fn tab_configs_dir() -> PathBuf {
     base_dir().join("tab_configs")
 }

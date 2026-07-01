@@ -71,6 +71,8 @@ use warpui::ui_components::components::UiComponent;
 mod editing;
 mod render;
 
+use crate::settings::{CodeSettings, CodeSettingsChangedEvent};
+
 const REMOTE_TEXT: &str = "The Project Explorer requires access to your local workspace, which isn’t supported in remote sessions.";
 const DISABLED_TEXT: &str = "The Project Explorer requires access to your local workspace. Open a new session or navigate to an active session to view.";
 const WSL_TEXT: &str = "The Project Explorer doesn't currently work in WSL.";
@@ -293,6 +295,8 @@ pub struct FileTreeView {
     /// the target is selected by the user or when the target root stops
     /// being displayed.
     pending_focus_target: Option<PendingFocusTarget>,
+    /// Whether to show hidden files (dotfiles) in the file tree.
+    show_hidden_files: bool,
 }
 
 /// Directory the file tree wants to focus once its entry becomes available.
@@ -354,6 +358,8 @@ impl FileTreeView {
         if is_active {
             self.subscribe_to_repository_metadata(ctx);
             self.subscribe_to_active_file_model(ctx);
+            self.subscribe_to_code_settings(ctx);
+            self.show_hidden_files = *CodeSettings::as_ref(ctx).show_hidden_files;
 
             // Catch up on any repository/file changes that happened while inactive.
             // Skip remote-backed roots — their data comes from server pushes,
@@ -387,6 +393,7 @@ impl FileTreeView {
         } else {
             ctx.unsubscribe_to_model(&self.repository_metadata_model);
             self.unsubscribe_from_active_file_model(ctx);
+            self.unsubscribe_from_code_settings(ctx);
             let repository_metadata_model = self.repository_metadata_model.clone();
             let paths: Vec<_> = self.registered_lazy_loaded_paths.drain().collect();
             repository_metadata_model.update(ctx, move |model: &mut RepoMetadataModel, ctx| {
@@ -548,13 +555,15 @@ impl FileTreeView {
                 if !root_paths.is_empty() {
                     let id = RepositoryIdentifier::Local(std_path.clone());
                     if let Some(state) = RepoMetadataModel::as_ref(ctx).get_repository(&id, ctx) {
-                        for root_path in root_paths {
-                            if let Some(root_dir) = self.root_directories.get_mut(&root_path) {
+                        for root_path in &root_paths {
+                            if let Some(root_dir) = self.root_directories.get_mut(root_path) {
                                 root_dir.entry = state.entry.clone();
                             }
                         }
 
-                        self.rebuild_flattened_items();
+                        for root_path in &root_paths {
+                            self.rebuild_flattened_items_for_root(root_path);
+                        }
                         self.apply_pending_focus_target();
                         ctx.notify();
                     }
@@ -599,7 +608,11 @@ impl FileTreeView {
                     if let Some(root_dir) = self.root_directories.get_mut(&repo_path) {
                         root_dir.entry = state.entry.clone();
                     }
-                    self.rebuild_flattened_items();
+                    // Only rebuild the affected remote root instead of all roots.
+                    // Remote servers stream frequent incremental updates; a full
+                    // rebuild would cause unrelated local roots to re-render on
+                    // every remote filesystem change, leading to visible flicker.
+                    self.rebuild_flattened_items_for_root(&repo_path);
                     ctx.notify();
                 }
             }
@@ -609,7 +622,10 @@ impl FileTreeView {
                 let repo_path = &remote_id.path;
                 self.displayed_directories.retain(|p| p != repo_path);
                 self.root_directories.remove(repo_path);
-                self.rebuild_flattened_items();
+                // The removed root is already gone from root_directories, so
+                // this is effectively a no-op rebuild that avoids touching
+                // the remaining roots' flattened items.
+                self.rebuild_flattened_items_for_root(repo_path);
                 ctx.notify();
             }
             RepoMetadataEvent::FileTreeUpdated { .. }
@@ -637,6 +653,20 @@ impl FileTreeView {
         };
 
         ctx.unsubscribe_to_model(active_file_model);
+    }
+
+    fn subscribe_to_code_settings(&self, ctx: &mut ViewContext<Self>) {
+        ctx.subscribe_to_model(&CodeSettings::handle(ctx), |me, _, event, ctx| {
+            if let CodeSettingsChangedEvent::ShowHiddenFiles { .. } = event {
+                me.show_hidden_files = *CodeSettings::as_ref(ctx).show_hidden_files;
+                me.rebuild_flattened_items();
+                ctx.notify();
+            }
+        });
+    }
+
+    fn unsubscribe_from_code_settings(&self, ctx: &mut ViewContext<Self>) {
+        ctx.unsubscribe_to_model(&CodeSettings::handle(ctx));
     }
 
     pub fn new(ctx: &mut ViewContext<Self>) -> Self {
@@ -700,6 +730,7 @@ impl FileTreeView {
             #[cfg(feature = "local_fs")]
             registered_lazy_loaded_paths: HashSet::new(),
             pending_focus_target: None,
+            show_hidden_files: *CodeSettings::as_ref(ctx).show_hidden_files,
         };
 
         picker
@@ -1287,6 +1318,12 @@ impl FileTreeView {
                         {
                             Some(state.entry.clone())
                         }
+                        Some(IndexedRepoState::Pending) => {
+                            // Repo is being (re-)indexed. Keep whatever entry
+                            // we already have so the tree doesn't flash to a
+                            // loading state during the transition.
+                            continue;
+                        }
                         _ => None,
                     }
                 };
@@ -1554,14 +1591,21 @@ impl FileTreeView {
         }
 
         let id = repo_metadata::RepositoryIdentifier::local(path.clone());
-        let entry = RepoMetadataModel::as_ref(ctx)
-            .get_repository(&id, ctx)
-            .map(|state| state.entry.clone());
+        let repo_state = RepoMetadataModel::as_ref(ctx).repository_state(&id, ctx);
         if let Some(root_dir) = self.root_directories.get_mut(path) {
-            root_dir.entry = match entry {
-                Some(entry) => entry,
-                None => Self::create_empty_entry(path),
-            };
+            match repo_state {
+                Some(IndexedRepoState::Indexed(state)) => {
+                    root_dir.entry = state.entry.clone();
+                }
+                Some(IndexedRepoState::Pending) => {
+                    // Repo is being (re-)indexed. Keep whatever entry we already
+                    // have so the tree doesn't flash back to a loading state
+                    // during the Pending → Indexed transition.
+                }
+                Some(IndexedRepoState::Failed(_)) | None => {
+                    root_dir.entry = Self::create_empty_entry(path);
+                }
+            }
         }
     }
 
@@ -1580,32 +1624,53 @@ impl FileTreeView {
         });
     }
 
+    /// Rebuilds the flattened items list for a single root directory only,
+    /// leaving all other roots untouched. Use this when only one root's
+    /// backing data has changed (e.g. a metadata update) to avoid
+    /// unnecessarily re-flattening — and re-rendering — unrelated roots.
+    fn rebuild_flattened_items_for_root(&mut self, target_root: &StandardizedPath) {
+        self.rebuild_flatten_items_impl(None, None, Some(target_root));
+    }
+
     /// Rebuilds the flattened items list from the current entry tree, optionally removing an item.
     fn rebuild_flattened_items(&mut self) {
-        self.rebuild_flatten_items_and_select_path(None, None);
+        self.rebuild_flatten_items_impl(None, None, None);
     }
 
     fn rebuild_flattened_items_without(&mut self, path_to_remove: &StandardizedPath) -> bool {
-        self.rebuild_flatten_items_and_select_path(None, Some(path_to_remove))
+        self.rebuild_flatten_items_impl(None, Some(path_to_remove), None)
     }
 
-    /// Rebuilds the flattened items list from the current entry tree
-    /// If `id_to_select` is `Some`, the item identified by that FileTreeIdentifier will be selected.
-    /// If `path_to_remove` is `Some`, the item identified by `path_to_remove` will be removed
-    /// upon rebuilding.
+    /// Core implementation for rebuilding the flattened items list.
+    ///
+    /// When `target_root` is `Some`, only that root is re-flattened; all
+    /// other roots keep their existing items. When `None`, every displayed
+    /// root is rebuilt.
+    ///
+    /// If `id_to_select` is `Some`, the item identified by that
+    /// `FileTreeIdentifier` will be selected. If `path_to_remove` is
+    /// `Some`, the item at that path will be excluded from the result.
+    ///
     /// Returns `true` if an item was removed.
-    fn rebuild_flatten_items_and_select_path(
+    fn rebuild_flatten_items_impl(
         &mut self,
         id_to_select: Option<&FileTreeIdentifier>,
         path_to_remove: Option<&StandardizedPath>,
+        target_root: Option<&StandardizedPath>,
     ) -> bool {
         let mut any_item_removed = false;
 
         // Clone the ID to preserve so we don't hold a borrow on self.selected_item
         let id_to_preserve = id_to_select.cloned().or_else(|| self.selected_item.clone());
 
-        // Process all displayed directories
+        // Process displayed directories, optionally filtering to a single root.
         for root_path in self.displayed_directories.clone() {
+            if let Some(target) = target_root {
+                if root_path != *target {
+                    continue;
+                }
+            }
+
             let Some(root_dir) = self.root_directories.get(&root_path) else {
                 continue;
             };
@@ -1633,13 +1698,19 @@ impl FileTreeView {
                 root_dir.items = items;
             }
 
-            // If we found the selection in this root, update selected_item
-            if let (Some(index), Some(id)) = (new_index, id_to_preserve.as_ref()) {
+            // If we found the selection in this root, update selected_item.
+            // If the selection was expected but not found (e.g. filtered out as hidden),
+            // clear selected_item to avoid stale references.
+            if let Some(id) = id_to_preserve.as_ref() {
                 if id.root == root_path {
-                    self.selected_item = Some(FileTreeIdentifier {
-                        root: root_path,
-                        index,
-                    });
+                    if let Some(index) = new_index {
+                        self.selected_item = Some(FileTreeIdentifier {
+                            root: root_path,
+                            index,
+                        });
+                    } else if selected_item_path.is_some() {
+                        self.selected_item = None;
+                    }
                 }
             }
 
@@ -1666,6 +1737,17 @@ impl FileTreeView {
 
         if path_of_removed_item == Some(current_path) {
             return (None, true);
+        }
+
+        // Filter hidden files/directories when show_hidden_files is disabled.
+        // Only filter descendants (depth > 0), not the root entry itself,
+        // so that hidden workspace directories (e.g. ~/.config) are still shown.
+        if !self.show_hidden_files && depth > 0 {
+            if let Some(name) = current_path.file_name() {
+                if name.starts_with('.') {
+                    return (selected_item_index, removed_item);
+                }
+            }
         }
 
         if path_of_selected_item == Some(current_path) {
@@ -2878,6 +2960,13 @@ impl View for FileTreeView {
     fn render(&self, app: &AppContext) -> Box<dyn Element> {
         if matches!(self.enablement, CodingPanelEnablementState::Disabled) {
             return self.render_error_state(DISABLED_TEXT.to_string(), app);
+        }
+
+        if matches!(
+            self.enablement,
+            CodingPanelEnablementState::PendingRemoteSession
+        ) {
+            return self.render_loading_state(app);
         }
 
         if self.displayed_directories.is_empty() {

@@ -5,9 +5,15 @@ mod view;
 pub use data_source::*;
 pub use view::*;
 
+#[cfg(feature = "local_fs")]
+use std::path::PathBuf;
+
 use ai::skills::SkillReference;
 use warp_core::features::FeatureFlag;
 use warp_core::ui::appearance::Appearance;
+use warp_core::ui::theme::AnsiColorIdentifier;
+#[cfg(feature = "local_fs")]
+use warp_util::path::{CleanPathResult, LineAndColumnArg};
 use warpui::clipboard::ClipboardContent;
 use warpui::{SingletonEntity, ViewContext};
 
@@ -23,6 +29,7 @@ use crate::search::slash_command_menu::{SlashCommandId, StaticCommand};
 use crate::server::ids::SyncId;
 use crate::server::telemetry::SlashCommandAcceptedDetails;
 use crate::settings::AISettings;
+use crate::tab::SelectedTabColor;
 use crate::terminal::input::decorations::InputBackgroundJobOptions;
 use crate::terminal::input::inline_menu::{InlineMenuAction, InlineMenuType};
 use crate::terminal::input::message_bar::Message;
@@ -32,7 +39,10 @@ use crate::terminal::input::slash_command_model::{
 use crate::terminal::input::{
     CompletionsTrigger, Event, Input, InputSuggestionsMode, UserQueryMenuAction,
 };
+#[cfg(feature = "local_fs")]
+use crate::terminal::model::session::Session;
 use crate::terminal::view::TerminalAction;
+use crate::ui_components::color_dot;
 use crate::view_components::DismissibleToast;
 use crate::workflows::{WorkflowSelectionSource, WorkflowSource, WorkflowType};
 use crate::workspace::{ForkedConversationDestination, ToastStack, WorkspaceAction};
@@ -91,6 +101,33 @@ impl SlashCommandTrigger {
             }
         )
     }
+}
+
+#[cfg(feature = "local_fs")]
+fn open_file_command_path(
+    session: &Session,
+    current_dir: &str,
+    raw_arg: &str,
+) -> (PathBuf, Option<LineAndColumnArg>) {
+    let parsed_path = CleanPathResult::with_line_and_column_number(raw_arg.trim());
+    // The argument may contain shell-escaped characters (e.g. `\ ` for spaces) from auto-suggest.
+    // Unescape them so the path matches the actual filesystem entry.
+    let unescaped_path = session.shell_family().unescape(&parsed_path.path);
+    // Expand `~` to the user's home directory.
+    let expanded_path = shellexpand::tilde(&unescaped_path);
+
+    let shell_path = session
+        .convert_directory_to_typed_path_buf(current_dir.to_owned())
+        .join(session.convert_directory_to_typed_path_buf(expanded_path.into_owned()))
+        .normalize();
+    let file_path = session
+        .maybe_convert_to_native_path(&shell_path.to_path())
+        .unwrap_or_else(|err| {
+            log::warn!("unable to convert /open-file path to native path: {err:?}");
+            PathBuf::from(shell_path.to_string_lossy().into_owned())
+        });
+
+    (file_path, parsed_path.line_and_column_num)
 }
 
 impl Input {
@@ -412,6 +449,54 @@ impl Input {
 
                 ctx.dispatch_typed_action(&WorkspaceAction::SetActiveTabName(name.to_owned()));
             }
+            set_tab_color if command.name == commands::SET_TAB_COLOR.name => {
+                let supported_options = || {
+                    color_dot::TAB_COLOR_OPTIONS
+                        .iter()
+                        .map(|c| c.to_string().to_ascii_lowercase())
+                        .chain(std::iter::once("none".to_owned()))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                };
+
+                let Some(arg) = argument
+                    .map(|name| name.trim())
+                    .filter(|name| !name.is_empty())
+                else {
+                    show_error_toast(
+                        format!(
+                            "Please provide a color after /set-tab-color ({})",
+                            supported_options()
+                        ),
+                        ctx,
+                    );
+                    return true;
+                };
+
+                let color = if arg.eq_ignore_ascii_case("none") {
+                    SelectedTabColor::Cleared
+                } else {
+                    let parsed = arg
+                        .parse::<AnsiColorIdentifier>()
+                        .ok()
+                        .filter(|c| color_dot::TAB_COLOR_OPTIONS.contains(c));
+                    match parsed {
+                        Some(c) => SelectedTabColor::Color(c),
+                        None => {
+                            show_error_toast(
+                                format!(
+                                    "Unknown tab color '{arg}'. Use one of: {}.",
+                                    supported_options()
+                                ),
+                                ctx,
+                            );
+                            return true;
+                        }
+                    }
+                };
+
+                ctx.dispatch_typed_action(&WorkspaceAction::SetActiveTabColor(color));
+            }
             create_env if command.name == commands::CREATE_ENVIRONMENT.name => {
                 // If the user included args after the slash command, treat them as repo paths/URLs.
                 let repos = argument
@@ -442,9 +527,6 @@ impl Input {
                 #[cfg(feature = "local_fs")]
                 match argument {
                     Some(args) if !args.is_empty() => {
-                        use shellexpand::tilde;
-                        use warp_util::path::CleanPathResult;
-
                         let Some(session_id) = self.active_block_session_id() else {
                             return false;
                         };
@@ -472,20 +554,14 @@ impl Input {
                             .active_block_metadata
                             .as_ref()
                             .and_then(|metadata| metadata.current_working_directory())
-                            .map(std::path::PathBuf::from);
+                            .map(str::to_owned);
 
                         let Some(current_dir) = current_dir else {
                             return false;
                         };
 
-                        let parsed_path = CleanPathResult::with_line_and_column_number(args.trim());
-                        // The argument may contain shell-escaped characters (e.g. `\ ` for
-                        // spaces) from auto-suggest. Unescape them so the path matches the
-                        // actual filesystem entry.
-                        let unescaped_path = session.shell_family().unescape(&parsed_path.path);
-                        // Expand `~` to the user's home directory.
-                        let expanded_path = tilde(&unescaped_path);
-                        let file_path = current_dir.join(&*expanded_path);
+                        let (file_path, line_col) =
+                            open_file_command_path(&session, &current_dir, args);
 
                         match std::fs::metadata(&file_path) {
                             Ok(metadata) if metadata.is_file() => {
@@ -494,7 +570,7 @@ impl Input {
                                 ctx.dispatch_typed_action(&TerminalAction::OpenCodeInWarp {
                                     path: file_path,
                                     layout: external_editor::settings::EditorLayout::SplitPane,
-                                    line_col: parsed_path.line_and_column_num,
+                                    line_col,
                                 });
                             }
                             Ok(_) => {
@@ -959,6 +1035,68 @@ impl Input {
             SlashCommandEntryState::None
             | SlashCommandEntryState::Composing { .. }
             | SlashCommandEntryState::DisabledUntilEmptyBuffer => false,
+        }
+    }
+}
+
+#[cfg(all(test, feature = "local_fs", windows))]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    use crate::terminal::model::session::command_executor::testing::TestCommandExecutor;
+    use crate::terminal::model::session::SessionInfo;
+    use crate::terminal::shell::ShellType;
+    use crate::terminal::ShellLaunchData;
+
+    fn wsl_session() -> Session {
+        Session::new(
+            SessionInfo::new_for_test().with_shell_type(ShellType::Bash),
+            Arc::new(TestCommandExecutor::default()),
+        )
+        .with_shell_launch_data(ShellLaunchData::WSL {
+            distro: "Ubuntu".to_owned(),
+        })
+    }
+
+    #[test]
+    fn open_file_command_converts_wsl_paths_to_host_paths() {
+        let session = wsl_session();
+        let cases = [
+            (
+                "/home/ubuntu",
+                "subdir/test.txt",
+                r"\\WSL$\Ubuntu\home\ubuntu\subdir\test.txt",
+                None,
+            ),
+            (
+                "/home/ubuntu/project",
+                "../test.txt",
+                r"\\WSL$\Ubuntu\home\ubuntu\test.txt",
+                None,
+            ),
+            (
+                "/home/ubuntu",
+                "subdir/file\\ name.txt",
+                r"\\WSL$\Ubuntu\home\ubuntu\subdir\file name.txt",
+                None,
+            ),
+            (
+                "/home/ubuntu",
+                "subdir/test.txt:4:2",
+                r"\\WSL$\Ubuntu\home\ubuntu\subdir\test.txt",
+                Some(LineAndColumnArg {
+                    line_num: 4,
+                    column_num: Some(2),
+                }),
+            ),
+        ];
+
+        for (current_dir, raw_arg, expected_path, expected_line_col) in cases {
+            let (path, line_col) = open_file_command_path(&session, current_dir, raw_arg);
+
+            assert_eq!(path, PathBuf::from(expected_path));
+            assert_eq!(line_col, expected_line_col);
         }
     }
 }

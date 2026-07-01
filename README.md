@@ -2,13 +2,13 @@
 
 Lightweight AGPL fork of [Warp Terminal](https://github.com/warpdotdev/warp), focused on a local-first terminal experience without Warp account login, bundled AI workflows, cloud onboarding, or telemetry as a product requirement.
 
-> Status: alpha, but usable on macOS. The latest shipped build is **v0.5.4-lite**. It builds, launches, and is published with downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
+> Status: alpha, but usable on macOS. The current build is **v0.5.5-lite**, which folds in a large privacy-safe upstream sync (139 cherry-picked upstream improvements) on top of the lite base. It builds, launches, and ships as downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
 
 Latest release:
 
-- [v0.5.4-lite](https://github.com/terzigolu/warp-lite/releases/tag/v0.5.4-lite)
-- Tag: `v0.5.4-lite`
-- macOS artifacts: `WarpLite.dmg` (~124 MB), `WarpLite.app.zip` (~114 MB)
+- Download the newest published build from [releases/latest](https://github.com/terzigolu/warp-lite/releases/latest).
+- Current build: `v0.5.5-lite` (upstream sync 2026-07; release publishing may lag the source branch).
+- macOS artifacts: `WarpLite.dmg` (~120 MB), `WarpLite.app.zip`.
 
 See [`FORK_NOTICE.md`](FORK_NOTICE.md) for the relationship with upstream Warp.
 
@@ -19,7 +19,8 @@ Upstream Warp is excellent, but includes a large agentic-development and cloud s
 Goals, in order:
 
 1. **Local-first.** No Warp account required. No login gate for opening a terminal.
-2. **Terminal-first.** Preserve the block terminal, GPU renderer, shell integrations, tabs, panes, settings, themes, command palette, editor basics, completions, and markdown rendering.
+2. **Terminal-first.** Preserve the block terminal, GPU renderer, shell integrations, tabs, tab groups, panes, settings, themes, command palette, editor basics, completions, and markdown rendering.
+5. **Stay current.** Regularly pull upstream Warp's terminal, renderer, shell, and bug/perf fixes via vetted `git cherry-pick -x`, while rejecting anything that would reintroduce telemetry, network calls, or AI/cloud/account surfaces.
 3. **Lighter over time.** Remove AI/cloud code paths carefully without breaking terminal rendering or input.
 4. **Honest status.** Some source modules are still present while the default build avoids their product paths. This README tracks that split explicitly.
 
@@ -39,11 +40,11 @@ The packaged app uses:
 
 - Bundle identifier: `dev.warp-lite.WarpLite`
 - App name: `WarpLite`
-- Current bundle version: `0.5.4-lite`
+- Current bundle version: `0.5.5-lite`
 
 ## Current Shipped State
 
-The current release is `v0.5.4-lite`.
+The current build is `v0.5.5-lite`.
 
 | Area | State | Notes |
 |---|---|---|
@@ -58,6 +59,18 @@ The current release is `v0.5.4-lite`.
 | Agent mode | Not a target | Agent-mode product surfaces should stay out of the lite app. |
 
 ## What Changed Recently
+
+### v0.5.5-lite — Upstream sync (2026-07)
+
+A large, privacy-audited catch-up with upstream Warp. Fork point `bc3fffa` was **927 commits** behind upstream `d375729`; **139 improvements were cherry-picked** (`-x` for AGPL provenance) after a strict per-commit review. Selection rule: bugfix / performance / terminal-feature only, and **rejected** if the diff reintroduced any telemetry, outbound network client, or AI/cloud/auth/account surface. The applied diff was audited — no new `send_telemetry`, `reqwest`, Firebase, or GraphQL network calls were added.
+
+- **New feature: vertical tab grouping** — group, rename, reorder, and move tabs between groups (upstream #11749, #11791, #11842, #11849, #11903).
+- **Performance:** avoid cloning the whole file tree on view updates (#12221), async presentation on macOS (#11326), input hot-path cleanup (#10927), fewer redundant SVG rasterizations (#12104), fixed a `WeakModelHandle` zombie-handle leak (#11767).
+- **Stability / crash fixes:** flat-storage `RowIterator` underflow after clear (#12085), secret redaction across multibyte UTF-8 (#9521), block up/down navigation (#10095), plus ~60 more fixes.
+- **Terminal / shell:** tab CWD + git branch from OSC 7 escape sequences (#9279), empty zsh `RPROMPT` handling (#11868), Intel(R) HD Graphics 2500 added to the buggy-iGPU list (#11454).
+- **Editor / files:** configurable code-editor line numbers (#10012), show-hidden-files toggle in Project Explorer (#9532).
+- **Intentionally skipped (6):** upstream changes entangled with removed AI/cloud/auth code — e.g. horizontal tab-group rendering (needs removed AI imports), SSH/remote-auth transport, and the code-review discard-panic fix — were aborted rather than force-merged, to avoid dragging removed surfaces back in.
+- Verified green with `cargo check -p warp --bin warp-oss` and launch-tested. Full lists: [`WARP_LITE_SYNC_GAP_2026-06.md`](WARP_LITE_SYNC_GAP_2026-06.md) and [`WARP_LITE_SYNC_APPLIED_2026-07.md`](WARP_LITE_SYNC_APPLIED_2026-07.md).
 
 ### v0.5.4-lite
 
@@ -188,10 +201,13 @@ Known caveat: full `cargo fmt --check` can currently fail because the repository
 ## Branch Structure
 
 ```text
-origin/warp-lite/main      default branch; current shipped work
-origin/upstream-tracking   read-only mirror/cherry-pick source for upstream Warp changes
-upstream/master            upstream Warp source
+origin/warp-lite/main         default branch; current shipped work
+origin/warp-lite/sync-2026-06  upstream-sync staging branch (v0.5.5-lite cherry-picks land here first)
+origin/upstream-tracking      read-only mirror/cherry-pick source for upstream Warp changes
+upstream/master               upstream Warp source
 ```
+
+Upstream syncs are staged on a dated `warp-lite/sync-*` branch, verified (build + launch), then merged into `warp-lite/main`.
 
 Historical phase branches and tags may still exist, but the public state should be read from `warp-lite/main`, the tags, and the GitHub Releases page.
 
@@ -199,6 +215,7 @@ Historical phase branches and tags may still exist, but the public state should 
 
 | Tag | Summary |
 |---|---|
+| `v0.5.5-lite` | Large privacy-safe upstream sync: 139 cherry-picked bug/perf/terminal improvements, incl. vertical tab grouping, with all telemetry/network/AI/cloud changes rejected. |
 | `v0.5.4-lite` | Removed unsupported prompt AI controls and redirected hidden settings pages away from Account/signup surfaces. |
 | `v0.5.3-lite` | README refresh, no-login hardening, and remaining visible account/upsell action cleanup. |
 | `v0.5.2-lite` | No-login hotfix; fresh DMG/app zip assets. |

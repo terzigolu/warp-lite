@@ -20,14 +20,15 @@ use super::keybindings::KeyBindingModifyingState;
 #[cfg(feature = "local_tty")]
 use super::settings_page::render_sub_sub_header;
 use super::settings_page::{
-    add_setting, build_reset_button, render_body_item_label, render_dropdown_item_label,
-    render_local_only_icon, Category, LocalOnlyIconState, MatchData, PageType, SettingsWidget,
-    TOGGLE_BUTTON_RIGHT_PADDING,
+    add_setting, build_reset_button, build_toggle_element, render_body_item_label,
+    render_dropdown_item_label, render_local_only_icon, Category, LocalOnlyIconState, MatchData,
+    PageType, SettingsWidget, TOGGLE_BUTTON_RIGHT_PADDING,
 };
 use super::settings_page::{
     render_body_item, render_dropdown_item, AdditionalInfo, SettingsPageMeta,
     SettingsPageViewHandle, ToggleState, CONTENT_FONT_SIZE, HEADER_PADDING,
 };
+use super::render_beta_chip;
 use super::{features, SettingsAction};
 use super::{flags, DisplayCount};
 use super::{SettingsSection, ToggleSettingActionPair};
@@ -47,7 +48,8 @@ use crate::settings::{
 use crate::settings::{
     AliasExpansionEnabled, AliasExpansionSettings, AppEditorSettings, AtContextMenuInTerminalMode,
     AutocompleteSymbols, AutosuggestionKeybindingHint, CaseInsensitiveCompletions,
-    ChangelogSettings, CloudPreferencesSettings, CodeSettings, CommandCorrections,
+    ChangelogSettings, CloudPreferencesSettings, CodeEditorLineNumberMode,
+    CodeEditorLineNumberModeSetting, CodeSettings, CommandCorrections,
     CompletionsOpenWhileTyping, CopyOnSelect, CtrlTabBehavior, DefaultSessionMode,
     EnableSlashCommandsInTerminal, EnableSshWrapper, ErrorUnderliningEnabled, ExtraMetaKeys,
     GPUSettings, GlobalHotkeyMode, InputSettings, InputSettingsChangedEvent,
@@ -75,9 +77,9 @@ use crate::terminal::session_settings::{
     SessionSettingsChangedEvent, ShouldConfirmCloseSession,
 };
 use crate::terminal::settings::{
-    MaximumGridSize, ShowTerminalZeroStateBlock, TerminalSettings, UseAudibleBell,
+    AsyncFindEnabled, MaximumGridSize, ShowTerminalZeroStateBlock, TerminalSettings, UseAudibleBell,
 };
-use crate::terminal::{BlockListSettings, SnackbarEnabled};
+use crate::terminal::{BlockListSettings, PreserveInputFocusOnBlockSelection, SnackbarEnabled};
 use crate::undo_close::UndoCloseSettings;
 use crate::user_config::{WarpConfig, WarpConfigUpdateEvent};
 use crate::util::bindings::{
@@ -484,6 +486,15 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
         .with_enabled(|| FeatureFlag::AgentView.is_enabled()),
     );
 
+    toggle_binding_pairs.push(ToggleSettingActionPair::new(
+        "preserve input focus on block selection",
+        builder(SettingsAction::FeaturesPageToggle(
+            FeaturesPageAction::TogglePreserveInputFocusOnBlockSelection,
+        )),
+        context,
+        flags::PRESERVE_INPUT_FOCUS_ON_BLOCK_SELECTION_FLAG,
+    ));
+
     if FeatureFlag::AgentView.is_enabled() && AISettings::as_ref(app).is_any_ai_enabled(app) {
         toggle_binding_pairs.push(
             ToggleSettingActionPair::new(
@@ -562,6 +573,7 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
 #[derive(Clone, Debug)]
 pub enum FeaturesPageAction {
     ToggleCopyOnSelect,
+    ToggleAsyncFind,
     ToggleNotifications,
     ToggleRestoreSession,
     ToggleAutocompleteSymbols,
@@ -642,8 +654,10 @@ pub enum FeaturesPageAction {
     ToggleOutlineCodebaseSymbolsForAtContextMenu,
     ToggleAutoOpenCodeReviewPane,
     ToggleShowTerminalInputMessageLine,
+    TogglePreserveInputFocusOnBlockSelection,
     ToggleAgentInAppNotifications,
     MakeWarpDefaultTerminal,
+    SetCodeEditorLineNumberMode(CodeEditorLineNumberMode),
 }
 
 lazy_static! {
@@ -1025,6 +1039,10 @@ impl FeaturesPageAction {
                 action: "ToggleVimStatusBar".to_string(),
                 value: to_string(*AppEditorSettings::as_ref(ctx).vim_status_bar.value()),
             },
+            Self::SetCodeEditorLineNumberMode(mode) => TelemetryEvent::FeaturesPageAction {
+                action: "SetCodeEditorLineNumberMode".to_string(),
+                value: format!("{mode:?}"),
+            },
             Self::SetTabBehavior(tab_behavior) => TelemetryEvent::FeaturesPageAction {
                 action: "SetTabBehavior".to_string(),
                 value: format!("{tab_behavior:?}"),
@@ -1147,6 +1165,13 @@ impl FeaturesPageAction {
                     *GeneralSettings::as_ref(ctx).auto_open_code_review_pane_on_first_agent_change,
                 ),
             },
+            Self::TogglePreserveInputFocusOnBlockSelection => {
+                let settings = BlockListSettings::as_ref(ctx);
+                TelemetryEvent::FeaturesPageAction {
+                    action: "TogglePreserveInputFocusOnBlockSelection".to_string(),
+                    value: to_string(*settings.preserve_input_focus_on_block_selection),
+                }
+            }
             Self::SetNotificationToastDuration => TelemetryEvent::FeaturesPageAction {
                 action: "SetNotificationToastDuration".to_string(),
                 value: format!(
@@ -1157,6 +1182,10 @@ impl FeaturesPageAction {
             Self::ToggleAgentInAppNotifications => TelemetryEvent::FeaturesPageAction {
                 action: "ToggleAgentInAppNotifications".to_string(),
                 value: to_string(*AISettings::as_ref(ctx).show_agent_notifications),
+            },
+            Self::ToggleAsyncFind => TelemetryEvent::FeaturesPageAction {
+                action: "ToggleAsyncFind".to_string(),
+                value: to_string(*TerminalSettings::as_ref(ctx).async_find_enabled),
             },
         }
     }
@@ -1199,6 +1228,7 @@ pub struct FeaturesPageView {
 
     button_mouse_states: MouseStateHandles,
     ctrl_tab_behavior_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
+    code_editor_line_number_mode_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
 
     global_hotkey_dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
     activation_hotkey_keybinding_editor_state: KeybindingEditorState,
@@ -1896,6 +1926,13 @@ impl TypedActionView for FeaturesPageView {
                         .toggle_and_save_value(ctx));
                 })
             }
+            TogglePreserveInputFocusOnBlockSelection => {
+                BlockListSettings::handle(ctx).update(ctx, |blocklist_settings, ctx| {
+                    report_if_error!(blocklist_settings
+                        .preserve_input_focus_on_block_selection
+                        .toggle_and_save_value(ctx));
+                });
+            }
             SetNotificationToastDuration => {
                 let user_input = self
                     .notification_toast_duration_editor
@@ -1918,6 +1955,21 @@ impl TypedActionView for FeaturesPageView {
             MakeWarpDefaultTerminal => {
                 DefaultTerminal::handle(ctx).update(ctx, |default_terminal, ctx| {
                     default_terminal.make_warp_default(ctx);
+                });
+            }
+            SetCodeEditorLineNumberMode(mode) => {
+                AppEditorSettings::handle(ctx).update(ctx, |editor_settings, ctx| {
+                    report_if_error!(editor_settings
+                        .code_editor_line_number_mode
+                        .set_value(*mode, ctx));
+                    ctx.notify();
+                });
+            }
+            ToggleAsyncFind => {
+                TerminalSettings::handle(ctx).update(ctx, |terminal_settings, ctx| {
+                    report_if_error!(terminal_settings
+                        .async_find_enabled
+                        .toggle_and_save_value(ctx));
                 });
             }
         }
@@ -1946,7 +1998,13 @@ impl FeaturesPageView {
         );
 
         // Listen for model changes on all the settings that are used in this view.
-        ctx.subscribe_to_model(&AppEditorSettings::handle(ctx), |_, _, _, ctx| ctx.notify());
+        ctx.subscribe_to_model(&AppEditorSettings::handle(ctx), |me, _, _, ctx| {
+            Self::update_code_editor_line_number_mode_dropdown(
+                me.code_editor_line_number_mode_dropdown.clone(),
+                ctx,
+            );
+            ctx.notify();
+        });
 
         ctx.subscribe_to_model(&SelectionSettings::handle(ctx), |_, _, _, ctx| ctx.notify());
 
@@ -2179,6 +2237,12 @@ impl FeaturesPageView {
 
         let ctrl_tab_behavior_dropdown = ctx.add_typed_action_view(Dropdown::new);
         Self::update_ctrl_tab_behavior_dropdown(ctrl_tab_behavior_dropdown.clone(), ctx);
+
+        let code_editor_line_number_mode_dropdown = ctx.add_typed_action_view(Dropdown::new);
+        Self::update_code_editor_line_number_mode_dropdown(
+            code_editor_line_number_mode_dropdown.clone(),
+            ctx,
+        );
 
         ctx.subscribe_to_model(&KeysSettings::handle(ctx), |me, _, event, ctx| {
             if matches!(
@@ -2417,6 +2481,7 @@ impl FeaturesPageView {
 
             tab_behavior_dropdown,
             ctrl_tab_behavior_dropdown,
+            code_editor_line_number_mode_dropdown,
             graphics_backend_dropdown,
             new_tab_placement_dropdown,
             default_session_mode_dropdown,
@@ -2523,6 +2588,11 @@ impl FeaturesPageView {
             general_widgets.push(Box::new(DefaultTerminalWidget::default()));
         }
 
+        // The widget is the opt-in surface for channels where `FeatureFlag::AsyncFind`
+        // is off. Channels with the flag on force the feature on and hide the toggle
+        // entirely; see `TerminalSettings::is_async_find_enabled`.
+        general_widgets.push(Box::new(AsyncFindWidget::default()));
+
         let app_editor_settings = AppEditorSettings::as_ref(ctx);
 
         let notifications_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
@@ -2600,6 +2670,12 @@ impl FeaturesPageView {
 
         let mut text_editing_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
             vec![Box::new(AutocompleteSymbolsWidget::default())];
+        if app_editor_settings
+            .code_editor_line_number_mode
+            .is_supported_on_current_platform()
+        {
+            text_editing_widgets.push(Box::new(CodeEditorLineNumberModeWidget::default()));
+        }
 
         if app_editor_settings
             .vim_mode
@@ -2695,6 +2771,14 @@ impl FeaturesPageView {
 
         editor_widgets.push(Box::new(TabKeyBehaviorWidget::default()));
 
+        let blocklist_settings = BlockListSettings::as_ref(ctx);
+        if blocklist_settings
+            .preserve_input_focus_on_block_selection
+            .is_supported_on_current_platform()
+        {
+            editor_widgets.push(Box::new(PreserveInputFocusOnBlockSelectionWidget::default()));
+        }
+
         let mut terminal_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![];
 
         let reporting_settings = AltScreenReporting::as_ref(ctx);
@@ -2783,6 +2867,41 @@ impl FeaturesPageView {
         PageType::new_categorized(categories, None)
     }
 
+    fn update_code_editor_line_number_mode_dropdown(
+        dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        dropdown.update(ctx, |dropdown, ctx| {
+            let values = [
+                CodeEditorLineNumberMode::Absolute,
+                CodeEditorLineNumberMode::Relative,
+            ];
+
+            let current_value = *AppEditorSettings::as_ref(ctx)
+                .code_editor_line_number_mode
+                .value();
+
+            let selected_index = values
+                .iter()
+                .position(|val| *val == current_value)
+                .unwrap_or(0);
+
+            dropdown.set_items(
+                values
+                    .into_iter()
+                    .map(|val| {
+                        DropdownItem::new(
+                            val.dropdown_item_label(),
+                            FeaturesPageAction::SetCodeEditorLineNumberMode(val),
+                        )
+                    })
+                    .collect(),
+                ctx,
+            );
+            dropdown.set_selected_by_index(selected_index, ctx);
+        });
+    }
+
     fn update_ctrl_tab_behavior_dropdown(
         dropdown: ViewHandle<Dropdown<FeaturesPageAction>>,
         ctx: &mut ViewContext<Self>,
@@ -2791,6 +2910,7 @@ impl FeaturesPageView {
             let values = vec![
                 CtrlTabBehavior::ActivatePrevNextTab,
                 CtrlTabBehavior::CycleMostRecentSession,
+                CtrlTabBehavior::CycleMostRecentTab,
             ];
 
             let current_value = *KeysSettings::as_ref(ctx).ctrl_tab_behavior;
@@ -5543,6 +5663,49 @@ impl SettingsWidget for AutocompleteSymbolsWidget {
 }
 
 #[derive(Default)]
+struct CodeEditorLineNumberModeWidget {}
+
+impl SettingsWidget for CodeEditorLineNumberModeWidget {
+    type View = FeaturesPageView;
+
+    fn search_terms(&self) -> &str {
+        "line number relative line vim gutter code editor"
+    }
+
+    fn render(
+        &self,
+        view: &Self::View,
+        appearance: &Appearance,
+        app: &AppContext,
+    ) -> Box<dyn Element> {
+        let mut column = Flex::column();
+        add_setting(
+            &mut column,
+            &AppEditorSettings::as_ref(app).code_editor_line_number_mode,
+            || {
+                render_dropdown_item(
+                    appearance,
+                    "Code editor line numbers:",
+                    None,
+                    None,
+                    LocalOnlyIconState::for_setting(
+                        CodeEditorLineNumberModeSetting::storage_key(),
+                        CodeEditorLineNumberModeSetting::sync_to_cloud(),
+                        &mut view
+                            .button_mouse_states
+                            .local_only_icon_tooltip_states
+                            .borrow_mut(),
+                        app,
+                    ),
+                    None,
+                    &view.code_editor_line_number_mode_dropdown,
+                )
+            },
+        );
+        column.finish()
+    }
+}
+#[derive(Default)]
 struct ErrorUnderliningWidget {
     switch_state: SwitchStateHandle,
 }
@@ -6185,6 +6348,54 @@ impl SettingsWidget for ShowTerminalInputMessageLineWidget {
                 .on_click(move |ctx, _, _| {
                     ctx.dispatch_typed_action(
                         FeaturesPageAction::ToggleShowTerminalInputMessageLine,
+                    );
+                })
+                .finish(),
+            None,
+        )
+    }
+}
+
+#[derive(Default)]
+struct PreserveInputFocusOnBlockSelectionWidget {
+    switch_state: SwitchStateHandle,
+}
+
+impl SettingsWidget for PreserveInputFocusOnBlockSelectionWidget {
+    type View = FeaturesPageView;
+
+    fn search_terms(&self) -> &str {
+        "preserve input focus block selection navigate arrow keys"
+    }
+
+    fn render(
+        &self,
+        view: &Self::View,
+        appearance: &Appearance,
+        app: &AppContext,
+    ) -> Box<dyn Element> {
+        let ui_builder = appearance.ui_builder();
+        render_body_item::<FeaturesPageAction>(
+            "Preserve input focus on block selection".into(),
+            None,
+            LocalOnlyIconState::for_setting(
+                PreserveInputFocusOnBlockSelection::storage_key(),
+                PreserveInputFocusOnBlockSelection::sync_to_cloud(),
+                &mut view
+                    .button_mouse_states
+                    .local_only_icon_tooltip_states
+                    .borrow_mut(),
+                app,
+            ),
+            ToggleState::Enabled,
+            appearance,
+            ui_builder
+                .switch(self.switch_state.clone())
+                .check(*BlockListSettings::as_ref(app).preserve_input_focus_on_block_selection)
+                .build()
+                .on_click(move |ctx, _, _| {
+                    ctx.dispatch_typed_action(
+                        FeaturesPageAction::TogglePreserveInputFocusOnBlockSelection,
                     );
                 })
                 .finish(),
@@ -7323,5 +7534,75 @@ impl SettingsWidget for GraphicsBackendWidget {
             );
         }
         col.finish()
+    }
+}
+
+#[derive(Default)]
+struct AsyncFindWidget {
+    switch_state: SwitchStateHandle,
+}
+
+impl SettingsWidget for AsyncFindWidget {
+    type View = FeaturesPageView;
+
+    fn search_terms(&self) -> &str {
+        "async asynchronous fast find search"
+    }
+
+    fn should_render(&self, _app: &AppContext) -> bool {
+        // Here, the feature flag being enabled means the feature is force-enabled,
+        // so we don't need to render the toggle.
+        !FeatureFlag::AsyncFind.is_enabled()
+    }
+
+    fn render(
+        &self,
+        view: &Self::View,
+        appearance: &Appearance,
+        app: &AppContext,
+    ) -> Box<dyn Element> {
+        let ui_builder = appearance.ui_builder();
+
+        let label = render_body_item_label::<FeaturesPageAction>(
+            "Asynchronous find".into(),
+            None,
+            None,
+            LocalOnlyIconState::for_setting(
+                AsyncFindEnabled::storage_key(),
+                AsyncFindEnabled::sync_to_cloud(),
+                &mut view
+                    .button_mouse_states
+                    .local_only_icon_tooltip_states
+                    .borrow_mut(),
+                app,
+            ),
+            ToggleState::Enabled,
+            appearance,
+        );
+
+        let label_with_chip = Flex::row()
+            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+            .with_child(label)
+            .with_child(render_beta_chip(appearance))
+            .finish();
+
+        let switch = ui_builder
+            .switch(self.switch_state.clone())
+            .check(*TerminalSettings::as_ref(app).async_find_enabled)
+            .build()
+            .on_click(move |ctx, _, _| {
+                ctx.dispatch_typed_action(FeaturesPageAction::ToggleAsyncFind);
+            })
+            .finish();
+
+        build_toggle_element(
+            label_with_chip,
+            switch,
+            appearance,
+            Some(
+                "Use an improved implementation of find to keep the UI responsive while searching for matches on large outputs."
+                    .into(),
+            ),
+        )
     }
 }

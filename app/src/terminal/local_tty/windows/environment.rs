@@ -278,6 +278,15 @@ fn add_user_env(env: &mut BTreeMap<OsString, EnvEntry>) {
 }
 
 fn reg_value_to_string(value: &RegValue, key: &str) -> anyhow::Result<OsString> {
+    // Only REG_SZ and REG_EXPAND_SZ are valid for environment variables.
+    // https://github.com/microsoft/terminal/blob/1ba28b298f677d838c3a2e457a8a1f569bff6299/src/inc/til/env.h#L247-L259
+    if value.vtype != RegType::REG_SZ && value.vtype != RegType::REG_EXPAND_SZ {
+        anyhow::bail!(
+            "Unsupported registry type {:?} for env var {key:?}",
+            value.vtype
+        );
+    }
+
     let key_lower = key.to_ascii_lowercase();
     // RegType::REG_EXPAND_SZ requires expansion of nested env vars, e.g. %USERPROFILE%\AppData to
     // C:\Users\andy\AppData
@@ -310,7 +319,13 @@ fn reg_value_to_string(value: &RegValue, key: &str) -> anyhow::Result<OsString> 
     };
 
     // These are null-terminated, but we don't want the terminator here. We add it back later.
-    os_str.map(|v| v.to_string_lossy().trim_end_matches('\0').into())
+    os_str.map(|v| {
+        let s = v.to_string_lossy();
+        match s.find('\0') {
+            Some(pos) => s[..pos].into(),
+            None => v,
+        }
+    })
 }
 
 /// Best-effort lowercase transformation of an OsString.

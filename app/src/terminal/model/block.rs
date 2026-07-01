@@ -28,8 +28,8 @@ use crate::{
         block_filter::BlockFilterQuery,
         block_list_element::GridType,
         event::{
-            BlockCompletedEvent, BlockLatencyData, BlockMetadataReceivedEvent, BlockType, Event,
-            UserBlockCompleted,
+            BlockCompletedEvent, BlockLatencyData, BlockMetadataReceivedEvent, BlockType,
+            BlockWorkingDirectoryUpdatedEvent, Event, UserBlockCompleted,
         },
         event_listener::ChannelEventListener,
         model::{
@@ -420,6 +420,8 @@ pub struct Block {
     ///
     /// This is used for debugging UI shown in the block header on dogfood builds.
     nld_overridden: bool,
+
+    visible_bootstrap_block_event_sent: bool,
 }
 
 #[cfg(debug_assertions)]
@@ -1016,6 +1018,7 @@ impl Block {
             },
             nld_overridden: false,
             is_oz_environment_startup_command: false,
+            visible_bootstrap_block_event_sent: false,
         }
     }
 
@@ -1180,13 +1183,6 @@ impl Block {
             self.start_ts = Some(Local::now());
         }
 
-        // If we are in script execution stage and the shell starts a new block,
-        // this means we have a visible bootstrap block.
-        if self.bootstrap_stage() == BootstrapStage::ScriptExecution {
-            self.event_proxy
-                .send_terminal_event(Event::VisibleBootstrapBlock);
-        }
-
         self.header_grid.start_command_grid();
         self.wakeup_after_delay();
     }
@@ -1241,7 +1237,7 @@ impl Block {
         self.wakeup_after_delay();
     }
 
-    fn disable_reset_grid_checks(&mut self) {
+    pub(super) fn disable_reset_grid_checks(&mut self) {
         self.header_grid.disable_reset_grid_checks();
         self.output_grid.disable_reset_grid_checks();
     }
@@ -1706,9 +1702,18 @@ impl Block {
         self.state == BlockState::Executing
     }
 
+    fn is_empty_pre_bootstrap_block(&self) -> bool {
+        !self.bootstrap_stage.is_done()
+            && self.command_should_show_as_empty_when_finished()
+            && self.output_grid.should_show_as_empty_when_finished()
+    }
+
     /// Whether a command is long running.
     /// We use this to determine whether to hide the input box.
     pub fn is_active_and_long_running(&self) -> bool {
+        if self.is_empty_pre_bootstrap_block() {
+            return false;
+        }
         // Use the command grid start time by default (which should be earlier)
         // than the output grid start time.  If for some reason there isn't a
         // command grid start time, then fall back to the start time of the output
@@ -1930,6 +1935,15 @@ impl Block {
 
     pub fn bootstrap_stage(&self) -> BootstrapStage {
         self.bootstrap_stage
+    }
+
+    pub(super) fn should_emit_visible_bootstrap_block_event(&self) -> bool {
+        self.bootstrap_stage == BootstrapStage::ScriptExecution
+            && !self.visible_bootstrap_block_event_sent
+    }
+
+    pub(super) fn mark_visible_bootstrap_block_event_sent(&mut self) {
+        self.visible_bootstrap_block_event_sent = true;
     }
 
     /// Returns the ENTIRE HEIGHT of the prompt and command (no padding top or middle included).
@@ -2443,7 +2457,19 @@ impl Block {
     }
 
     pub fn formatted_duration_string(&self) -> Option<String> {
-        self.duration().map(Self::format_duration)
+        self.duration()
+            .or_else(|| self.elapsed_duration_whole_secs())
+            .map(Self::format_duration)
+    }
+
+    /// Returns true if this block's formatted duration string is a live elapsed counter
+    /// (i.e. `formatted_duration_string()` will return a value derived from `elapsed_duration()`
+    /// rather than the final `duration()`).
+    ///
+    /// This is kept in lock-step with `elapsed_duration()` so the view layer can decide
+    /// whether to wrap the duration in a periodically-repainting element.
+    pub fn is_duration_live(&self) -> bool {
+        self.elapsed_duration_whole_secs().is_some()
     }
 
     pub fn format_duration(duration: Duration) -> String {
@@ -2662,6 +2688,30 @@ impl Block {
                 let duration = end.signed_duration_since(start);
                 (duration > Duration::zero()).then_some(duration)
             })
+    }
+
+    /// Returns the elapsed duration since the command started executing, rounded down
+    /// to the nearest second.
+    ///
+    /// Returns `Some` only when the block is actively executing (has `start_ts`,
+    /// no `completed_ts`, and `is_executing()`). Rounding to whole seconds keeps the
+    /// formatted duration string stable between one-second repaint ticks so that
+    /// unrelated `ctx.notify` calls (e.g. when the user interacts with the block)
+    /// don't cause the counter to flicker sub-second values.
+    pub fn elapsed_duration_whole_secs(&self) -> Option<Duration> {
+        self.elapsed_duration_whole_secs_at(Local::now())
+    }
+
+    /// Testable helper behind `elapsed_duration()` that takes an explicit `now`.
+    fn elapsed_duration_whole_secs_at(&self, now: DateTime<Local>) -> Option<Duration> {
+        if self.completed_ts.is_some() || !self.is_executing() {
+            return None;
+        }
+        self.start_ts.and_then(|start| {
+            let elapsed = now.signed_duration_since(start);
+            let whole_secs = elapsed.num_seconds();
+            (whole_secs > 0).then(|| Duration::seconds(whole_secs))
+        })
     }
 
     pub fn git_branch(&self) -> Option<&String> {
@@ -3209,6 +3259,36 @@ impl ansi::Handler for Block {
 
     fn text_area_size_chars<W: std::io::Write>(&mut self, writer: &mut W) {
         delegate!(self.text_area_size_chars(writer));
+    }
+
+    fn set_current_working_directory(&mut self, path: String) {
+        if self.pwd.as_deref() == Some(path.as_str()) {
+            return;
+        }
+        self.pwd = Some(path);
+        // Use a dedicated event variant rather than `BlockMetadataReceived`
+        // because the latter is implicitly contracted to fire once per block
+        // (at precmd) and a number of subscribers rely on that — see e.g.
+        // the requested-command finish detector in
+        // `ai/blocklist/action_model/execute/shell_command.rs`. Subscribers
+        // that genuinely care about CWD changes opt in by also listening to
+        // `BlockWorkingDirectoryUpdated`.
+        self.event_proxy
+            .send_terminal_event(Event::BlockWorkingDirectoryUpdated(
+                BlockWorkingDirectoryUpdatedEvent {
+                    block_metadata: self.metadata(),
+                    block_index: self.block_index,
+                    // Preserve the block's in-band status so listeners can keep
+                    // applying the same in-band guard they apply to precmd-driven
+                    // metadata updates (e.g. skipping repo-detection / chip
+                    // refreshes for in-band command blocks).
+                    is_for_in_band_command: self.is_for_in_band_command,
+                    is_done_bootstrapping: matches!(
+                        self.bootstrap_stage,
+                        BootstrapStage::PostBootstrapPrecmd
+                    ),
+                },
+            ));
     }
 
     fn precmd(&mut self, data: PrecmdValue) {

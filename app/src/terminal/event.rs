@@ -46,6 +46,13 @@ pub enum Event {
     },
     /// Sent when a new block is created.
     BlockMetadataReceived(BlockMetadataReceivedEvent),
+    /// Sent when a block's working directory has been updated outside of the
+    /// normal precmd path (e.g. via an OSC 7 escape sequence). Subscribers
+    /// that only care about CWD changes should listen for this in addition to
+    /// `BlockMetadataReceived`; subscribers tied to precmd semantics (such as
+    /// the requested-command finish detector) should keep listening only to
+    /// `BlockMetadataReceived` so they preserve their once-per-block contract.
+    BlockWorkingDirectoryUpdated(BlockWorkingDirectoryUpdatedEvent),
     /// Sent after a background block is started and added to the block list.
     BackgroundBlockStarted,
     ClipboardStore(ClipboardType, String),
@@ -112,13 +119,6 @@ pub enum Event {
         is_tagged_in: bool,
     },
     Handler(HandlerEvent),
-    /// Emitted by the async remote server setup task to report intermediate
-    /// state changes (e.g. Checking → Installing → Initializing) so the
-    /// prompt can show stage-specific messages.
-    RemoteServerSetupStateChanged {
-        session_id: SessionId,
-        state: RemoteServerSetupState,
-    },
     /// Emitted when the remote server binary has been successfully checked or
     /// installed and is ready. The session is initialized independently on
     /// `Bootstrapped`; when the remote server later connects, the client is
@@ -290,6 +290,27 @@ pub struct BlockMetadataReceivedEvent {
 }
 
 #[derive(Clone, Debug)]
+/// A notification that an existing block's working directory has been updated
+/// out-of-band (e.g. by an OSC 7 escape sequence) without a fresh precmd. The
+/// payload mirrors `BlockMetadataReceivedEvent` so CWD-dependent listeners can
+/// reuse the same handling, but listeners that rely on precmd semantics should
+/// keep using `BlockMetadataReceivedEvent`.
+///
+/// Note: `is_for_in_band_command` here describes the block carrying the update,
+/// while the similarly-spelled `is_after_in_band_command` on
+/// `BlockMetadataReceivedEvent` describes the *previous* block. The semantics
+/// differ because precmd fires after a block runs, while OSC 7 fires while the
+/// block is alive.
+pub struct BlockWorkingDirectoryUpdatedEvent {
+    pub block_metadata: BlockMetadata,
+    pub block_index: BlockIndex,
+    /// Whether the block carrying this update is for an in-band command.
+    pub is_for_in_band_command: bool,
+    /// Whether the session has fully completed the bootstrapping process.
+    pub is_done_bootstrapping: bool,
+}
+
+#[derive(Clone, Debug)]
 /// Contents of a normal block that a user executed.
 pub struct UserBlockCompleted {
     pub index: BlockIndex,
@@ -418,6 +439,11 @@ impl Debug for Event {
                 "BlockStarted({:?}, Done bootstrapping: {:?})",
                 event.block_metadata, event.is_done_bootstrapping
             ),
+            Event::BlockWorkingDirectoryUpdated(event) => write!(
+                f,
+                "BlockWorkingDirectoryUpdated({:?}, Done bootstrapping: {:?})",
+                event.block_metadata, event.is_done_bootstrapping
+            ),
             Event::AfterBlockStarted { .. } => write!(f, "BlockExecutionStarted"),
             Event::BackgroundBlockStarted => write!(f, "BackgroundBlockStarted"),
             Event::VisibleBootstrapBlock => write!(f, "VisibleBootstrapBlock"),
@@ -468,15 +494,6 @@ impl Debug for Event {
                 write!(f, "AgentTaggedInChanged(is_tagged_in: {is_tagged_in})")
             }
             Event::Handler(handler_event) => write!(f, "Handler({handler_event:?}))"),
-            Event::RemoteServerSetupStateChanged {
-                session_id,
-                ref state,
-            } => {
-                write!(
-                    f,
-                    "RemoteServerSetupStateChanged(session: {session_id:?}, state: {state:?})"
-                )
-            }
             Event::RemoteServerReady { session_id } => {
                 write!(f, "RemoteServerReady(session: {session_id:?})")
             }

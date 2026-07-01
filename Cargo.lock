@@ -513,6 +513,7 @@ dependencies = [
  "arborium-html",
  "arborium-java",
  "arborium-javascript",
+ "arborium-jq",
  "arborium-json",
  "arborium-kotlin",
  "arborium-lua",
@@ -677,6 +678,17 @@ name = "arborium-javascript"
 version = "2.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3b04390f79e704f411fec9f11acd1ee7e6bc3c4e1941ca6af41d31efad78582"
+dependencies = [
+ "arborium-sysroot",
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "arborium-jq"
+version = "2.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "efdce2ce4dabcff7626fb09fcb2a6915ce4714d2f6a190dc8c54dac1bd2072da"
 dependencies = [
  "arborium-sysroot",
  "cc",
@@ -2759,6 +2771,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
+ "tempfile",
  "thiserror 2.0.17",
  "win32job",
  "windows 0.62.2",
@@ -2893,7 +2906,7 @@ dependencies = [
 [[package]]
 name = "core-foundation"
 version = "0.10.1"
-source = "git+https://github.com/servo/core-foundation-rs?rev=0bcad1e103ead6bd71c4e5f85598ada9508e3a82#0bcad1e103ead6bd71c4e5f85598ada9508e3a82"
+source = "git+https://github.com/servo/core-foundation-rs?rev=6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff#6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff"
 dependencies = [
  "core-foundation-sys",
  "libc",
@@ -2902,7 +2915,7 @@ dependencies = [
 [[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
-source = "git+https://github.com/servo/core-foundation-rs?rev=0bcad1e103ead6bd71c4e5f85598ada9508e3a82#0bcad1e103ead6bd71c4e5f85598ada9508e3a82"
+source = "git+https://github.com/servo/core-foundation-rs?rev=6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff#6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff"
 
 [[package]]
 name = "core-graphics"
@@ -2933,11 +2946,11 @@ dependencies = [
 [[package]]
 name = "core-graphics"
 version = "0.25.0"
-source = "git+https://github.com/servo/core-foundation-rs?rev=0bcad1e103ead6bd71c4e5f85598ada9508e3a82#0bcad1e103ead6bd71c4e5f85598ada9508e3a82"
+source = "git+https://github.com/servo/core-foundation-rs?rev=6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff#6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff"
 dependencies = [
  "bitflags 2.9.4",
  "core-foundation 0.10.1",
- "core-graphics-types 0.2.0 (git+https://github.com/servo/core-foundation-rs?rev=0bcad1e103ead6bd71c4e5f85598ada9508e3a82)",
+ "core-graphics-types 0.2.0 (git+https://github.com/servo/core-foundation-rs?rev=6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff)",
  "foreign-types 0.5.0",
  "libc",
 ]
@@ -2967,15 +2980,15 @@ dependencies = [
 [[package]]
 name = "core-graphics-types"
 version = "0.2.0"
-source = "git+https://github.com/servo/core-foundation-rs?rev=0bcad1e103ead6bd71c4e5f85598ada9508e3a82#0bcad1e103ead6bd71c4e5f85598ada9508e3a82"
+source = "git+https://github.com/servo/core-foundation-rs?rev=6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff#6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff"
 dependencies = [
  "core-foundation 0.10.1",
 ]
 
 [[package]]
 name = "core-text"
-version = "21.0.0"
-source = "git+https://github.com/servo/core-foundation-rs?rev=0bcad1e103ead6bd71c4e5f85598ada9508e3a82#0bcad1e103ead6bd71c4e5f85598ada9508e3a82"
+version = "21.1.0"
+source = "git+https://github.com/servo/core-foundation-rs?rev=6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff#6f844cf1a1a18e25b70fcdf1bcdc458555bd2eff"
 dependencies = [
  "core-foundation 0.10.1",
  "core-graphics 0.25.0",
@@ -3649,9 +3662,9 @@ dependencies = [
 
 [[package]]
 name = "diesel"
-version = "2.3.4"
+version = "2.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c415189028b232660655e4893e8bc25ca7aee8e96888db66d9edb400535456a"
+checksum = "78df0e4e8c596662edb07fbfbb7f23769cca35049827df5f909084d956b6aeaf"
 dependencies = [
  "chrono",
  "diesel_derives",
@@ -9982,6 +9995,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-channel",
+ "async-io",
  "async-process",
  "command",
  "dashmap",
@@ -13525,6 +13539,7 @@ dependencies = [
  "typed-path 0.10.0",
  "ui_components",
  "unicase",
+ "unicode-general-category",
  "unicode-width 0.1.14",
  "unindent 0.1.11",
  "url",
@@ -13575,7 +13590,7 @@ dependencies = [
 [[package]]
 name = "warp-command-signatures"
 version = "0.0.0"
-source = "git+https://github.com/warpdotdev/command-signatures.git?rev=00a032b8ea0ee5711e2077e39a92dc9ca2051cd3#00a032b8ea0ee5711e2077e39a92dc9ca2051cd3"
+source = "git+https://github.com/warpdotdev/command-signatures.git?rev=a1000677e302b8fdcefb08365f3f7a81bbba23b3#a1000677e302b8fdcefb08365f3f7a81bbba23b3"
 dependencies = [
  "cfg-if",
  "itertools 0.10.5",
@@ -13593,7 +13608,7 @@ dependencies = [
 [[package]]
 name = "warp-completion-metadata"
 version = "0.0.0"
-source = "git+https://github.com/warpdotdev/command-signatures.git?rev=00a032b8ea0ee5711e2077e39a92dc9ca2051cd3#00a032b8ea0ee5711e2077e39a92dc9ca2051cd3"
+source = "git+https://github.com/warpdotdev/command-signatures.git?rev=a1000677e302b8fdcefb08365f3f7a81bbba23b3#a1000677e302b8fdcefb08365f3f7a81bbba23b3"
 dependencies = [
  "html-escape",
  "itertools 0.10.5",
@@ -13727,6 +13742,7 @@ dependencies = [
  "shellexpand",
  "string-offset",
  "strum",
+ "strum_macros",
  "sysinfo",
  "tempfile",
  "thiserror 2.0.17",

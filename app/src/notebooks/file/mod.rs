@@ -144,6 +144,7 @@ pub enum FileNotebookAction {
     OpenAsCode,
     ContextMenu(ContextMenuAction),
     ToggleMarkdownDisplayMode(MarkdownDisplayMode),
+    ToggleMaximized,
 }
 
 impl From<ContextMenuAction> for FileNotebookAction {
@@ -244,7 +245,9 @@ impl FileNotebookView {
 
         let editor_model = ctx.add_model(|ctx| {
             let styles = rich_text_styles(Appearance::as_ref(ctx), FontSettings::as_ref(ctx));
-            NotebooksEditorModel::new(styles, window_id, ctx)
+            let mut model = NotebooksEditorModel::new(styles, window_id, ctx);
+            model.set_default_mermaid_display_mode(MarkdownDisplayMode::Rendered, ctx);
+            model
         });
         let editor = ctx.add_typed_action_view(|ctx| {
             let mut view = RichTextEditorView::new(
@@ -771,13 +774,14 @@ impl FileNotebookView {
         .finish()
     }
 
-    fn render_body(&self, appearance: &Appearance) -> Box<dyn Element> {
+    fn render_body(&self, appearance: &Appearance, _app: &AppContext) -> Box<dyn Element> {
         let body = match &self.file_state {
             FileState::NoFile => self.render_no_file(appearance),
             FileState::Loading(source) => self.render_loading(source, appearance),
             FileState::Error(source) => self.render_error(source, appearance),
             FileState::Loaded(_) => ChildView::new(&self.editor).finish(),
         };
+
         styles::wrap_body(body)
     }
 }
@@ -804,7 +808,7 @@ impl View for FileNotebookView {
 
         let column = Flex::column().with_children([
             self.render_title(appearance, font_settings),
-            Shrinkable::new(1., self.render_body(appearance)).finish(),
+            Shrinkable::new(1., self.render_body(appearance, app)).finish(),
         ]);
 
         let mut stack = Stack::new().with_child(column.finish());
@@ -901,6 +905,12 @@ impl TypedActionView for FileNotebookView {
                     }
                 }
             }
+            FileNotebookAction::ToggleMaximized => {
+                ctx.emit(FileNotebookEvent::Pane(PaneEvent::ToggleMaximized));
+                self.pane_configuration.update(ctx, |pane_config, ctx| {
+                    pane_config.refresh_pane_header_overflow_menu_items(ctx);
+                });
+            }
         }
     }
 }
@@ -920,14 +930,24 @@ impl BackingView for FileNotebookView {
 
     fn pane_header_overflow_menu_items(
         &self,
-        _ctx: &AppContext,
+        ctx: &AppContext,
     ) -> Vec<MenuItem<FileNotebookAction>> {
-        let mut actions = vec![];
+        // Mirror the toggle that `CodeView` (the Raw markdown mode) exposes, so the Rendered
+        // markdown pane's overflow menu offers the same "Maximize pane" / "Minimize pane" entry.
+        let is_maximized = self
+            .focus_handle
+            .as_ref()
+            .is_some_and(|h| h.is_maximized(ctx));
+        let mut actions = vec![MenuItemFields::toggle_pane_action(is_maximized)
+            .with_on_select_action(FileNotebookAction::ToggleMaximized)
+            .into_item()];
+
         if let Some(SourceFile::Local {
             local_path: _local_path,
             ..
         }) = self.file_state.source()
         {
+            actions.push(MenuItem::Separator);
             actions.push(
                 MenuItemFields::new("Refresh file")
                     .with_on_select_action(FileNotebookAction::ReloadFile)

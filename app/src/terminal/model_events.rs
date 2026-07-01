@@ -2,9 +2,9 @@ use crate::server::telemetry::ImageProtocol;
 use crate::terminal::model::session::Sessions;
 
 use crate::terminal::event::{
-    AfterBlockCompletedEvent, BlockCompletedEvent, BlockMetadataReceivedEvent, Event,
-    ExecutedExecutorCommandEvent, InitSshEvent, InitSubshellEvent, SourcedRcFileInSubshellEvent,
-    TerminalMode,
+    AfterBlockCompletedEvent, BlockCompletedEvent, BlockMetadataReceivedEvent,
+    BlockWorkingDirectoryUpdatedEvent, Event, ExecutedExecutorCommandEvent, InitSshEvent,
+    InitSubshellEvent, SourcedRcFileInSubshellEvent, TerminalMode,
 };
 
 use crate::terminal::ClipboardType;
@@ -116,13 +116,6 @@ impl ModelEventDispatcher {
                     is_subshell,
                 })
             }
-            Event::RemoteServerSetupStateChanged { session_id, state } => {
-                self.sessions.update(ctx, |sessions, ctx| {
-                    sessions.set_remote_server_setup_state(session_id, state.clone());
-                    ctx.notify();
-                });
-                return;
-            }
             Event::RemoteServerReady { session_id } => {
                 log::info!("Remote server ready for session {session_id:?}");
                 return;
@@ -231,6 +224,9 @@ impl ModelEventDispatcher {
             Event::BlockMetadataReceived(block_metadata_received_event) => {
                 ModelEvent::BlockMetadataReceived(block_metadata_received_event)
             }
+            Event::BlockWorkingDirectoryUpdated(block_working_directory_updated_event) => {
+                ModelEvent::BlockWorkingDirectoryUpdated(block_working_directory_updated_event)
+            }
             Event::BackgroundBlockStarted => ModelEvent::BackgroundBlockStarted,
             Event::ClipboardStore(clipboard_type, text) => {
                 ModelEvent::ClipboardStore(clipboard_type, text)
@@ -310,6 +306,13 @@ impl ModelEventDispatcher {
     /// For legacy SSH sessions with the `SshRemoteServer` flag, this also
     /// sends the `SessionBootstrapped` notification to the remote server via
     /// the manager.
+    ///
+    /// The `SessionBootstrapped` notification is sent **before** initializing
+    /// the session so the daemon creates the `LocalCommandExecutor` before any
+    /// subscriber (e.g. `TerminalView::handle_session_bootstrapped`) can queue
+    /// a `RunCommand` request. Without this ordering, a race exists where the
+    /// daemon receives `RunCommand` before the executor is ready, producing
+    /// "No executor for RunCommand, session was never initialized" errors.
     fn complete_bootstrapped_session(
         &mut self,
         event: BootstrappedEvent,
@@ -332,16 +335,11 @@ impl ModelEventDispatcher {
             session_info.shell.shell_path().clone(),
         );
 
-        self.sessions.update(ctx, |sessions, ctx| {
-            sessions.initialize_bootstrapped_session(
-                *session_info,
-                spawning_command,
-                restored_block_commands,
-                rcfiles_duration_seconds,
-                ctx,
-            );
-        });
-
+        // Send the SessionBootstrapped notification to the daemon BEFORE
+        // initializing the session. `initialize_bootstrapped_session` emits
+        // `SessionsEvent::SessionBootstrapped`, which causes subscribers to
+        // immediately queue `RunCommand` requests (e.g. `load_external_commands`).
+        // The daemon must have the executor ready before those requests arrive.
         if FeatureFlag::SshRemoteServer.is_enabled() && is_legacy_ssh {
             RemoteServerManager::handle(ctx).update(ctx, |mgr, _ctx| {
                 mgr.notify_session_bootstrapped(
@@ -351,6 +349,16 @@ impl ModelEventDispatcher {
                 );
             });
         }
+
+        self.sessions.update(ctx, |sessions, ctx| {
+            sessions.initialize_bootstrapped_session(
+                *session_info,
+                spawning_command,
+                restored_block_commands,
+                rcfiles_duration_seconds,
+                ctx,
+            );
+        });
     }
 
     /// Emits an event so `TerminalView` can render the remote server block.
@@ -389,6 +397,9 @@ pub enum ModelEvent {
     },
     /// Sent when a new block is created.
     BlockMetadataReceived(BlockMetadataReceivedEvent),
+    /// Sent when an existing block's working directory has been updated
+    /// outside of the precmd path (e.g. via an OSC 7 escape sequence).
+    BlockWorkingDirectoryUpdated(BlockWorkingDirectoryUpdatedEvent),
     /// Sent after a background block is started and added to the block list.
     BackgroundBlockStarted,
     ClipboardStore(ClipboardType, String),

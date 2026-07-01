@@ -21,6 +21,9 @@ use crate::{
 #[path = "transfer_view_tests.rs"]
 mod transfer_view_tests;
 
+#[path = "ref_count_tests.rs"]
+mod ref_count_tests;
+
 #[test]
 fn test_subscribe_and_emit_from_model() {
     #[derive(Default)]

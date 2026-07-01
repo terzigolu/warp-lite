@@ -705,6 +705,9 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
 
     timer.mark_interval_end("LOG_FILE_SETUP_COMPLETE");
 
+    #[cfg(windows)]
+    platform::windows::check_redirection_guard();
+
     // Adjust resource limits early, before doing other work, to ensure that
     // any children we spawn (like the terminal server) inherit our adjusted
     // rlimits.

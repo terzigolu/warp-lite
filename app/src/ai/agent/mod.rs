@@ -733,6 +733,7 @@ impl ProgrammingLanguage {
                 "css" => Some("css"),
                 "c" => Some("c"),
                 "json" => Some("json"),
+                "jq" => Some("jq"),
                 "hcl" => Some("hcl"),
                 "lua" => Some("lua"),
                 "ruby" => Some("rb"),

@@ -21,13 +21,14 @@ use crate::server::telemetry::{
     AddTabWithShellSource, AgentModeEntrypoint, PaletteSource, SharingDialogSource,
 };
 use crate::settings_view::{SettingsAction as SettingsTabAction, SettingsSection};
-use crate::tab::NewSessionMenuItem;
+use crate::tab::{NewSessionMenuItem, SelectedTabColor};
 use crate::tab_configs::TabConfig;
 use crate::terminal::available_shells::AvailableShell;
 use crate::terminal::view::inline_banner::ZeroStatePromptSuggestionType;
 use crate::themes::theme::AnsiColorIdentifier;
 use crate::themes::theme_chooser::ThemeChooserMode;
 use crate::workflows::{WorkflowSelectionSource, WorkflowSource, WorkflowType};
+use crate::workspace::tab_group::TabGroupId;
 use crate::workspace::PaneViewLocator;
 use session_sharing_protocol::common::SessionId;
 
@@ -112,7 +113,17 @@ pub enum WorkspaceAction {
     RenamePane(PaneViewLocator),
     ResetPaneName(PaneViewLocator),
     RenameActiveTab,
+    /// Renames the focused pane in the active tab. Mirrors `RenameActiveTab`
+    /// so the action is reachable from the binding registry / Command Palette
+    /// (see #9351). The context-menu path keeps using `RenamePane(locator)`.
+    RenameActivePane,
     SetActiveTabName(String),
+    /// Sets the manual color override for the active tab.
+    ///
+    /// - `Color(_)` — apply that color.
+    /// - `Cleared` — explicitly clear (suppresses any directory default).
+    /// - `Unset` — remove the manual override (lets the directory default apply, if any).
+    SetActiveTabColor(SelectedTabColor),
     ToggleTabRightClickMenu {
         tab_index: usize,
         anchor: TabContextMenuAnchor,
@@ -134,6 +145,33 @@ pub enum WorkspaceAction {
     CloseNonActiveTabs,
     CloseTabsRight(usize),
     CloseTabsRightActiveTab,
+    /// Close every tab that belongs to the given tab group.
+    CloseTabGroup(TabGroupId),
+    /// Toggle collapsed state for the given tab group.
+    ToggleTabGroupCollapsed(TabGroupId),
+    /// Opens an inline editor over the given group's header for renaming.
+    RenameTabGroup(TabGroupId),
+    /// Creates a new tab group containing the tab at the given index.
+    NewTabGroupFromTab(usize),
+    /// Moves the tab at `tab_index` into `group_id`, appending it to the
+    /// end of the group's contiguous run.
+    MoveTabToGroup {
+        tab_index: usize,
+        group_id: TabGroupId,
+    },
+    /// Removes the tab at the given index from its current group.
+    RemoveTabFromGroup(usize),
+    ToggleTabGroupRightClickMenu {
+        group_id: TabGroupId,
+        anchor: TabContextMenuAnchor,
+    },
+    UngroupTabs(TabGroupId),
+    NewTabInGroup(TabGroupId),
+    MoveTabGroupUp(TabGroupId),
+    MoveTabGroupDown(TabGroupId),
+    CloseTabsOutsideGroup(TabGroupId),
+    CloseTabsAboveGroup(TabGroupId),
+    CloseTabsBelowGroup(TabGroupId),
     AddDefaultTab,
     AddTerminalTab {
         hide_homepage: bool,
@@ -154,7 +192,6 @@ pub enum WorkspaceAction {
     ToggleTabConfigsMenu,
     ToggleNewSessionMenu {
         position: Vector2F,
-        is_vertical_tabs: bool,
     },
     SelectNewSessionMenuItem(NewSessionMenuItem),
     AutoupdateFailureLink,
@@ -240,16 +277,7 @@ pub enum WorkspaceAction {
         tab_index: usize,
         tab_position: RectF,
     },
-    HandoffPendingTransfer {
-        target_window_id: WindowId,
-        insertion_index: usize,
-    },
-    ReverseHandoff {
-        target_window_id: WindowId,
-        target_insertion_index: usize,
-    },
     DropTab,
-    FinalizeDropTab,
     /// Toggles the left panel. In Code Mode V1 this toggles Warp Drive.
     /// In Code Mode V2 this toggles the left panel which contains both the project explorer and
     /// Warp Drive. This happens as explicit action from the user.
@@ -531,6 +559,7 @@ pub enum WorkspaceAction {
     NavigateNextPaneOrPanel,
     ToggleProjectExplorer,
     ToggleGlobalSearch,
+    ToggleHiddenFiles,
     OpenGlobalSearch,
     ToggleConversationListView,
     /// Open the Build Plan Migration Modal (for debugging)
@@ -720,13 +749,28 @@ impl WorkspaceAction {
             | RenamePane(_)
             | ResetPaneName(_)
             | RenameActiveTab
+            | RenameActivePane
             | SetActiveTabName(_)
+            | SetActiveTabColor(_)
             | CloseTab(_)
             | CloseActiveTab
             | CloseOtherTabs(_)
             | CloseNonActiveTabs
             | CloseTabsRight(_)
             | CloseTabsRightActiveTab
+            | CloseTabGroup(_)
+            | ToggleTabGroupCollapsed(_)
+            | RenameTabGroup(_)
+            | NewTabGroupFromTab(_)
+            | MoveTabToGroup { .. }
+            | RemoveTabFromGroup(_)
+            | UngroupTabs(_)
+            | NewTabInGroup(_)
+            | MoveTabGroupUp(_)
+            | MoveTabGroupDown(_)
+            | CloseTabsOutsideGroup(_)
+            | CloseTabsAboveGroup(_)
+            | CloseTabsBelowGroup(_)
             | ToggleTabColor { .. }
             | AddDefaultTab
             | AddTerminalTab { .. }
@@ -786,6 +830,7 @@ impl WorkspaceAction {
             | ToggleSyntaxHighlighting
             | OpenLaunchConfigSaveModal
             | ToggleTabRightClickMenu { .. }
+            | ToggleTabGroupRightClickMenu { .. }
             | ToggleVerticalTabsPaneContextMenu { .. }
             | OpenNewSessionMenu { .. }
             | ToggleTabConfigsMenu
@@ -820,10 +865,7 @@ impl WorkspaceAction {
             | CreateTeamAIPrompt
             | OpenInExplorer { .. }
             | DragTab { .. }
-            | HandoffPendingTransfer { .. }
-            | ReverseHandoff { .. }
             | StartTabDrag
-            | FinalizeDropTab
             | ToggleLeftPanel
             | ToggleWarpDrive
             | OpenWarpDrive
@@ -907,6 +949,7 @@ impl WorkspaceAction {
             | NavigateNextPaneOrPanel
             | ToggleProjectExplorer
             | ToggleGlobalSearch
+            | ToggleHiddenFiles
             | OpenGlobalSearch
             | ToggleConversationListView
             | ToggleNotificationMailbox { .. }

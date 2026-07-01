@@ -161,6 +161,11 @@ pub enum CodeViewAction {
     ToggleMaximized,
     #[cfg(feature = "local_fs")]
     CopyFilePath,
+    /// Open the active code tab's file in the platform's file manager
+    /// (Finder on macOS, Explorer on Windows). No-op when the active tab has
+    /// no resolvable local path.
+    #[cfg(feature = "local_fs")]
+    RevealInFinder,
     #[cfg(feature = "local_fs")]
     RenderMarkdown,
     DragOverIndex {
@@ -814,6 +819,7 @@ impl CodeView {
             pane_config.set_title(title, ctx);
             pane_config.set_title_secondary(secondary, ctx);
             ctx.emit(PaneConfigurationEvent::TitleUpdated);
+            ctx.emit(PaneConfigurationEvent::HeaderContentChanged);
         });
     }
 
@@ -839,6 +845,14 @@ impl CodeView {
             Err(ImmediateSaveError::NoFileId) => {
                 // If there's no file ID, this is a new file - trigger Save As
                 self.save_as(index, callback, ctx)
+            }
+            Err(ImmediateSaveError::RemoteDisconnected) => {
+                log::warn!("Cannot save: remote session disconnected");
+                CodeView::display_remote_disconnected_save_failure(ctx.window_id(), ctx);
+                if let Some(callback) = callback {
+                    callback(SaveOutcome::Failed, self, ctx);
+                }
+                SaveStatus::Failed(ImmediateSaveError::RemoteDisconnected)
             }
             Err(err) => {
                 log::warn!("Failed to save file. {err:?}");
@@ -900,6 +914,15 @@ impl CodeView {
         ToastStack::handle(ctx).update(ctx, |toast_stack, ctx| {
             let toast = DismissibleToast::error(String::from("Failed to save file."))
                 .with_object_id("failed_to_save_file".to_string());
+            toast_stack.add_ephemeral_toast(toast, window_id, ctx);
+        });
+    }
+
+    fn display_remote_disconnected_save_failure(window_id: WindowId, ctx: &mut ViewContext<Self>) {
+        ToastStack::handle(ctx).update(ctx, |toast_stack, ctx| {
+            let toast =
+                DismissibleToast::error(String::from("Cannot save — remote session disconnected."))
+                    .with_object_id("failed_to_save_file_remote_disconnected".to_string());
             toast_stack.add_ephemeral_toast(toast, window_id, ctx);
         });
     }
@@ -1872,13 +1895,32 @@ impl CodeView {
         let tab = self.tab_group.first();
         let tab_handle = tab.map(|tab| tab.mouse_state_handles.tab_handle.clone());
 
+        // Check unsaved changes for the active tab.
+        let has_unsaved = tab.is_some_and(|tab| Self::has_unsaved_changes(tab, app));
+
         // Build the center title element, with a hover tooltip showing the full path.
         let title_element: Box<dyn Element> = match tab_handle {
             Some(handle) => Hoverable::new(handle, |hover_state| {
                 let title_text =
                     render_pane_header_title_text(title.clone(), appearance, ClipConfig::start());
+
+                let mut title_row = Flex::row()
+                    .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                    .with_main_axis_size(MainAxisSize::Min);
+                if has_unsaved {
+                    let dot_color = appearance
+                        .theme()
+                        .sub_text_color(appearance.theme().background());
+                    title_row.add_child(
+                        Container::new(render_unsaved_changes_icon(dot_color.into()))
+                            .with_margin_right(4.)
+                            .finish(),
+                    );
+                }
+                title_row.add_child(title_text);
+
                 let mut stack = Stack::new();
-                stack.add_child(title_text);
+                stack.add_child(title_row.finish());
                 if hover_state.is_hovered() {
                     let tooltip_relative_path = tab
                         .and_then(|tab| tab.path.clone())
@@ -1903,7 +1945,27 @@ impl CodeView {
                 stack.finish()
             })
             .finish(),
-            None => render_pane_header_title_text(title, appearance, ClipConfig::start()),
+            None => {
+                let title_text =
+                    render_pane_header_title_text(title, appearance, ClipConfig::start());
+                if has_unsaved {
+                    let dot_color = appearance
+                        .theme()
+                        .sub_text_color(appearance.theme().background());
+                    let mut row = Flex::row()
+                        .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                        .with_main_axis_size(MainAxisSize::Min);
+                    row.add_child(
+                        Container::new(render_unsaved_changes_icon(dot_color.into()))
+                            .with_margin_right(4.)
+                            .finish(),
+                    );
+                    row.add_child(title_text);
+                    row.finish()
+                } else {
+                    title_text
+                }
+            }
         };
 
         render_three_column_header(
@@ -1941,10 +2003,20 @@ impl CodeView {
 
         #[cfg(feature = "local_fs")]
         if let Some(path) = self.local_path(ctx) {
+            let reveal_label = if cfg!(target_os = "macos") {
+                "Reveal in Finder"
+            } else if cfg!(target_os = "windows") {
+                "Reveal in Explorer"
+            } else {
+                "Reveal in file manager"
+            };
             items.extend([
                 MenuItem::Separator,
                 MenuItemFields::new("Copy file path")
                     .with_on_select_action(CodeViewAction::CopyFilePath)
+                    .into_item(),
+                MenuItemFields::new(reveal_label)
+                    .with_on_select_action(CodeViewAction::RevealInFinder)
                     .into_item(),
             ]);
 
@@ -2105,6 +2177,16 @@ impl TypedActionView for CodeView {
                 if let Some(path) = self.local_path(ctx) {
                     ctx.clipboard()
                         .write(ClipboardContent::plain_text(path.display().to_string()));
+                }
+            }
+            #[cfg(feature = "local_fs")]
+            CodeViewAction::RevealInFinder => {
+                if let Some(path) = self.local_path(ctx) {
+                    ctx.open_file_path_in_explorer(&path);
+                } else {
+                    log::warn!(
+                        "Reveal in Finder requested, but the active code tab has no local file path"
+                    );
                 }
             }
             #[cfg(feature = "local_fs")]
