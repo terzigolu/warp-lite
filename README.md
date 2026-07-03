@@ -1,6 +1,13 @@
 # warp-lite
 
-Lightweight AGPL fork of [Warp Terminal](https://github.com/warpdotdev/warp), focused on a local-first terminal experience without Warp account login, bundled AI workflows, cloud onboarding, or telemetry as a product requirement.
+**An open-source Warp Terminal alternative for macOS — the same block-based terminal, without AI, without telemetry, and without a login.**
+
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE-AGPL)
+[![Latest release](https://img.shields.io/github/v/release/terzigolu/warp-lite)](https://github.com/terzigolu/warp-lite/releases/latest)
+[![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](https://github.com/terzigolu/warp-lite/releases/latest)
+[![Built with Rust](https://img.shields.io/badge/built%20with-Rust-orange.svg)](rust-toolchain.toml)
+
+warp-lite is a lightweight, privacy-first AGPL fork of [Warp Terminal](https://github.com/warpdotdev/warp): a local-first, GPU-accelerated block terminal for macOS with no Warp account login, no bundled AI agents, no cloud onboarding, and no telemetry as a product requirement. If you want a Warp alternative that keeps the terminal and drops the AI platform, this is that fork.
 
 > Status: alpha, but usable on macOS. The current build is **v0.5.5-lite**, which folds in a large privacy-safe upstream sync (139 cherry-picked upstream improvements) on top of the lite base. It builds, launches, and ships as downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
 
@@ -25,6 +32,19 @@ Goals, in order:
 4. **Honest status.** Some source modules are still present while the default build avoids their product paths. This README tracks that split explicitly.
 
 What this fork is **not**: a closed-source repackage, an MIT relicense, or a project maintained by the Warp Team. The AGPL applies and cannot be downgraded.
+
+## Looking for a Warp alternative?
+
+warp-lite is aimed at people who like Warp's terminal UX but not the platform around it:
+
+- You want Warp's blocks, panes, tabs, command palette, and GPU-accelerated rendering — **without AI agents** in your prompt.
+- You want a terminal that opens **without a login or account**, ever.
+- You want **no cloud sync** and **no telemetry**: your commands and history stay on your machine.
+- You searched for "Warp terminal without AI" or "Warp without login" and found mostly settings toggles — this fork removes those surfaces at the source level instead.
+- You prefer **open-source (AGPL), Rust-based** terminal software you can audit and build yourself.
+- You are fine with alpha software on macOS in exchange for a lighter, local-first terminal.
+
+If you want the AI agents, cloud drive, and team features, upstream [Warp](https://github.com/warpdotdev/warp) is the right choice — this fork intentionally goes the other way.
 
 ## Install
 
@@ -225,6 +245,26 @@ Historical phase branches and tags may still exist, but the public state should 
 | `v0.3.x-lite` | Context Panel experiments; later removed from shipped path. |
 | `v0.2.x-lite` | Telemetry call-site cleanup, UI hiding, niche crate removals. |
 | `v0.1.0-lite` | Initial default feature purge and first green lite build. |
+
+## FAQ
+
+**Is warp-lite a Warp Terminal alternative?**
+Yes. It is an independent open-source fork of Warp's AGPL source that keeps the block terminal, panes, tabs, and command palette, and removes the AI, cloud, account, and telemetry product surfaces. It is a Warp alternative for people who want the terminal without the platform.
+
+**Does warp-lite require a login or account?**
+No. There is no login gate, no sign-up prompt, and no Warp/Firebase account flow in the lite build. The app opens straight into a terminal.
+
+**Does warp-lite send telemetry?**
+Telemetry removal is an explicit product goal: historical telemetry call sites have been cleaned up, and upstream changes that would reintroduce telemetry or outbound network calls are rejected during syncs. Auditing continues before claiming perfect network silence — see [Current Shipped State](#current-shipped-state) for the honest status.
+
+**Does warp-lite work on Linux or Windows?**
+Not currently. Builds and releases are macOS-only. Upstream Warp's open-source drop is what this fork tracks, and only the macOS app path is maintained here today.
+
+**Is the AI code completely gone from the source?**
+Not yet. Some AI/cloud/auth modules still exist in the source tree but are disabled, gated, or unreachable in the shipped lite build. The [Still Present And Needs Work](#still-present-and-needs-work) table tracks this split honestly; removal continues incrementally.
+
+**Is this project affiliated with Warp or Denver Technologies, Inc.?**
+No. warp-lite is an independent AGPL fork and is not maintained, sponsored, or endorsed by the Warp team. The "Warp" trademark belongs to Denver Technologies, Inc. — see [`FORK_NOTICE.md`](FORK_NOTICE.md).
 
 ## License
 
