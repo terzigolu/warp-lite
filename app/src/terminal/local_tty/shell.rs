@@ -181,13 +181,11 @@ impl ShellStarter {
         cfg_if::cfg_if! {
             if #[cfg(unix)] {
                 let pw_shell_path = nix::unistd::User::from_uid(nix::unistd::getuid())
-                    .expect("should not fail to read user information")
-                    .expect("current user should exist")
-                    .shell
-                    .display()
-                    .to_string();
+                    .ok()
+                    .flatten()
+                    .map(|user| user.shell.display().to_string());
                 if let Some((resolved_pw_shell_path, shell_type)) =
-                    supported_shell_path_and_type(&pw_shell_path)
+                    pw_shell_path.as_deref().and_then(supported_shell_path_and_type)
                 {
                     return Some(ShellStarterSource::UserDefault(DirectShellStarter {
                         args: arguments_for_session_spawning_command(
@@ -198,7 +196,7 @@ impl ShellStarter {
                         shell_type,
                     }));
                 }
-                let unsupported_shell = Some(pw_shell_path);
+                let unsupported_shell = pw_shell_path;
 
                 let (resolved_default_shell_path, shell_type) = if let Some(shell_path_and_type) =
                     supported_shell_path_and_type(ZSH_SHELL_PATH)
