@@ -19,7 +19,7 @@ lazy_static! {
     static ref LANGUAGE_REGISTRY: LanguageRegistry = LanguageRegistry::new();
 }
 
-pub const SUPPORTED_LANGUAGES: [&str; 33] = [
+pub const SUPPORTED_LANGUAGES: [&str; 34] = [
     "rust",
     "golang",
     "yaml",
@@ -53,6 +53,7 @@ pub const SUPPORTED_LANGUAGES: [&str; 33] = [
     "xml",
     "vue",
     "dockerfile",
+    "markdown",
 ];
 
 /// Registry that holds all of the supported languages.
@@ -86,8 +87,8 @@ impl LanguageRegistry {
     }
 }
 
-/// Normalizes common markdown language aliases to their internal names.
-/// For example, "go" -> "golang", "bash" -> "shell", etc.
+/// Normalizes common language-name aliases to their canonical internal names.
+/// For example, "go" -> "golang", "bash" -> "shell", "md" -> "markdown".
 fn normalize_language_name(name: &str) -> &str {
     match name {
         "go" => "golang",
@@ -103,6 +104,7 @@ fn normalize_language_name(name: &str) -> &str {
         "terraform" | "tf" => "hcl",
         "kt" => "kotlin",
         "docker" | "containerfile" => "dockerfile",
+        "md" => "markdown",
         other => other,
     }
 }
@@ -177,6 +179,7 @@ pub fn language_by_filename(path: &Path) -> Option<Arc<Language>> {
         "xml" => language_by_name("xml"),
         "vue" => language_by_name("vue"),
         "dockerfile" => language_by_name("dockerfile"),
+        "md" | "markdown" => language_by_name("markdown"),
         _ => None,
     }
 }
@@ -273,6 +276,7 @@ fn get_arborium_highlight_query(lang: &str) -> Option<&str> {
         "xml" => Some(arborium::lang_xml::HIGHLIGHTS_QUERY),
         "vue" => Some(&arborium::lang_vue::HIGHLIGHTS_QUERY),
         "dockerfile" => Some(arborium::lang_dockerfile::HIGHLIGHTS_QUERY),
+        "markdown" => Some(arborium::lang_markdown::HIGHLIGHTS_QUERY),
         _ => None,
     }
 }
@@ -295,7 +299,6 @@ fn load_language(lang: &str) -> Option<Language> {
         })
         .collect();
 
-    // Use arborium's bundled highlight query instead of loading from custom .scm files
     let highlight_query_str = get_arborium_highlight_query(lang)?;
     let highlight_query = Query::new(&grammar, highlight_query_str)
         .expect("arborium highlight query should be valid");
