@@ -9,7 +9,7 @@ use crate::{
     tab::SelectedTabColor,
 };
 
-use super::{LaunchConfig, PaneMode, PaneTemplateType};
+use super::{CommandTemplate, LaunchConfig, PaneMode, PaneTemplateType};
 
 fn single_tab_snapshot(root: PaneNodeSnapshot) -> AppState {
     AppState {
@@ -227,6 +227,131 @@ fn test_config_from_snapshot_filters_tabs() {
 
     let template = LaunchConfig::from_snapshot("Test".into(), &state);
     assert!(template.windows[0].tabs.is_empty())
+}
+
+#[test]
+fn test_tab_level_commands_are_applied_to_leaf_layout() {
+    let config: LaunchConfig = serde_yaml::from_str(
+        r#"
+name: Legacy Commands
+windows:
+  - tabs:
+      - layout:
+          cwd: /tmp
+        commands:
+          - exec: echo hello
+"#,
+    )
+    .expect("launch config should parse");
+
+    let layout = config.windows[0].tabs[0].layout_with_tab_commands();
+
+    assert_eq!(
+        layout,
+        PaneTemplateType::PaneTemplate {
+            cwd: PathBuf::from("/tmp"),
+            commands: vec![CommandTemplate {
+                exec: "echo hello".to_string()
+            }],
+            is_focused: None,
+            pane_mode: PaneMode::Terminal,
+            shell: None,
+        }
+    );
+}
+
+#[test]
+fn test_tab_level_commands_are_applied_to_focused_pane_in_branch_layout() {
+    let config: LaunchConfig = serde_yaml::from_str(
+        r#"
+name: Legacy Commands
+windows:
+  - tabs:
+      - layout:
+          split_direction: horizontal
+          panes:
+            - cwd: /tmp/left
+              is_focused: false
+            - cwd: /tmp/right
+              is_focused: true
+        commands:
+          - exec: echo focused
+"#,
+    )
+    .expect("launch config should parse");
+
+    let layout = config.windows[0].tabs[0].layout_with_tab_commands();
+
+    assert_eq!(
+        layout,
+        PaneTemplateType::PaneBranchTemplate {
+            split_direction: SplitDirection::Horizontal.into(),
+            panes: vec![
+                PaneTemplateType::PaneTemplate {
+                    cwd: PathBuf::from("/tmp/left"),
+                    commands: vec![],
+                    is_focused: Some(false),
+                    pane_mode: PaneMode::Terminal,
+                    shell: None,
+                },
+                PaneTemplateType::PaneTemplate {
+                    cwd: PathBuf::from("/tmp/right"),
+                    commands: vec![CommandTemplate {
+                        exec: "echo focused".to_string()
+                    }],
+                    is_focused: Some(true),
+                    pane_mode: PaneMode::Terminal,
+                    shell: None,
+                },
+            ],
+        }
+    );
+}
+
+#[test]
+fn test_tab_level_commands_are_applied_to_first_pane_without_focused_pane() {
+    let config: LaunchConfig = serde_yaml::from_str(
+        r#"
+name: Legacy Commands
+windows:
+  - tabs:
+      - layout:
+          split_direction: horizontal
+          panes:
+            - cwd: /tmp/left
+            - cwd: /tmp/right
+        commands:
+          - exec: echo first
+"#,
+    )
+    .expect("launch config should parse");
+
+    let layout = config.windows[0].tabs[0].layout_with_tab_commands();
+
+    assert_eq!(
+        layout,
+        PaneTemplateType::PaneBranchTemplate {
+            split_direction: SplitDirection::Horizontal.into(),
+            panes: vec![
+                PaneTemplateType::PaneTemplate {
+                    cwd: PathBuf::from("/tmp/left"),
+                    commands: vec![CommandTemplate {
+                        exec: "echo first".to_string()
+                    }],
+                    is_focused: None,
+                    pane_mode: PaneMode::Terminal,
+                    shell: None,
+                },
+                PaneTemplateType::PaneTemplate {
+                    cwd: PathBuf::from("/tmp/right"),
+                    commands: vec![],
+                    is_focused: None,
+                    pane_mode: PaneMode::Terminal,
+                    shell: None,
+                },
+            ],
+        }
+    );
 }
 
 #[test]
