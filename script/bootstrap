@@ -1,13 +1,22 @@
 #!/usr/bin/env bash
 
 OS_TYPE="$(uname -s)"
+PLATFORM_ARGS=()
+
+for arg in "$@"; do
+  if [[ "$arg" = "--skip-gcloud-auth" ]]; then
+    export WARP_SKIP_GCLOUD_AUTH=1
+  else
+    PLATFORM_ARGS+=("$arg")
+  fi
+done
 
 if [[ "$OS_TYPE" = "Darwin" ]]; then
-  ./script/macos/bootstrap "$@"
+  ./script/macos/bootstrap "${PLATFORM_ARGS[@]}"
 elif [[ "$OS_TYPE" = "Linux" ]]; then
-  ./script/linux/bootstrap "$@"
+  ./script/linux/bootstrap "${PLATFORM_ARGS[@]}"
 elif [[ "$OS_TYPE" =~ ^[MINGW64_NT|MSYS_NT] ]]; then
-  ./script/windows/bootstrap.ps1 "$@"
+  ./script/windows/bootstrap.ps1 "${PLATFORM_ARGS[@]}"
 else
   echo "No bootstrap script defined for the current platform!"
   exit 1
