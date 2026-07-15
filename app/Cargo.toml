@@ -496,6 +496,8 @@ default = [
     "cli_agent_rich_input",
     "vertical_tabs",
     "tab_configs",
+    "grouped_tabs",
+    "pinned_tabs",
     "codex_notifications",
     "trim_trailing_blank_lines",
     "open_warp_new_settings_modes",
