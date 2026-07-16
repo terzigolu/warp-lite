@@ -11,6 +11,8 @@ use instant::Instant;
 use once_cell::sync::OnceCell;
 use smol_str::SmolStr;
 use std::collections::{HashMap, HashSet};
+#[cfg(windows)]
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Deref;
@@ -67,6 +69,30 @@ pub enum ReadHistoryContentsError {
 
     #[error("Error reading history file from filesystem: {0}")]
     AsyncFsError(std::io::Error),
+}
+
+#[cfg(windows)]
+fn powershell_read_all_text_command(path: &OsStr) -> OsString {
+    let mut command = OsString::from("[System.IO.File]::ReadAllText('");
+    command.push(escape_powershell_single_quotes(path));
+    command.push("')");
+    command
+}
+
+/// Doubles every single quote in `path` so it is safe to embed inside a
+/// PowerShell single-quoted string literal.
+#[cfg(windows)]
+fn escape_powershell_single_quotes(path: &OsStr) -> OsString {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+    const SINGLE_QUOTE: u16 = b'\'' as u16;
+    let mut escaped = Vec::new();
+    for unit in path.encode_wide() {
+        escaped.push(unit);
+        if unit == SINGLE_QUOTE {
+            escaped.push(SINGLE_QUOTE);
+        }
+    }
+    OsString::from_wide(&escaped)
 }
 
 // SessionId is defined in warp_core and re-exported here for backward compatibility.
@@ -1299,9 +1325,7 @@ impl Session {
             .arg("-NoProfile")
             .arg("-NoLogo")
             .arg("-Command")
-            .arg(format!(
-                "[System.IO.File]::ReadAllText('{history_file_path}')"
-            ))
+            .arg(powershell_read_all_text_command(history_file_path))
             .output()
             .await;
         match read_result {
