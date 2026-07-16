@@ -14802,6 +14802,25 @@ impl TerminalView {
                         })
                         .unwrap_or_default()
                     }
+                    GridHighlightedLink::Hyperlink { uri, .. } => {
+                        // OSC 8 hyperlink right-click. "Copy link" copies the
+                        // URI verbatim; "Open link" dispatches through
+                        // `OpenGridLink`.
+                        vec![
+                            MenuItemFields::new("Open link")
+                                .with_on_select_action(TerminalAction::OpenGridLink(
+                                    highlighted_link.clone(),
+                                ))
+                                .into_item(),
+                            MenuItemFields::new("Copy link")
+                                .with_on_select_action(TerminalAction::ContextMenu(
+                                    ContextMenuAction::CopyUrl {
+                                        url_content: uri.clone(),
+                                    },
+                                ))
+                                .into_item(),
+                        ]
+                    }
                 }
             }
             (
@@ -16839,9 +16858,15 @@ impl TerminalView {
                 }
             }
             GridHighlightedLink::Url(url) if url.contains(position) => {
-                let model = self.model.lock();
+                let uri = self
+                    .model
+                    .lock()
+                    .link_at_range(url, RespectObfuscatedSecrets::No);
                 ctx.notify();
-                ctx.open_url(&model.link_at_range(url, RespectObfuscatedSecrets::No));
+                ctx.open_url(&uri);
+            }
+            GridHighlightedLink::Hyperlink { link, uri } if link.contains(position) => {
+                self.open_hyperlink_uri(uri, ctx);
             }
             _ => (),
         }
@@ -16850,6 +16875,16 @@ impl TerminalView {
             ctx.reset_cursor();
             ctx.notify();
         }
+    }
+
+    /// Open an OSC 8 hyperlink URI. The URI comes from untrusted terminal
+    /// output, so it is only opened if it parses as a URL.
+    fn open_hyperlink_uri(&self, uri: &str, ctx: &mut ViewContext<Self>) {
+        if url::Url::parse(uri).is_err() {
+            return;
+        }
+        ctx.notify();
+        ctx.open_url(uri);
     }
 
     fn middle_click_on_grid(
@@ -24627,8 +24662,7 @@ impl TypedActionView for TerminalView {
                 }
             }
             HyperlinkClick(hyperlink) => {
-                ctx.notify();
-                ctx.open_url(&hyperlink.url);
+                self.open_hyperlink_uri(&hyperlink.url, ctx);
             }
             AttemptLoginGatedFeature => {
                 AuthManager::handle(ctx).update(ctx, |auth_manager, ctx| {

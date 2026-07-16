@@ -1850,6 +1850,24 @@ impl TerminalModel {
         }
     }
 
+    /// OSC 8 hyperlink span at `point`, paired with its URI. Routes to alt
+    /// screen or block list depending on which surface the point lives on.
+    pub fn hyperlink_at_point(
+        &self,
+        point: &WithinModel<Point>,
+    ) -> Option<(WithinModel<Link>, String)> {
+        match point {
+            WithinModel::AltScreen(inner_point) => {
+                let (link, uri) = self.alt_screen.hyperlink_at_point(inner_point)?;
+                Some((WithinModel::AltScreen(link), uri))
+            }
+            WithinModel::BlockList(inner_point) => {
+                let (link, uri) = self.block_list.hyperlink_at_point(inner_point)?;
+                Some((WithinModel::BlockList(link), uri))
+            }
+        }
+    }
+
     /// Get boundary of the word at the given point.
     pub fn fragment_boundary_at_point(
         &self,
@@ -2437,6 +2455,10 @@ impl ansi::Handler for TerminalModel {
 
     fn set_cursor_shape(&mut self, shape: ansi::CursorShape) {
         delegate!(self.set_cursor_shape(shape));
+    }
+
+    fn set_hyperlink(&mut self, hyperlink: Option<warp_terminal::model::ansi::Hyperlink>) {
+        delegate!(self.set_hyperlink(hyperlink));
     }
 
     fn input(&mut self, c: char) {

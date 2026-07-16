@@ -242,6 +242,10 @@ pub trait Handler {
     /// Process a prompt marker control sequence.
     fn prompt_marker(&mut self, _marker: PromptMarker) {}
 
+    /// Set or clear the active OSC 8 hyperlink. Subsequent characters
+    /// written via [`Handler::input`] carry this hyperlink until it changes.
+    fn set_hyperlink(&mut self, _hyperlink: Option<Hyperlink>) {}
+
     /// Callback for the Warp precmd hook.
     fn precmd(&mut self, _data: PrecmdValue) {}
 
