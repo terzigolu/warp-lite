@@ -3,15 +3,17 @@ use settings::ToggleableSetting as _;
 use std::fmt::Write;
 use warpui::{
     modals::{AlertDialogWithCallbacks, AppModalCallback, ModalButton},
-    AppContext, EntityId, SingletonEntity, ViewContext, WeakViewHandle, WindowId,
+    AppContext, EntityId, SingletonEntity, ViewContext, ViewHandle, WeakViewHandle, WindowId,
 };
 
 use crate::{
     code::editor_management::{CodeEditorStatus, CodeEditorSummary},
+    code::view::CodeView,
     pane_group::{CodePane, PaneGroup, PaneId, TerminalPane},
     report_if_error,
     server::telemetry::CloseTarget,
     session_management::{RunningSessionSummary, SessionNavigationData},
+    settings::CodeSettings,
     terminal::general_settings::GeneralSettings,
     workspace::Workspace,
     TelemetryEvent,
@@ -160,6 +162,46 @@ impl QuitScope<'_> {
         }
     }
 
+    /// All code editor views (code panes) in this scope, as handles for saving.
+    fn code_view_handles(&self, ctx: &AppContext) -> Vec<ViewHandle<CodeView>> {
+        match self {
+            Self::Pane {
+                pane_group,
+                pane_id,
+                ..
+            } => pane_group
+                .code_pane_by_id(*pane_id)
+                .map(|code_pane| code_pane.file_view(ctx))
+                .into_iter()
+                .collect(),
+            Self::Tabs(ref tabs) => tabs
+                .iter()
+                .filter_map(|tab| tab.upgrade(ctx))
+                .flat_map(|pane_group| {
+                    pane_group
+                        .as_ref(ctx)
+                        .code_panes(ctx)
+                        .map(|(_, editor)| editor)
+                        .collect_vec()
+                })
+                .collect(),
+            Self::Window(window_id) => ctx
+                .views_of_type::<CodeView>(*window_id)
+                .into_iter()
+                .flatten()
+                .collect(),
+            Self::App => ctx
+                .window_ids()
+                .flat_map(|window_id| {
+                    ctx.views_of_type::<CodeView>(window_id)
+                        .into_iter()
+                        .flatten()
+                })
+                .collect(),
+            Self::EditorTab { .. } => Vec::new(),
+        }
+    }
+
     /// Count of shared sessions in this scope.
     fn shared_sessions(&self, ctx: &AppContext) -> usize {
         match self {
@@ -277,6 +319,30 @@ impl<'a> UnsavedStateSummary<'a> {
             && (self.total_long_running_commands > 0
                 || self.shared_sessions > 0
                 || self.unsaved_code_changes)
+    }
+
+    /// Auto-save-aware variant of [`Self::should_display_warning`].
+    ///
+    /// When the auto-save setting is off, this behaves exactly like
+    /// `should_display_warning` (no side effects). When auto-save is on, it
+    /// flushes all saveable unsaved code editors in scope (silently, so no
+    /// "File saved." toast) and returns whether a warning is still warranted for
+    /// things auto-save can't handle: running processes, shared sessions, or
+    /// unsaved changes with no backing file (e.g. untitled buffers).
+    pub fn save_unsaved_code_and_should_warn(&self, ctx: &mut AppContext) -> bool {
+        if !*CodeSettings::as_ref(ctx).auto_save {
+            return self.should_display_warning(ctx);
+        }
+
+        let mut unsaveable_changes_remain = false;
+        for code_view in self.scope.code_view_handles(ctx) {
+            unsaveable_changes_remain |=
+                code_view.update(ctx, |view, ctx| view.auto_save_all_unsaved_tabs(ctx));
+        }
+        *GeneralSettings::as_ref(ctx).show_warning_before_quitting
+            && (self.total_long_running_commands > 0
+                || self.shared_sessions > 0
+                || unsaveable_changes_remain)
     }
 
     pub fn running_sessions(&self) -> RunningSessionSummary<'_> {

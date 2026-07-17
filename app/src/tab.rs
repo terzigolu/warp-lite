@@ -994,10 +994,14 @@ impl<'a> TabComponent<'a> {
                     )
             })
             .unwrap_or(false);
+        // Auto-save persists edits automatically, so the tab-level unsaved
+        // indicator is suppressed for changes it can persist (avoiding flicker
+        // as the user types); unsaveable changes (untitled buffers,
+        // disconnected remotes) still surface it.
         let active_pane_has_unsaved_code_changes = tab
             .pane_group
             .as_ref(ctx)
-            .has_active_code_pane_with_unsaved_changes(ctx);
+            .has_active_code_pane_with_unsaved_indicator(ctx);
         let is_being_shared = tab
             .pane_group
             .as_ref(ctx)
