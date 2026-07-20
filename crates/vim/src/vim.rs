@@ -307,7 +307,7 @@ pub enum VimMotion {
     FindChar(FindCharMotion),
     JumpToFirstLine,
     JumpToLastLine,
-    /// Jump to a specific line number. See ":help G" in Vim.
+    /// Jump to a specific line number. See ":help gg" and ":help G" in Vim.
     JumpToLine(u32),
     /// See ":help %" in Vim.
     JumpToMatchingBracket,
@@ -1072,7 +1072,10 @@ impl VimFSA {
                     bound: WordBound::End,
                     word_type: WordType::from(c),
                 })),
-                'g' => VimEventType::Navigate(VimMotion::JumpToFirstLine),
+                'g' => match self.get_action_count() {
+                    Some(line_number) => VimEventType::Navigate(VimMotion::JumpToLine(line_number)),
+                    None => VimEventType::Navigate(VimMotion::JumpToFirstLine),
+                },
                 'd' => VimEventType::GotoDefinition,
                 'h' => VimEventType::ShowHover,
                 'r' => VimEventType::FindReferences,
@@ -1330,7 +1333,10 @@ impl VimFSA {
                 'g' => self.create_operation(
                     operator,
                     VimOperand::Motion {
-                        motion: VimMotion::JumpToFirstLine,
+                        motion: match self.get_operand_count() {
+                            Some(line_number) => VimMotion::JumpToLine(line_number),
+                            None => VimMotion::JumpToFirstLine,
+                        },
                         motion_type: MotionType::Linewise,
                     },
                 ),
@@ -1556,7 +1562,10 @@ impl VimFSA {
                     bound: WordBound::End,
                     word_type: WordType::from(c),
                 })),
-                'g' => VimEventType::Navigate(VimMotion::JumpToFirstLine),
+                'g' => match self.get_action_count() {
+                    Some(line_number) => VimEventType::Navigate(VimMotion::JumpToLine(line_number)),
+                    None => VimEventType::Navigate(VimMotion::JumpToFirstLine),
+                },
                 'c' => {
                     let motion_type = match self.mode {
                         VimMode::Visual(mt) => mt,
@@ -2061,3 +2070,8 @@ pub trait VimHandler {
     /// Move the cursor up `count` half-pages and scroll the viewport (`<C-u>`).
     fn scroll_half_page_up(&mut self, _count: u32, _ctx: &mut ViewContext<Self>) {}
 }
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+#[path = "vim_tests.rs"]
+mod tests;

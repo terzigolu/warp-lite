@@ -2289,8 +2289,18 @@ impl VimHandler for EditorView {
                                     editor_model.extend_selection_linewise(include_newline, ctx);
                                 }
                             }
-                            VimMotion::JumpToLine(_line_number) => {
-                                // Jumping to line number not supported
+                            VimMotion::JumpToLine(line_number) => {
+                                let max_row = editor_model.buffer(ctx).max_point().row;
+                                let row = (*line_number).saturating_sub(1).min(max_row);
+                                editor_model.move_cursor(
+                                    /* keep_selection */ true,
+                                    move |_, _| Point::new(row, 0),
+                                    ctx,
+                                );
+                                if *motion_type == MotionType::Linewise {
+                                    let include_newline = *operator != VimOperator::Change;
+                                    editor_model.extend_selection_linewise(include_newline, ctx);
+                                }
                             }
                         }
                     }
@@ -2454,8 +2464,13 @@ impl VimHandler for EditorView {
         });
     }
 
-    fn jump_to_line(&mut self, _line_number: u32, _ctx: &mut ViewContext<Self>) {
-        // Jumping to line number not supported
+    fn jump_to_line(&mut self, line_number: u32, ctx: &mut ViewContext<Self>) {
+        self.change_selections(ctx, |editor_model, ctx| {
+            let max_row = editor_model.buffer(ctx).max_point().row;
+            let row = line_number.saturating_sub(1).min(max_row);
+            let point = Point::new(row, 0);
+            editor_model.reset_selections_to_point(&point, ctx);
+        });
     }
 
     fn jump_to_matching_bracket(&mut self, ctx: &mut ViewContext<Self>) {
