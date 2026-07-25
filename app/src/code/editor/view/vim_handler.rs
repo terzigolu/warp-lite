@@ -201,15 +201,17 @@ impl VimHandler for CodeEditorView {
                             VimMotion::Paragraph(direction) => {
                                 model.vim_move_by_paragraph(operand_count, direction, true, ctx);
                                 if *motion_type == MotionType::Linewise {
-                                    let include_newline = *operator != VimOperator::Change;
-                                    model.vim_extend_selection_linewise(include_newline, ctx);
+                                    model.vim_extend_selection_linewise(
+                                        operator.includes_trailing_newline(),
+                                        ctx,
+                                    );
                                 }
                             }
                             VimMotion::JumpToLastLine => {
                                 model.vim_select_to_buffer_end(ctx);
                                 if *motion_type == MotionType::Linewise {
                                     model.vim_extend_selection_linewise(
-                                        *operator != VimOperator::Change,
+                                        operator.includes_trailing_newline(),
                                         ctx,
                                     );
                                 }
@@ -218,7 +220,7 @@ impl VimHandler for CodeEditorView {
                                 model.vim_select_to_buffer_start(ctx);
                                 if *motion_type == MotionType::Linewise {
                                     model.vim_extend_selection_linewise(
-                                        *operator != VimOperator::Change,
+                                        operator.includes_trailing_newline(),
                                         ctx,
                                     );
                                 }
@@ -258,7 +260,7 @@ impl VimHandler for CodeEditorView {
                                 );
 
                                 if *motion_type == MotionType::Linewise {
-                                    let include_newline = *operator != VimOperator::Change;
+                                    let include_newline = operator.includes_trailing_newline();
                                     model.vim_extend_selection_linewise(include_newline, ctx);
                                 }
                             }
@@ -281,8 +283,8 @@ impl VimHandler for CodeEditorView {
                             );
                         }
 
-                        let include_newline = operator != &VimOperator::Change
-                            && operator != &VimOperator::ToggleComment;
+                        let include_newline = operator.includes_trailing_newline()
+                            && *operator != VimOperator::ToggleComment;
                         model.vim_extend_selection_linewise(include_newline, ctx);
                     }
                     VimOperand::TextObject(text_object) => {
@@ -434,6 +436,14 @@ impl VimHandler for CodeEditorView {
                     }
                 });
             }
+            VimOperator::Indent | VimOperator::Dedent => {
+                self.model.update(ctx, |model, ctx| {
+                    selection_change(model, ctx);
+                    let shift = *operator == VimOperator::Dedent;
+                    model.indent(shift, ctx);
+                    model.vim_move_to_first_nonwhitespace(false, ctx);
+                });
+            }
         }
     }
 
@@ -521,8 +531,7 @@ impl VimHandler for CodeEditorView {
         ctx: &mut ViewContext<Self>,
     ) {
         self.model.update(ctx, |model, ctx| {
-            // Compute the visual selection
-            let include_newline = *operator != VimOperator::Change;
+            let include_newline = operator.includes_trailing_newline();
             model.vim_visual_selection_range(motion_type, include_newline, ctx);
 
             if matches!(
@@ -579,6 +588,11 @@ impl VimHandler for CodeEditorView {
                     } else {
                         model.vim_clear_selections(ctx);
                     }
+                }
+                VimOperator::Indent | VimOperator::Dedent => {
+                    let shift = *operator == VimOperator::Dedent;
+                    model.indent(shift, ctx);
+                    model.vim_move_to_first_nonwhitespace(false, ctx);
                 }
             }
         });
