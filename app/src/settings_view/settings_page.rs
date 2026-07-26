@@ -9,7 +9,6 @@ use super::{
     about_page::AboutPageView,
     ai_page::{AISettingsPageAction, AISettingsPageView},
     appearance_page::AppearanceSettingsPageView,
-    billing_and_usage_page::BillingAndUsagePageView,
     code_page::CodeSettingsPageView,
     environments_page::EnvironmentsPageView,
     features_page::FeaturesPageView,
@@ -17,13 +16,16 @@ use super::{
     main_page::MainSettingsPageView,
     mcp_servers_page::MCPServersSettingsPageView,
     privacy_page::PrivacyPageView,
-    referrals_page::ReferralsPageView,
     show_blocks_view::ShowBlocksView,
     teams_page::TeamsPageView,
     warp_drive_page::WarpDriveSettingsPageView,
     warpify_page::WarpifyPageView,
     SettingsSection,
 };
+#[cfg(feature = "warp_platform")]
+use super::billing_and_usage_page::BillingAndUsagePageView;
+#[cfg(feature = "warp_platform")]
+use super::referrals_page::ReferralsPageView;
 use crate::{
     appearance::Appearance,
     settings::CloudPreferencesSettings,
@@ -114,9 +116,11 @@ pub enum SettingsPageViewHandle {
     OzCloudAPIKeys(ViewHandle<super::platform_page::PlatformPageView>),
     Privacy(ViewHandle<PrivacyPageView>),
     Warpify(ViewHandle<WarpifyPageView>),
+    #[cfg(feature = "warp_platform")]
     Referrals(ViewHandle<ReferralsPageView>),
     AI(ViewHandle<AISettingsPageView>),
     CloudEnvironments(ViewHandle<EnvironmentsPageView>),
+    #[cfg(feature = "warp_platform")]
     BillingAndUsage(ViewHandle<BillingAndUsagePageView>),
     MCPServers(ViewHandle<MCPServersSettingsPageView>),
     WarpDrive(ViewHandle<WarpDriveSettingsPageView>),
@@ -137,9 +141,11 @@ impl SettingsPageViewHandle {
             OzCloudAPIKeys(view_handle) => ChildView::new(view_handle).finish(),
             Privacy(view_handle) => ChildView::new(view_handle).finish(),
             Warpify(view_handle) => ChildView::new(view_handle).finish(),
+            #[cfg(feature = "warp_platform")]
             Referrals(view_handle) => ChildView::new(view_handle).finish(),
             AI(view_handle) => ChildView::new(view_handle).finish(),
             CloudEnvironments(view_handle) => ChildView::new(view_handle).finish(),
+            #[cfg(feature = "warp_platform")]
             BillingAndUsage(view_handle) => ChildView::new(view_handle).finish(),
             MCPServers(view_handle) => ChildView::new(view_handle).finish(),
             WarpDrive(view_handle) => ChildView::new(view_handle).finish(),

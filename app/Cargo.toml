@@ -416,6 +416,10 @@ embed-resource = "3.0"
 
 # Note that we support channel-specific enables for these features
 [features]
+# Upstream Warp service/product boundary. Warp Lite intentionally omits this
+# positive feature from its defaults. Dependencies move behind it incrementally
+# in compile-green slices; the empty scaffold is behavior-neutral.
+warp_platform = []
 ai_resume_button = []
 autoupdate = []
 figma_detection = []

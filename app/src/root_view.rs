@@ -100,7 +100,9 @@ use warpui::windowing::WindowManager;
 
 use crate::ai::llms::{LLMPreferences, LLMPreferencesEvent};
 use crate::ai::onboarding::{build_onboarding_models, current_onboarding_auth_state};
+#[cfg(feature = "warp_platform")]
 use crate::pricing::{PricingInfoModel, PricingInfoModelEvent};
+#[cfg(feature = "warp_platform")]
 use warp_graphql::billing::StripeSubscriptionPlan;
 
 use warpui::elements::{
@@ -1891,6 +1893,7 @@ impl RootView {
         true
     }
 
+    #[cfg(feature = "warp_platform")]
     fn build_plan_yearly_price_cents(ctx: &AppContext) -> Option<i32> {
         PricingInfoModel::as_ref(ctx)
             .plan_pricing(&StripeSubscriptionPlan::Build)
@@ -1913,7 +1916,10 @@ impl RootView {
                 .ai_autonomy_settings()
                 .has_any_overrides();
 
+            #[cfg(feature = "warp_platform")]
             let agent_price_cents = Self::build_plan_yearly_price_cents(ctx);
+            #[cfg(not(feature = "warp_platform"))]
+            let agent_price_cents = None;
 
             let auth_state = current_onboarding_auth_state(ctx);
 
@@ -1932,7 +1938,9 @@ impl RootView {
         });
 
         // Subscribe to pricing updates so the badge stays current.
+        #[cfg(feature = "warp_platform")]
         let onboarding_view_for_pricing = onboarding_view.clone();
+        #[cfg(feature = "warp_platform")]
         ctx.subscribe_to_model(
             &PricingInfoModel::handle(ctx),
             move |_, _, event, ctx| match event {

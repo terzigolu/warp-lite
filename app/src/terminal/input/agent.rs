@@ -1,11 +1,12 @@
 use super::{
     common::{
         add_command_xray_overlay, add_input_suggestions_overlays, add_voltron_overlay,
-        add_workflow_info_overlay, maybe_add_buy_credits_banner,
-        wrap_input_with_terminal_padding_and_focus_handler,
+        add_workflow_info_overlay, wrap_input_with_terminal_padding_and_focus_handler,
     },
     Input, InputAction, InputDropTargetData,
 };
+#[cfg(feature = "warp_platform")]
+use super::common::maybe_add_buy_credits_banner;
 use crate::{
     ai::blocklist::{
         agent_view::{
@@ -316,6 +317,7 @@ impl Input {
 
         let mut outer_stack = Stack::new().with_constrain_absolute_children();
         outer_stack.add_child(column.finish());
+        #[cfg(feature = "warp_platform")]
         maybe_add_buy_credits_banner(
             &mut outer_stack,
             &self.buy_credits_banner,
@@ -434,6 +436,7 @@ impl Input {
 
         let mut outer_stack = Stack::new().with_constrain_absolute_children();
         outer_stack.add_child(input);
+        #[cfg(feature = "warp_platform")]
         maybe_add_buy_credits_banner(
             &mut outer_stack,
             &self.buy_credits_banner,
@@ -567,6 +570,7 @@ impl Input {
             && !ambient_agent_model.is_waiting_for_session();
 
         let model = self.model.lock();
+        #[cfg(feature = "warp_platform")]
         maybe_add_buy_credits_banner(
             &mut stack,
             &self.buy_credits_banner,

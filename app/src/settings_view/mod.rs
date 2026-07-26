@@ -27,6 +27,7 @@ use crate::{
 use about_page::AboutPageView;
 use ai_page::{AISettingsPageAction, AISettingsPageEvent, AISettingsPageView, AISubpage};
 use appearance_page::{AppearancePageAction, AppearanceSettingsPageView};
+#[cfg(feature = "warp_platform")]
 use billing_and_usage_page::{BillingAndUsagePageEvent, BillingAndUsagePageView};
 use code_page::CodeSubpage;
 use code_page::{CodeSettingsPageAction, CodeSettingsPageEvent};
@@ -39,6 +40,7 @@ use mcp_servers_page::MCPServersSettingsPageView;
 use nav::{SettingsNavItem, SettingsUmbrella};
 use pathfinder_geometry::vector::Vector2F;
 use privacy_page::{PrivacyPageView, PrivacyPageViewEvent};
+#[cfg(feature = "warp_platform")]
 use referrals_page::{ReferralsPageEvent, ReferralsPageView};
 use settings_file_footer::{render_footer, SettingsFooterKind, SettingsFooterMouseStates};
 use settings_page::{
@@ -77,7 +79,9 @@ mod admin_actions;
 mod agent_assisted_environment_modal;
 mod ai_page;
 mod appearance_page;
+#[cfg(feature = "warp_platform")]
 mod billing_and_usage;
+#[cfg(feature = "warp_platform")]
 mod billing_and_usage_page;
 mod code_page;
 mod delete_environment_confirmation_dialog;
@@ -96,6 +100,7 @@ mod platform;
 mod platform_page;
 mod privacy;
 mod privacy_page;
+#[cfg(feature = "warp_platform")]
 mod referrals_page;
 mod settings_file_footer;
 pub(crate) mod settings_page;
@@ -110,6 +115,7 @@ mod warpify_page;
 
 #[cfg(not(target_family = "wasm"))]
 pub(crate) use ai_page::cli_agent_settings_widget_id;
+#[cfg(feature = "warp_platform")]
 pub use billing_and_usage_page::create_discount_badge;
 pub use code_page::CodeSettingsPageView;
 pub use features_page::FeaturesPageAction;
@@ -1010,11 +1016,13 @@ macro_rules! update_page {
             SettingsPageViewHandle::Warpify(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::OzCloudAPIKeys(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Privacy(handle) => $ctx.update_view(handle, $update),
+            #[cfg(feature = "warp_platform")]
             SettingsPageViewHandle::Referrals(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::AI(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::CloudEnvironments(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::About(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::Code(handle) => $ctx.update_view(handle, $update),
+            #[cfg(feature = "warp_platform")]
             SettingsPageViewHandle::BillingAndUsage(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::MCPServers(handle) => $ctx.update_view(handle, $update),
             SettingsPageViewHandle::WarpDrive(handle) => $ctx.update_view(handle, $update),
@@ -1112,7 +1120,9 @@ impl SettingsView {
         });
 
         // Billing and usage page
+        #[cfg(feature = "warp_platform")]
         let billing_and_usage_page_handle = ctx.add_typed_action_view(BillingAndUsagePageView::new);
+        #[cfg(feature = "warp_platform")]
         ctx.subscribe_to_view(&billing_and_usage_page_handle, |me, _, event, ctx| {
             me.handle_billing_and_usage_page_event(event, ctx);
         });
@@ -1152,9 +1162,12 @@ impl SettingsView {
             me.handle_privacy_page_event(event, ctx);
         });
 
+        #[cfg(feature = "warp_platform")]
         let referrals_client = ServerApiProvider::as_ref(ctx).get_referrals_client();
+        #[cfg(feature = "warp_platform")]
         let referrals_page_handle =
             ctx.add_typed_action_view(|ctx| ReferralsPageView::new(referrals_client, ctx));
+        #[cfg(feature = "warp_platform")]
         ctx.subscribe_to_view(&referrals_page_handle, |me, _, event, ctx| {
             me.handle_referrals_page_event(event, ctx);
         });
@@ -1208,7 +1221,6 @@ impl SettingsView {
         let mut settings_pages = vec![
             SettingsPage::new(main_page_handle),
             SettingsPage::new(ai_page_handle),
-            SettingsPage::new(billing_and_usage_page_handle),
             SettingsPage::new(code_page_handle),
             SettingsPage::new(teams_page_handle),
             SettingsPage::new(appearance_page_handle),
@@ -1216,10 +1228,15 @@ impl SettingsView {
             SettingsPage::new(keybindings_handle),
             SettingsPage::new(platform_page_handle),
             SettingsPage::new(warpify_page_handle),
-            SettingsPage::new(referrals_page_handle),
             SettingsPage::new(show_blocks_view_handle),
             SettingsPage::new(warp_drive_page_handle),
         ];
+
+        #[cfg(feature = "warp_platform")]
+        settings_pages.push(SettingsPage::new(billing_and_usage_page_handle));
+
+        #[cfg(feature = "warp_platform")]
+        settings_pages.push(SettingsPage::new(referrals_page_handle));
 
         settings_pages.extend(vec![
             SettingsPage::new(mcp_servers_page_handle),
@@ -1635,6 +1652,7 @@ impl SettingsView {
         }
     }
 
+    #[cfg(feature = "warp_platform")]
     fn handle_billing_and_usage_page_event(
         &mut self,
         event: &BillingAndUsagePageEvent,
@@ -1784,6 +1802,7 @@ impl SettingsView {
         }
     }
 
+    #[cfg(feature = "warp_platform")]
     fn handle_referrals_page_event(
         &mut self,
         event: &ReferralsPageEvent,
@@ -1994,11 +2013,13 @@ impl SettingsView {
             SettingsPageViewHandle::Keybindings(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Features(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Appearance(v) => v.as_ref(app).should_render(app),
+            #[cfg(feature = "warp_platform")]
             SettingsPageViewHandle::BillingAndUsage(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::About(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::OzCloudAPIKeys(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Privacy(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Warpify(v) => v.as_ref(app).should_render(app),
+            #[cfg(feature = "warp_platform")]
             SettingsPageViewHandle::Referrals(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::AI(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::CloudEnvironments(v) => v.as_ref(app).should_render(app),
@@ -2212,6 +2233,7 @@ impl SettingsView {
         app: &AppContext,
     ) -> Option<Box<dyn Element>> {
         match page_handle {
+            #[cfg(feature = "warp_platform")]
             SettingsPageViewHandle::BillingAndUsage(view) => {
                 view.read(app, |view, _| view.get_modal_content())
             }

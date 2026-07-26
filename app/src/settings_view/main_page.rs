@@ -55,6 +55,7 @@ use warpui::{
 };
 
 const PHOTO_SIZE: f32 = 40.;
+#[cfg(feature = "warp_platform")]
 const REFERRAL_CTA: &str = "Earn rewards by sharing Warp with friends & colleagues";
 const REGULAR_TEXT_FONT_SIZE: f32 = 12.;
 const VERTICAL_MARGIN: f32 = 24.;
@@ -272,6 +273,7 @@ impl MainSettingsPageView {
 
         widgets.push(Box::new(SettingsSyncWidget::default()));
 
+        #[cfg(feature = "warp_platform")]
         widgets.push(Box::new(EarnRewardsWidget::default()));
 
         if ChannelState::app_version().is_some() {
@@ -718,11 +720,13 @@ impl SettingsWidget for SettingsSyncWidget {
     }
 }
 
+#[cfg(feature = "warp_platform")]
 #[derive(Default)]
 struct EarnRewardsWidget {
     refer_link_mouse_handle: MouseStateHandle,
 }
 
+#[cfg(feature = "warp_platform")]
 impl EarnRewardsWidget {
     fn render_row(
         &self,
@@ -754,6 +758,7 @@ impl EarnRewardsWidget {
     }
 }
 
+#[cfg(feature = "warp_platform")]
 impl SettingsWidget for EarnRewardsWidget {
     type View = MainSettingsPageView;
 

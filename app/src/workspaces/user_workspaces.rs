@@ -5,6 +5,8 @@ use super::{
         UgcCollectionEnablementSetting, Workspace, WorkspaceUid,
     },
 };
+#[cfg(feature = "warp_platform")]
+use crate::pricing::PricingInfoModel;
 use crate::{
     ai::llms::LLMModelHost,
     auth::{AuthStateProvider, UserUid},
@@ -12,7 +14,6 @@ use crate::{
     cloud_object::{
         model::persistence::CloudModel, CloudObjectEventEntrypoint, ObjectType, Owner, Space,
     },
-    pricing::PricingInfoModel,
     report_error,
     server::{
         experiments::{ServerExperiment, ServerExperiments, ServerExperimentsEvent},
@@ -765,6 +766,7 @@ impl UserWorkspaces {
     ) {
         match result {
             Ok(response) => {
+                #[cfg(feature = "warp_platform")]
                 if let Some(pricing_info) = response.pricing_info {
                     PricingInfoModel::handle(ctx).update(ctx, |model, ctx| {
                         model.update_pricing_info(pricing_info, ctx);

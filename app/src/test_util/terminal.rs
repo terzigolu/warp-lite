@@ -30,6 +30,7 @@ use crate::ai::restored_conversations::RestoredAgentConversations;
 use crate::auth::auth_manager::AuthManager;
 use crate::auth::AuthStateProvider;
 use crate::changelog_model::ChangelogModel;
+#[cfg(feature = "warp_platform")]
 use crate::pricing::PricingInfoModel;
 use crate::server::telemetry::context_provider::AppTelemetryContextProvider;
 use crate::suggestions::ignored_suggestions_model::IgnoredSuggestionsModel;
@@ -135,6 +136,7 @@ pub fn initialize_app_for_terminal_view(app: &mut App) {
     app.add_singleton_model(OneTimeModalModel::new);
     app.add_singleton_model(|_| WorkspaceRegistry::new());
     app.add_singleton_model(|_| IgnoredSuggestionsModel::new(vec![]));
+    #[cfg(feature = "warp_platform")]
     app.add_singleton_model(|_| PricingInfoModel::new());
     app.add_singleton_model(AIDocumentModel::new);
     app.add_singleton_model(ByoLlmAuthBannerSessionState::new);

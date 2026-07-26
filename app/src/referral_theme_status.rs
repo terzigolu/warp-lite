@@ -1,5 +1,7 @@
+#[cfg(feature = "warp_platform")]
 use std::sync::Arc;
 
+#[cfg(feature = "warp_platform")]
 use crate::{
     auth::AuthStateProvider,
     safe_info,
@@ -67,6 +69,7 @@ impl ReferralThemeStatus {
     }
 
     /// Fetch the referral statuses, sending events if the values change
+    #[cfg(feature = "warp_platform")]
     pub fn query_referral_status(
         &self,
         referrals_client: Arc<dyn ReferralsClient>,
@@ -84,6 +87,7 @@ impl ReferralThemeStatus {
     }
 
     /// Handle the response from the server indicating the number of referrals the user has sent
+    #[cfg(feature = "warp_platform")]
     fn handle_referral_status_response(
         &mut self,
         response: anyhow::Result<ReferralInfo>,

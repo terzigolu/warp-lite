@@ -8,6 +8,7 @@ use crate::auth::AuthStateProvider;
 use crate::cloud_object::CloudObjectEventEntrypoint;
 use crate::network::{NetworkStatus, NetworkStatusEvent, NetworkStatusKind};
 use crate::persistence::ModelEvent;
+#[cfg(feature = "warp_platform")]
 use crate::pricing::PricingInfoModel;
 use crate::server::cloud_objects::update_manager::UpdateManager;
 use crate::server::ids::ServerId;
@@ -336,6 +337,7 @@ impl TeamUpdateManager {
     ) {
         match result {
             Ok(response) => {
+                #[cfg(feature = "warp_platform")]
                 if let Some(pricing_info) = response.pricing_info {
                     PricingInfoModel::handle(ctx).update(ctx, |model, ctx| {
                         model.update_pricing_info(pricing_info, ctx);
@@ -404,6 +406,7 @@ impl TeamUpdateManager {
         match result {
             Err(_) => ctx.emit(TeamUpdateManagerEvent::RenameTeamError),
             Ok(response) => {
+                #[cfg(feature = "warp_platform")]
                 if let Some(pricing_info) = response.pricing_info.clone() {
                     PricingInfoModel::handle(ctx).update(ctx, |model, ctx| {
                         model.update_pricing_info(pricing_info, ctx);
@@ -430,6 +433,7 @@ impl TeamUpdateManager {
     ) {
         match request_state {
             RequestState::RequestSucceeded(response) => {
+                #[cfg(feature = "warp_platform")]
                 if let Some(pricing_info) = response.pricing_info.clone() {
                     PricingInfoModel::handle(ctx).update(ctx, |model, ctx| {
                         model.update_pricing_info(pricing_info, ctx);

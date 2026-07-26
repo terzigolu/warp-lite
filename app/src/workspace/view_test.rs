@@ -18,6 +18,7 @@ use crate::network::NetworkStatus;
 use crate::notebooks::editor::keys::NotebookKeybindings;
 use crate::notebooks::notebook::NotebookView;
 use crate::pane_group::{Direction, PaneGroupAction, PaneId};
+#[cfg(feature = "warp_platform")]
 use crate::pricing::PricingInfoModel;
 use crate::suggestions::ignored_suggestions_model::IgnoredSuggestionsModel;
 #[cfg(feature = "local_fs")]
@@ -200,6 +201,7 @@ fn initialize_app(app: &mut App) {
     });
     app.add_singleton_model(|ctx| PersistedWorkspace::new(vec![], HashMap::new(), None, ctx));
     app.add_singleton_model(|_| ProjectContextModel::default());
+    #[cfg(feature = "warp_platform")]
     app.add_singleton_model(|_| PricingInfoModel::new());
     app.add_singleton_model(AIDocumentModel::new);
     app.add_singleton_model(|_| History::new(vec![]));
@@ -713,6 +715,7 @@ fn reopen_closed_session_menu_item(
     }
 }
 
+#[cfg(feature = "warp_platform")]
 #[test]
 fn test_reward_modal_no_overlap() {
     App::test((), |mut app| async move {
@@ -733,6 +736,7 @@ fn test_reward_modal_no_overlap() {
     });
 }
 
+#[cfg(feature = "warp_platform")]
 #[test]
 fn test_reward_modal_shows_for_received_referral() {
     App::test((), |mut app| async move {

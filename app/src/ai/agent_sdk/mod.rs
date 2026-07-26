@@ -97,6 +97,7 @@ pub mod output;
 mod profiles;
 mod provider;
 pub(crate) mod retry;
+#[cfg(feature = "warp_platform")]
 mod schedule;
 mod secret;
 mod telemetry;
@@ -166,12 +167,15 @@ fn dispatch_command(
         CliCommand::Integration(_) => {
             return Err(anyhow::anyhow!("invalid value 'integration'"));
         }
+        #[cfg(feature = "warp_platform")]
         CliCommand::Schedule(schedule_cmd) => {
             if !FeatureFlag::ScheduledAmbientAgents.is_enabled() {
                 return Err(anyhow::anyhow!("invalid value 'schedule'"));
             }
             schedule::run(ctx, global_options, schedule_cmd)
         }
+        #[cfg(not(feature = "warp_platform"))]
+        CliCommand::Schedule(_) => Err(anyhow::anyhow!("invalid value 'schedule'")),
         CliCommand::Secret(secret_cmd) => {
             if !FeatureFlag::WarpManagedSecrets.is_enabled() {
                 return Err(anyhow::anyhow!("invalid value 'secret'"));

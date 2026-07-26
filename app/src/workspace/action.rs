@@ -227,6 +227,7 @@ pub enum WorkspaceAction {
         source: PaletteSource,
     },
     ShowUpgrade,
+    #[cfg(feature = "warp_platform")]
     ShowReferralSettingsPage,
     JoinSlack,
     ViewUserDocs,
@@ -798,6 +799,8 @@ impl WorkspaceAction {
             | ToggleVerticalTabsPanel => true, // actions that actually change a state of the state of user's
             // workspace would most likely require a save, so that if the app gets
             // restarted, the user can continue working
+            #[cfg(feature = "warp_platform")]
+            ShowReferralSettingsPage => false,
             AutoupdateFailureLink
             | ApplyUpdate
             | CopyVersion(_)
@@ -818,7 +821,6 @@ impl WorkspaceAction {
             | OpenPalette { .. }
             | TogglePalette { mode: _, source: _ }
             | ShowUpgrade
-            | ShowReferralSettingsPage
             | JoinSlack
             | ViewUserDocs
             | ViewLatestChangelog

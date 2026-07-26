@@ -1,3 +1,5 @@
+#[cfg(feature = "warp_platform")]
+use crate::pricing::PricingInfoModel;
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
 use crate::{
     ai::{
@@ -25,7 +27,6 @@ use crate::{
     notebooks::{
         editor::keys::NotebookKeybindings, manager::NotebookManager, notebook::NotebookView,
     },
-    pricing::PricingInfoModel,
     resource_center::TipsCompleted,
     search::files::model::FileSearchModel,
     server::{
@@ -155,6 +156,7 @@ fn initialize_app(app: &mut App) {
     app.add_singleton_model(|_| WorkspaceRegistry::new());
     app.add_singleton_model(UndoCloseStack::new);
     app.add_singleton_model(|_| IgnoredSuggestionsModel::new(vec![]));
+    #[cfg(feature = "warp_platform")]
     app.add_singleton_model(|_| PricingInfoModel::new());
     app.add_singleton_model(AIDocumentModel::new);
     app.add_singleton_model(|_| History::new(vec![]));

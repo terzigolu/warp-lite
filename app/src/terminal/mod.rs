@@ -32,10 +32,12 @@ pub mod block_list_viewport;
 pub mod blockgrid_element;
 mod blockgrid_renderer;
 mod bootstrap;
+#[cfg(feature = "warp_platform")]
 mod buy_credits_banner;
 pub mod color;
 mod command_corrections_denylist;
 pub mod dynamic_enum_suggestions;
+#[cfg(feature = "warp_platform")]
 pub mod enable_auto_reload_modal;
 pub mod event;
 pub mod event_listener;

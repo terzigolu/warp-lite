@@ -343,6 +343,7 @@ impl ResourceCenterMainView {
         .finish()
     }
 
+    #[cfg(feature = "warp_platform")]
     fn render_invite_button(&self, appearance: &Appearance) -> Box<dyn Element> {
         let default_styles = UiComponentStyles {
             font_size: Some(DETAIL_FONT_SIZE),
@@ -505,11 +506,13 @@ impl View for ResourceCenterMainView {
     fn render(&self, app: &AppContext) -> Box<dyn Element> {
         let appearance = Appearance::as_ref(app);
         let body = self.render_body(appearance);
+        #[cfg(feature = "warp_platform")]
         let invite_button = self.render_invite_button(appearance);
         let skip_tips = self.render_skip_tips_button(appearance);
 
         let mut main_page = Flex::column();
 
+        #[cfg(feature = "warp_platform")]
         if !AuthStateProvider::as_ref(app)
             .get()
             .is_anonymous_or_logged_out()

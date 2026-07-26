@@ -11,6 +11,7 @@ mod app_state;
 mod auth;
 mod autoupdate;
 mod banner;
+#[cfg(feature = "warp_platform")]
 mod billing;
 mod changelog_model;
 mod chip_configurator;
@@ -59,6 +60,7 @@ mod plugin;
 mod prefix;
 #[cfg(target_os = "macos")]
 mod preview_config_migration;
+#[cfg(feature = "warp_platform")]
 mod pricing;
 mod profiling;
 mod projects;
@@ -68,6 +70,7 @@ mod referral_theme_status;
 #[allow(dead_code)]
 mod remote_server;
 mod resource_limits;
+#[cfg(feature = "warp_platform")]
 mod reward_view;
 mod safe_triangle;
 mod search_bar;
@@ -142,6 +145,7 @@ use ::ai::project_context::model::ProjectContextModel;
 pub use ai::agent::{todos::AIAgentTodoList, AIAgentActionResultType, FileEdit, TodoOperation};
 use ai::agent_conversations_model::AgentConversationsModel;
 use ai::agent_management::AgentNotificationsModel;
+#[cfg(feature = "warp_platform")]
 use ai::ambient_agents::scheduled::ScheduledAgentManager;
 use ai::blocklist::{BlocklistAIHistoryModel, BlocklistAIPermissions};
 use ai::execution_profiles::editor::ExecutionProfileEditorManager;
@@ -1214,6 +1218,7 @@ fn initialize_app(
     ctx.add_singleton_model(|_| AIFactManager::new());
     ctx.add_singleton_model(|_| ExecutionProfileEditorManager::default());
     ctx.add_singleton_model(|_| NetworkLogPaneManager::default());
+    #[cfg(feature = "warp_platform")]
     ctx.add_singleton_model(|_| pricing::PricingInfoModel::new());
     ctx.add_singleton_model(|ctx| {
         // Not using the *Provider types isn't ideal, but it's worth it for the ability to move managed secrets to a separate crate.
@@ -1413,6 +1418,7 @@ fn initialize_app(
     timer.mark_interval_end("INITIALIZE_TELEMETRY_COLLECTION");
 
     // Register initial keybindings prior to creating menus
+    #[cfg(feature = "warp_platform")]
     ai::init(ctx);
     app_services::init(ctx);
     // // TODO: Temporarily disabling keybindings for WASM builds. Will be implemented in future WASM support.
@@ -1434,18 +1440,24 @@ fn initialize_app(
     root_view::init(ctx);
     voltron::init(ctx);
     auth::init(ctx);
+    #[cfg(feature = "warp_platform")]
     reward_view::init(ctx);
     crate::view_components::find::init(ctx);
     prompt::editor_modal::init(ctx);
+    #[cfg(feature = "warp_platform")]
     ai::blocklist::agent_view::editor::init(ctx);
     undo_close::init(ctx);
+    #[cfg(feature = "warp_platform")]
     billing::shared_objects_creation_denied_modal::init(ctx);
     tab_configs::new_worktree_modal::init(ctx);
     tab_configs::params_modal::init(ctx);
+    #[cfg(feature = "warp_platform")]
     ai::blocklist::init(ctx);
+    #[cfg(feature = "warp_platform")]
     ai::blocklist::block::status_bar::init(ctx);
     drive::index::init(ctx);
     drive::sharing::dialog::init(ctx);
+    #[cfg(feature = "warp_platform")]
     ai_assistant::panel::init(ctx);
     settings_view::update_environment_form::init(ctx);
     env_vars::env_var_collection_block::init(ctx);
@@ -1455,6 +1467,7 @@ fn initialize_app(
     context_chips::display_menu::init(ctx);
     context_chips::node_version_popup::init(ctx);
     env_vars::view::env_var_collection::init(ctx);
+    #[cfg(feature = "warp_platform")]
     ai::agent::todos::popup::init(ctx);
     terminal::view::init_environment::mode_selector::init(ctx);
     coding_entrypoints::project_buttons::init(ctx);
@@ -1685,6 +1698,7 @@ fn initialize_app(
     ctx.add_singleton_model(EnvVarCollectionManager::new);
     ctx.add_singleton_model(WorkflowManager::new);
 
+    #[cfg(feature = "warp_platform")]
     if FeatureFlag::ScheduledAmbientAgents.is_enabled() {
         ctx.add_singleton_model(ScheduledAgentManager::new);
     }
@@ -1695,6 +1709,7 @@ fn initialize_app(
 
     ctx.add_singleton_model(LLMPreferences::new);
 
+    #[cfg(feature = "warp_platform")]
     ctx.add_singleton_model(|ctx| {
         ai::agent_tips::AITipModel::<ai::AgentTip>::new_for_agent_tips(ctx)
     });

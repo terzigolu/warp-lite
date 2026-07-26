@@ -9,12 +9,12 @@
 
 warp-lite is a lightweight, privacy-first AGPL fork of [Warp Terminal](https://github.com/warpdotdev/warp): a local-first, GPU-accelerated block terminal for macOS with no Warp account login, no bundled AI agents, no cloud onboarding, and no telemetry as a product requirement. If you want a Warp alternative that keeps the terminal and drops the AI platform, this is that fork.
 
-> Status: alpha, but usable on macOS. The current build is **v0.5.5-lite**, which folds in a large privacy-safe upstream sync (139 cherry-picked upstream improvements) on top of the lite base. It builds, launches, and ships as downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
+> Status: alpha, but usable on macOS. The current build is **v0.5.6-lite**, which adds explicit product compile boundaries and measurable startup/binary slimming on top of the v0.5.5 upstream sync. It builds, launches, and ships as downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
 
 Latest release:
 
 - Download the newest published build from [releases/latest](https://github.com/terzigolu/warp-lite/releases/latest).
-- Current build: `v0.5.5-lite` (upstream sync 2026-07; release publishing may lag the source branch).
+- Current build: `v0.5.6-lite`.
 - macOS artifacts: `WarpLite.dmg` (~120 MB), `WarpLite.app.zip`.
 
 See [`FORK_NOTICE.md`](FORK_NOTICE.md) for the relationship with upstream Warp.
@@ -27,9 +27,9 @@ Goals, in order:
 
 1. **Local-first.** No Warp account required. No login gate for opening a terminal.
 2. **Terminal-first.** Preserve the block terminal, GPU renderer, shell integrations, tabs, tab groups, panes, settings, themes, command palette, editor basics, completions, and markdown rendering.
-5. **Stay current.** Regularly pull upstream Warp's terminal, renderer, shell, and bug/perf fixes via vetted `git cherry-pick -x`, while rejecting anything that would reintroduce telemetry, network calls, or AI/cloud/account surfaces.
-3. **Lighter over time.** Remove AI/cloud code paths carefully without breaking terminal rendering or input.
-4. **Honest status.** Some source modules are still present while the default build avoids their product paths. This README tracks that split explicitly.
+3. **Stay current.** Regularly pull upstream Warp's terminal, renderer, shell, and bug/perf fixes via vetted `git cherry-pick -x`, while rejecting anything that would reintroduce telemetry, network calls, or AI/cloud/account surfaces.
+4. **Lighter over time.** Remove AI/cloud code paths carefully without breaking terminal rendering or input.
+5. **Honest status.** Some source modules are still present while the default build avoids their product paths. This README tracks that split explicitly.
 
 What this fork is **not**: a closed-source repackage, an MIT relicense, or a project maintained by the Warp Team. The AGPL applies and cannot be downgraded.
 
@@ -60,17 +60,18 @@ The packaged app uses:
 
 - Bundle identifier: `dev.warp-lite.WarpLite`
 - App name: `WarpLite`
-- Current bundle version: `0.5.5-lite`
+- Current bundle version: `0.5.6-lite`
 
 ## Current Shipped State
 
-The current build is `v0.5.5-lite`.
+The current build is `v0.5.6-lite`.
 
 | Area | State | Notes |
 |---|---|---|
 | Terminal core | Works | Core terminal view/input/model files are preserved. Do not wholesale stub them. |
 | macOS app bundle | Works | `script/build-warp-lite-app.sh` builds `WarpLite.app`. |
 | DMG release | Works | `WarpLite.dmg` is published in GitHub Releases. |
+| Platform product boundary | Enabled | Default Lite omits `warp_platform`; billing, referrals, rewards, pricing UI/model, and selected AI startup/background paths compile only for platform builds. |
 | Warp login gate | Disabled | `skip_firebase_anonymous_user` is enabled by default. Startup, "skip login", and visible account/billing menu entry points are hardened away from Warp auth in the lite build. |
 | Telemetry product goal | Removed/neutralized | Historical telemetry call-site cleanup is part of the fork; keep auditing before claiming perfect network silence. |
 | Context Panel / Tools Panel | Removed from shipped UI | The experimental Context Panel was deleted from the app wiring in `v0.5.1-lite` after causing instability and stale data issues. |
@@ -79,6 +80,16 @@ The current build is `v0.5.5-lite`.
 | Agent mode | Not a target | Agent-mode product surfaces should stay out of the lite app. |
 
 ## What Changed Recently
+
+### v0.5.6-lite — Product boundaries and measured slimming (2026-07)
+
+- Added the positive `warp_platform` compile boundary while keeping it out of the default Lite feature set.
+- Removed billing, referrals, rewards, pricing UI/model, upgrade modals, and pricing-dependent terminal allocations from the default Lite compilation path.
+- Removed AI initialization/keybinding registrations, scheduled ambient-agent startup work, its schedule implementation, and the Agent status-bar tip singleton from Lite.
+- Preserved terminal input/view/model and persistence contracts instead of replacing them with broad stubs.
+- Added revision-aware static and native runtime benchmark harnesses under `script/`.
+- Reduced the same-machine release binary from **268,410,752** to **267,208,032 bytes**: **1,202,720 bytes (about 1.15 MiB)**.
+- Verified default and `warp_platform` checks, both test compilation graphs, release compilation, benchmark dry-run behavior, and diff hygiene.
 
 ### v0.5.5-lite — Upstream sync (2026-07)
 
@@ -134,7 +145,6 @@ These crates or app modules are no longer present in the current tree:
 | `crates/voice_input` | Removed |
 | `crates/handlebars` | Removed |
 | `crates/warp_js` | Removed |
-| `crates/warp_graphql` | Removed |
 | `crates/warp_graphql_schema` | Removed |
 | `crates/command-signatures-v2` | Removed |
 | `crates/serve-wasm` | Removed |
@@ -153,8 +163,9 @@ These modules still exist and should be treated as the next cleanup targets. Som
 | `app/src/ai` | Large AI UI/product surface remains. | Continue surgical feature-gating and deletion; avoid terminal core wholesale stubs. |
 | `crates/ai` | Still a major compiled/source dependency. | Continue reducing agent/indexing/ambient modules behind stable APIs. |
 | `crates/onboarding` | Still present even though app onboarding module is gone. | Finish crate-level cleanup if consumers are gone or can be stubbed safely. |
-| `app/src/billing` | Billing UI should not ship in a local-first lite terminal. | Gate/remove visible and reachable billing flows. |
+| `app/src/billing` | Source remains for platform builds, but the module and reachable UI are excluded from default Lite. | Keep the `warp_platform` boundary compile-green during upstream syncs. |
 | `app/src/voice` | Voice feature source remains although `crates/voice_input` is gone. | Remove dead app-side voice surfaces or gate them out. |
+| `crates/graphql` (`warp_graphql`) | The GraphQL client remains in the resolved graph despite platform product UI cuts. | Remove only after its protected terminal/workspace consumers have neutral ownership boundaries. |
 | `crates/websocket` | Network transport crate still exists. | Verify consumers, then stub or delete if no terminal feature needs it. |
 | `crates/warp_server_client` | Warp backend client remains. | Audit call sites and remove once auth/cloud dependencies are gone. |
 | `crates/managed_secrets` | Cloud/secret product surface remains as a stub candidate. | Keep API only if required, otherwise delete. |
@@ -235,6 +246,7 @@ Historical phase branches and tags may still exist, but the public state should 
 
 | Tag | Summary |
 |---|---|
+| `v0.5.6-lite` | Added `warp_platform` compile boundaries, removed pricing/account and safe AI startup work from default Lite, and added measured release/runtime benchmark gates. |
 | `v0.5.5-lite` | Large privacy-safe upstream sync: 139 cherry-picked bug/perf/terminal improvements, incl. vertical tab grouping, with all telemetry/network/AI/cloud changes rejected. |
 | `v0.5.4-lite` | Removed unsupported prompt AI controls and redirected hidden settings pages away from Account/signup surfaces. |
 | `v0.5.3-lite` | README refresh, no-login hardening, and remaining visible account/upsell action cleanup. |

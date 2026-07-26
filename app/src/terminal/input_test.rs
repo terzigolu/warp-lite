@@ -17,6 +17,7 @@ use crate::auth::auth_manager::AuthManager;
 use crate::auth::AuthStateProvider;
 use crate::changelog_model::ChangelogModel;
 use crate::cloud_object::model::persistence::CloudModel;
+#[cfg(feature = "warp_platform")]
 use crate::pricing::PricingInfoModel;
 use crate::search::files::model::FileSearchModel;
 use crate::terminal::cli_agent_sessions::CLIAgentSessionsModel;
@@ -193,6 +194,7 @@ pub fn initialize_app(app: &mut App) {
     app.add_singleton_model(OneTimeModalModel::new);
     app.add_singleton_model(|_| WorkspaceRegistry::new());
     app.add_singleton_model(|_| ToastStack);
+    #[cfg(feature = "warp_platform")]
     app.add_singleton_model(|_| PricingInfoModel::new());
     app.add_singleton_model(ByoLlmAuthBannerSessionState::new);
     app.add_singleton_model(|_| {

@@ -1,19 +1,22 @@
 use std::sync::Arc;
 
 use crate::{
-    ai::{
-        llms::{is_using_api_key_for_provider, LLMPreferences},
-        AIRequestUsageModel, BuyCreditsBannerDisplayState,
-    },
     appearance::Appearance,
     settings::{AISettings, InputSettings},
     terminal::{
-        buy_credits_banner::BuyCreditsBanner,
         input::{Input, InputAction, InputSuggestionsMode, MenuPositioning},
         model::TerminalModel,
         view::{TerminalAction, PADDING_LEFT},
     },
     ui_components::icons::Icon,
+};
+#[cfg(feature = "warp_platform")]
+use crate::{
+    ai::{
+        llms::{is_using_api_key_for_provider, LLMPreferences},
+        AIRequestUsageModel, BuyCreditsBannerDisplayState,
+    },
+    terminal::buy_credits_banner::BuyCreditsBanner,
     workspaces::user_workspaces::UserWorkspaces,
 };
 use pathfinder_geometry::vector::vec2f;
@@ -30,8 +33,10 @@ use warpui::{
     fonts::Weight,
     presenter::ChildView,
     ui_components::components::{UiComponent, UiComponentStyles},
-    AppContext, EntityId, SingletonEntity, ViewHandle,
+    AppContext, SingletonEntity, ViewHandle,
 };
+#[cfg(feature = "warp_platform")]
+use warpui::EntityId;
 
 /// Whether the terminal input message bar should be shown.
 ///
@@ -481,6 +486,7 @@ fn render_command_token_description(
 /// - The user is out of credits (or at their auto-reload limit)
 /// - The input is focused
 /// - There is not a BYO API key for the current model
+#[cfg(feature = "warp_platform")]
 pub(super) fn maybe_add_buy_credits_banner(
     stack: &mut Stack,
     buy_credits_banner: &ViewHandle<BuyCreditsBanner>,
@@ -519,6 +525,7 @@ pub(super) fn maybe_add_buy_credits_banner(
 }
 
 /// Adds buy credits banner overlay to stack
+#[cfg(feature = "warp_platform")]
 fn add_buy_credits_banner_overlay(
     stack: &mut Stack,
     buy_credits_banner: &ViewHandle<BuyCreditsBanner>,

@@ -51,6 +51,7 @@ use crate::settings::PrivacySettings;
 use crate::suggestions::ignored_suggestions_model::{
     IgnoredSuggestionsModel, IgnoredSuggestionsModelEvent, SuggestionType,
 };
+#[cfg(feature = "warp_platform")]
 use crate::terminal::buy_credits_banner::{BuyCreditsBanner, BuyCreditsBannerEvent};
 #[cfg(not(target_family = "wasm"))]
 use crate::terminal::cli_agent_sessions::plugin_manager::PluginModalKind;
@@ -1668,6 +1669,7 @@ pub struct Input {
     /// Weak handle to this input view for drop target data
     weak_view_handle: WeakViewHandle<Input>,
 
+    #[cfg(feature = "warp_platform")]
     buy_credits_banner: ViewHandle<BuyCreditsBanner>,
     agent_status_view: ViewHandle<BlocklistAIStatusBar>,
     agent_view_controller: ModelHandle<AgentViewController>,
@@ -3162,7 +3164,9 @@ impl Input {
             ctx.notify();
         });
 
+        #[cfg(feature = "warp_platform")]
         let buy_credits_banner = ctx.add_typed_action_view(BuyCreditsBanner::new);
+        #[cfg(feature = "warp_platform")]
         ctx.subscribe_to_view(&buy_credits_banner, |me, _, event, ctx| match event {
             BuyCreditsBannerEvent::OpenBillingAndUsage => {
                 ctx.emit(Event::OpenSettings(SettingsSection::BillingAndUsage));
@@ -3289,6 +3293,7 @@ impl Input {
             cached_agent_mode_hint_text: None,
             is_editor_empty_on_last_edit: is_editor_empty,
             weak_view_handle: ctx.handle(),
+            #[cfg(feature = "warp_platform")]
             buy_credits_banner,
             agent_status_view,
             agent_view_controller,
@@ -12222,7 +12227,9 @@ impl Input {
 
         let has_requests_remaining = AIRequestUsageModel::as_ref(ctx).has_requests_remaining();
 
+        #[cfg(feature = "warp_platform")]
         let has_any_ai = AIRequestUsageModel::as_ref(ctx).has_any_ai_remaining(ctx);
+        #[cfg(feature = "warp_platform")]
         if !has_any_ai {
             AIRequestUsageModel::handle(ctx).update(ctx, |model, ctx| {
                 model.enable_buy_credits_banner(ctx);
@@ -14004,6 +14011,7 @@ impl View for Input {
             ctx.set.insert(flags::OPEN_INLINE_CONVERSATION_MENU);
         }
 
+        #[cfg(feature = "warp_platform")]
         if self
             .buy_credits_banner
             .as_ref(app)

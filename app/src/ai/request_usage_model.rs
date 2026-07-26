@@ -1,6 +1,7 @@
 use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::agent::AIAgentExchangeId;
 use crate::auth::AuthStateProvider;
+#[cfg(feature = "warp_platform")]
 use crate::pricing::PricingInfoModel;
 use crate::server::server_api::ai::AIClient;
 use crate::settings::AISettings;
@@ -571,6 +572,7 @@ impl AIRequestUsageModel {
         let at_monthly_limit =
             current_workspace.is_some_and(|w| w.is_at_addon_credits_monthly_limit());
 
+        #[cfg(feature = "warp_platform")]
         let auto_reload_would_exceed = current_workspace
             .and_then(|workspace| {
                 let options = PricingInfoModel::as_ref(ctx).addon_credits_options()?;
@@ -578,6 +580,8 @@ impl AIRequestUsageModel {
                 Some(workspace.would_addon_purchase_reach_limit(price))
             })
             .unwrap_or(false);
+        #[cfg(not(feature = "warp_platform"))]
+        let auto_reload_would_exceed = false;
 
         if at_monthly_limit || auto_reload_would_exceed {
             BuyCreditsBannerDisplayState::MonthlyLimitReached

@@ -1,3 +1,4 @@
+#[cfg(feature = "warp_platform")]
 mod build_plan_migration_modal;
 #[cfg(feature = "cloud_mode")]
 pub(crate) mod cloud_agent_capacity_modal;
@@ -14,6 +15,7 @@ pub(crate) mod codex_modal;
 pub mod conversation_list;
 #[cfg(enable_crash_recovery)]
 mod crash_recovery;
+#[cfg(feature = "warp_platform")]
 pub(crate) mod free_tier_limit_hit_modal;
 pub mod global_search;
 pub(crate) mod launch_modal;
@@ -93,6 +95,7 @@ use crate::notification::NotificationContext;
 use crate::pane_group::pane::ActionOrigin;
 use crate::projects::ProjectManagementModel;
 use crate::settings_view::mcp_servers_page::MCPServersSettingsPage;
+#[cfg(feature = "warp_platform")]
 use crate::terminal::enable_auto_reload_modal::{
     EnableAutoReloadModal, EnableAutoReloadModalEvent,
 };
@@ -132,6 +135,7 @@ use crate::terminal::cli_agent_sessions::{CLIAgentSessionsModel, CLIAgentSession
 use crate::workspace::header_toolbar_editor::{HeaderToolbarEditorEvent, HeaderToolbarEditorModal};
 use crate::workspace::header_toolbar_item::HeaderToolbarItemKind;
 use crate::workspace::tab_settings::TabCloseButtonPosition;
+#[cfg(feature = "warp_platform")]
 use crate::workspace::view::build_plan_migration_modal::{
     BuildPlanMigrationModal, BuildPlanMigrationModalEvent,
 };
@@ -141,6 +145,7 @@ use crate::workspace::view::cloud_agent_capacity_modal::{
     CloudAgentCapacityModal, CloudAgentCapacityModalEvent,
 };
 use crate::workspace::view::codex_modal::{CodexModal, CodexModalEvent};
+#[cfg(feature = "warp_platform")]
 use crate::workspace::view::free_tier_limit_hit_modal::{
     FreeTierLimitHitModal, FreeTierLimitHitModalEvent,
 };
@@ -217,6 +222,7 @@ use repo_metadata::RemoteRepositoryIdentifier;
 #[cfg(target_family = "wasm")]
 use url::Url;
 
+#[cfg(feature = "warp_platform")]
 use crate::billing::shared_objects_creation_denied_modal::{
     SharedObjectsCreationDeniedModal, SharedObjectsCreationDeniedModalEvent,
 };
@@ -273,11 +279,13 @@ use crate::prompt::editor_modal::{
     EditorModal as PromptEditorModal, EditorModalEvent as PromptEditorModalEvent,
     OpenSource as PromptEditorOpenSource,
 };
+#[cfg(feature = "warp_platform")]
 use crate::referral_theme_status::ReferralThemeEvent;
 use crate::resource_center::{
     mark_feature_used_and_write_to_user_defaults, skip_tips_and_write_to_user_defaults,
     ResourceCenterEvent, ResourceCenterPage, ResourceCenterView, Tip, TipAction, TipsCompleted,
 };
+#[cfg(feature = "warp_platform")]
 use crate::reward_view::{RewardEvent, RewardKind, RewardView};
 use crate::root_view::{quake_mode_window_id, NewWorkspaceSource, OpenLaunchConfigArg};
 use crate::search::command_search::searcher::{
@@ -955,7 +963,9 @@ pub struct Workspace {
     import_modal: ViewHandle<ImportModal>,
     theme_chooser_view: ViewHandle<ThemeChooser>,
     previous_theme: Option<ThemeKind>,
+    #[cfg(feature = "warp_platform")]
     reward_modal: ViewHandle<Modal<RewardView>>,
+    #[cfg(feature = "warp_platform")]
     reward_modal_pending: Option<RewardKind>,
     pub(crate) current_workspace_state: WorkspaceState,
     previous_workspace_state: Option<WorkspaceState>,
@@ -1001,12 +1011,16 @@ pub struct Workspace {
     suggested_rule_modal: ViewHandle<SuggestedRuleModal>,
     oz_launch_modal: ModalWithTab<LaunchModal<OzLaunchSlide>>,
     openwarp_launch_modal: ViewHandle<OpenWarpLaunchModal>,
+    #[cfg(feature = "warp_platform")]
     enable_auto_reload_modal: ViewHandle<EnableAutoReloadModal>,
+    #[cfg(feature = "warp_platform")]
     build_plan_migration_modal: ViewHandle<BuildPlanMigrationModal>,
     codex_modal: ViewHandle<CodexModal>,
     #[cfg(feature = "cloud_mode")]
     cloud_agent_capacity_modal: ViewHandle<CloudAgentCapacityModal>,
+    #[cfg(feature = "warp_platform")]
     free_tier_limit_hit_modal: ViewHandle<FreeTierLimitHitModal>,
+    #[cfg(feature = "warp_platform")]
     free_tier_limit_check_triggered: bool,
     toast_stack: ViewHandle<DismissibleToastStack<WorkspaceAction>>,
     agent_toast_stack: ViewHandle<AgentToastStack>,
@@ -1019,6 +1033,7 @@ pub struct Workspace {
     tab_bar_pinned_by_popup: bool,
     user_menu: ViewHandle<Menu<WorkspaceAction>>,
     native_modal: ViewHandle<NativeModal>,
+    #[cfg(feature = "warp_platform")]
     shared_objects_creation_denied_modal: ViewHandle<SharedObjectsCreationDeniedModal>,
     shown_staging_banner_count: u32,
 
@@ -1550,6 +1565,7 @@ impl Workspace {
         modal
     }
 
+    #[cfg(feature = "warp_platform")]
     fn build_reward_modal(ctx: &mut ViewContext<Self>) -> ViewHandle<Modal<RewardView>> {
         let reward_view = ctx.add_typed_action_view(|_| RewardView::new());
         ctx.subscribe_to_view(&reward_view, |me, _, event, ctx| {
@@ -2455,6 +2471,7 @@ impl Workspace {
             appearance,
         )
     }
+    #[cfg(feature = "warp_platform")]
     fn build_enable_auto_reload_modal(
         ctx: &mut ViewContext<Self>,
     ) -> ViewHandle<EnableAutoReloadModal> {
@@ -2699,12 +2716,15 @@ impl Workspace {
             }
         });
 
+        #[cfg(feature = "warp_platform")]
         ctx.subscribe_to_model(&referral_theme_status, |me, _, event, ctx| {
             me.handle_referral_theme_status_event(event, ctx);
         });
 
+        #[cfg(feature = "warp_platform")]
         let referrals_client = ServerApiProvider::as_ref(ctx).get_referrals_client();
         // On startup, check if the user has earned a referral theme by referring other users
+        #[cfg(feature = "warp_platform")]
         referral_theme_status.update(ctx, |model, ctx| {
             model.query_referral_status(referrals_client, ctx);
         });
@@ -2728,6 +2748,7 @@ impl Workspace {
             me.handle_changelog_event(event, ctx);
         });
 
+        #[cfg(feature = "warp_platform")]
         let reward_modal = Self::build_reward_modal(ctx);
         let (welcome_tips_view, welcome_tips_view_state) =
             Self::build_welcome_tips(tips_completed.clone(), ctx);
@@ -2737,12 +2758,9 @@ impl Workspace {
         let resource_center_view =
             Self::build_resource_center_view(ctx, tips_completed.clone(), changelog_model.clone());
 
-        let enable_auto_reload_modal = ctx.add_typed_action_view(EnableAutoReloadModal::new);
-        ctx.subscribe_to_view(&enable_auto_reload_modal, |me, _, event, ctx| {
-            me.handle_enable_auto_reload_modal_event(event, ctx);
-        });
-
+        #[cfg(feature = "warp_platform")]
         let build_plan_migration_modal = ctx.add_typed_action_view(BuildPlanMigrationModal::new);
+        #[cfg(feature = "warp_platform")]
         ctx.subscribe_to_view(&build_plan_migration_modal, |me, _, event, ctx| {
             me.handle_build_plan_migration_modal_event(event, ctx);
         });
@@ -2761,7 +2779,9 @@ impl Workspace {
             view
         };
 
+        #[cfg(feature = "warp_platform")]
         let free_tier_limit_hit_modal = ctx.add_typed_action_view(FreeTierLimitHitModal::new);
+        #[cfg(feature = "warp_platform")]
         ctx.subscribe_to_view(&free_tier_limit_hit_modal, |me, _, event, ctx| {
             me.handle_free_tier_limit_modal_event(event, ctx);
         });
@@ -2798,6 +2818,7 @@ impl Workspace {
 
         let session_config_modal = Self::build_session_config_modal(ctx);
 
+        #[cfg(feature = "warp_platform")]
         let enable_auto_reload_modal = Self::build_enable_auto_reload_modal(ctx);
 
         let close_session_confirmation_dialog = Self::build_close_session_confirmation_dialog(ctx);
@@ -3086,8 +3107,10 @@ impl Workspace {
 
         let native_modal = Self::build_native_modal_view(ctx);
 
+        #[cfg(feature = "warp_platform")]
         let shared_objects_creation_denied_modal =
             ctx.add_typed_action_view(|ctx| SharedObjectsCreationDeniedModal::new(None, ctx));
+        #[cfg(feature = "warp_platform")]
         ctx.subscribe_to_view(
             &shared_objects_creation_denied_modal,
             |me, _, event, ctx| match event {
@@ -3138,8 +3161,11 @@ impl Workspace {
                         me.focus_openwarp_launch_modal(ctx);
                     } else if model_ref.is_hoa_onboarding_open() {
                         me.show_hoa_onboarding_flow(ctx);
-                    } else if model_ref.is_build_plan_migration_modal_open() {
-                        me.focus_build_plan_migration_modal(ctx);
+                    } else {
+                        #[cfg(feature = "warp_platform")]
+                        if model_ref.is_build_plan_migration_modal_open() {
+                            me.focus_build_plan_migration_modal(ctx);
+                        }
                     }
                 }
             }
@@ -3192,7 +3218,9 @@ impl Workspace {
             previous_theme: None,
             settings_pane,
             theme_chooser_view,
+            #[cfg(feature = "warp_platform")]
             reward_modal,
+            #[cfg(feature = "warp_platform")]
             reward_modal_pending: None,
             current_workspace_state: Default::default(),
             previous_workspace_state: None,
@@ -3222,6 +3250,7 @@ impl Workspace {
             auth_override_warning_modal,
             suggested_agent_mode_workflow_modal,
             suggested_rule_modal,
+            #[cfg(feature = "warp_platform")]
             build_plan_migration_modal,
             require_login_modal,
             workflow_modal,
@@ -3242,6 +3271,7 @@ impl Workspace {
             tab_bar_pinned_by_popup: false,
             user_menu,
             native_modal,
+            #[cfg(feature = "warp_platform")]
             shared_objects_creation_denied_modal,
             file_upload_sessions: Default::default(),
             ai_fact_view,
@@ -3272,6 +3302,7 @@ impl Workspace {
                 tab_pane_group_id: None,
             },
             openwarp_launch_modal: openwarp_launch_view,
+            #[cfg(feature = "warp_platform")]
             enable_auto_reload_modal,
             #[cfg(feature = "agent_management_view")]
             agent_management_view,
@@ -3280,7 +3311,9 @@ impl Workspace {
             codex_modal,
             #[cfg(feature = "cloud_mode")]
             cloud_agent_capacity_modal,
+            #[cfg(feature = "warp_platform")]
             free_tier_limit_hit_modal,
+            #[cfg(feature = "warp_platform")]
             free_tier_limit_check_triggered: false,
             lightbox_view: None,
             hoa_onboarding_flow: None,
@@ -5572,6 +5605,7 @@ impl Workspace {
     }
 
     /// Handle the close event from the reward modal
+    #[cfg(feature = "warp_platform")]
     fn handle_reward_modal_event(&mut self, event: &ModalEvent, ctx: &mut ViewContext<Self>) {
         match event {
             ModalEvent::Close => {
@@ -5614,6 +5648,7 @@ impl Workspace {
     }
 
     /// Handle the call-to-action event from the reward modal view
+    #[cfg(feature = "warp_platform")]
     fn handle_reward_view_event(&mut self, event: &RewardEvent, ctx: &mut ViewContext<Self>) {
         match event {
             RewardEvent::OpenThemePicker => {
@@ -6057,6 +6092,7 @@ impl Workspace {
     }
 
     /// Show the referral reward modal page, informing the user they have earned a theme reward
+    #[cfg(feature = "warp_platform")]
     fn show_reward_modal(&mut self, kind: RewardKind, ctx: &mut ViewContext<Self>) {
         // For certain context, like landing on a shared session, we don't want to show the reward modal
         // or side panel.
@@ -8992,6 +9028,7 @@ impl Workspace {
                 );
             }
 
+            #[cfg(feature = "warp_platform")]
             items.push(
                 MenuItemFields::new("Invite a friend")
                     .with_on_select_action(WorkspaceAction::ShowReferralSettingsPage)
@@ -10199,6 +10236,7 @@ impl Workspace {
         );
     }
 
+    #[cfg(feature = "warp_platform")]
     fn handle_enable_auto_reload_modal_event(
         &mut self,
         event: &EnableAutoReloadModalEvent,
@@ -13445,12 +13483,8 @@ impl Workspace {
             ChangelogEvent::ImageRequestComplete => false,
         } && show_changelog_setting;
 
-        match (
-            should_show_changelog,
-            request_type,
-            self.reward_modal_pending,
-        ) {
-            (true, Some(ChangelogRequestType::WindowLaunch), _) => {
+        match (should_show_changelog, request_type.as_ref()) {
+            (true, Some(ChangelogRequestType::WindowLaunch)) => {
                 if let Some(version) = ChannelState::app_version() {
                     Settings::mark_changelog_shown(version, ctx);
                     if FeatureFlag::AvatarInTabBar.is_enabled() {
@@ -13484,7 +13518,7 @@ impl Workspace {
                     }
                 }
             }
-            (_, Some(ChangelogRequestType::UserAction), _) => {
+            (_, Some(ChangelogRequestType::UserAction)) => {
                 if !self.current_workspace_state.is_resource_center_open
                     && !self.current_workspace_state.is_ai_assistant_panel_open
                 {
@@ -13493,12 +13527,16 @@ impl Workspace {
                     ctx.notify();
                 }
             }
-            (false, _, Some(kind)) => {
-                // We shouldn't show the changelog modal, but we have a pending reward modal, so we
-                // should show that now that we know the changelog won't be shown
+            _ => {}
+        }
+
+        #[cfg(feature = "warp_platform")]
+        if !should_show_changelog && !matches!(request_type, Some(ChangelogRequestType::UserAction))
+        {
+            if let Some(kind) = self.reward_modal_pending {
+                // The changelog is not being shown, so display a pending reward now.
                 self.show_reward_modal(kind, ctx);
             }
-            _ => {}
         }
     }
 
@@ -13802,6 +13840,7 @@ impl Workspace {
             pane_group::Event::OpenSettings(section) => {
                 self.show_settings_with_section(Some(*section), ctx);
             }
+            #[cfg(feature = "warp_platform")]
             pane_group::Event::OpenAutoReloadModal { purchased_credits } => {
                 self.current_workspace_state
                     .is_enable_auto_reload_modal_open = true;
@@ -13810,6 +13849,8 @@ impl Workspace {
                 });
                 ctx.notify();
             }
+            #[cfg(not(feature = "warp_platform"))]
+            pane_group::Event::OpenAutoReloadModal { .. } => {}
             #[cfg(not(target_family = "wasm"))]
             pane_group::Event::OpenPluginInstructionsPane(agent, kind) => {
                 self.open_plugin_instructions_pane(*agent, *kind, ctx);
@@ -14848,9 +14889,12 @@ impl Workspace {
             pane_group::Event::ShowCloudAgentCapacityModal { variant } => {
                 self.open_cloud_agent_capacity_modal(*variant, ctx);
             }
+            #[cfg(feature = "warp_platform")]
             pane_group::Event::FreeTierLimitCheckTriggered => {
                 self.free_tier_limit_check_triggered = true;
             }
+            #[cfg(not(feature = "warp_platform"))]
+            pane_group::Event::FreeTierLimitCheckTriggered => {}
         }
     }
 
@@ -15262,9 +15306,12 @@ impl Workspace {
             DrivePanelEvent::FocusWarpDrive => {
                 ctx.focus(&self.left_panel_view);
             }
+            #[cfg(feature = "warp_platform")]
             DrivePanelEvent::OpenSharedObjectsCreationDeniedModal(object_type, team_uid) => {
                 self.open_shared_objects_creation_denied_modal(*object_type, *team_uid, ctx)
             }
+            #[cfg(not(feature = "warp_platform"))]
+            DrivePanelEvent::OpenSharedObjectsCreationDeniedModal(_, _) => {}
             DrivePanelEvent::AttachPlanAsContext(id) => {
                 self.attach_plan_as_context(*id, ctx);
             }
@@ -16453,6 +16500,7 @@ impl Workspace {
     }
 
     /// Handle an event from the referral theme status model, showing the reward modal if necessary
+    #[cfg(feature = "warp_platform")]
     fn handle_referral_theme_status_event(
         &mut self,
         event: &ReferralThemeEvent,
@@ -16639,6 +16687,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(feature = "warp_platform")]
     fn handle_build_plan_migration_modal_event(
         &mut self,
         event: &BuildPlanMigrationModalEvent,
@@ -16908,6 +16957,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(feature = "warp_platform")]
     fn handle_free_tier_limit_modal_event(
         &mut self,
         event: &FreeTierLimitHitModalEvent,
@@ -16938,6 +16988,7 @@ impl Workspace {
         }
     }
 
+    #[cfg(feature = "warp_platform")]
     pub fn check_and_open_free_tier_limit_modal(&mut self, ctx: &mut ViewContext<Self>) -> bool {
         let is_free_tier = !UserWorkspaces::as_ref(ctx)
             .current_workspace()
@@ -16951,6 +17002,7 @@ impl Workspace {
             return false;
         }
 
+        #[cfg(feature = "warp_platform")]
         if self
             .current_workspace_state
             .is_free_tier_limit_hit_modal_open
@@ -17076,6 +17128,7 @@ impl Workspace {
         ctx.notify();
     }
 
+    #[cfg(feature = "warp_platform")]
     fn open_shared_objects_creation_denied_modal(
         &mut self,
         object_type: DriveObjectType,
@@ -17129,6 +17182,7 @@ impl Workspace {
         // - open_workflow_modal_with_command
         let owner = match space {
             Space::Team { team_uid } => {
+                #[cfg(feature = "warp_platform")]
                 if !UserWorkspaces::has_capacity_for_shared_workflows(team_uid, ctx, 1) {
                     self.open_shared_objects_creation_denied_modal(
                         DriveObjectType::Workflow,
@@ -20359,6 +20413,7 @@ impl Workspace {
         ctx.focus(&self.oz_launch_modal.view);
     }
 
+    #[cfg(feature = "warp_platform")]
     fn focus_build_plan_migration_modal(&mut self, ctx: &mut ViewContext<Self>) {
         ctx.focus(&self.build_plan_migration_modal);
     }
@@ -20880,6 +20935,7 @@ impl TypedActionView for Workspace {
                     ctx.open_url(&upgrade_url);
                 }
             }
+            #[cfg(feature = "warp_platform")]
             ShowReferralSettingsPage => {
                 if !cfg!(feature = "skip_firebase_anonymous_user") {
                     self.show_settings_with_section(Some(SettingsSection::Referrals), ctx);
@@ -23277,6 +23333,7 @@ impl View for Workspace {
             stack.add_child(ChildView::new(&self.theme_deletion_modal).finish());
         }
 
+        #[cfg(feature = "warp_platform")]
         if self
             .current_workspace_state
             .is_shared_objects_creation_denied_modal_open
@@ -23284,6 +23341,7 @@ impl View for Workspace {
             stack.add_child(ChildView::new(&self.shared_objects_creation_denied_modal).finish());
         }
 
+        #[cfg(feature = "warp_platform")]
         if self.current_workspace_state.is_reward_modal_open {
             stack.add_child(Clipped::new(ChildView::new(&self.reward_modal).finish()).finish());
         }
@@ -23496,6 +23554,7 @@ impl View for Workspace {
             }
         }
 
+        #[cfg(feature = "warp_platform")]
         if self
             .current_workspace_state
             .is_enable_auto_reload_modal_open
@@ -23503,6 +23562,7 @@ impl View for Workspace {
             stack.add_child(ChildView::new(&self.enable_auto_reload_modal).finish());
         }
 
+        #[cfg(feature = "warp_platform")]
         if should_show_modal && one_time_modal_model.is_build_plan_migration_modal_open() {
             stack.add_child(ChildView::new(&self.build_plan_migration_modal).finish());
         }
@@ -23520,6 +23580,7 @@ impl View for Workspace {
             stack.add_child(ChildView::new(&self.cloud_agent_capacity_modal).finish());
         }
 
+        #[cfg(feature = "warp_platform")]
         if self
             .current_workspace_state
             .is_free_tier_limit_hit_modal_open
