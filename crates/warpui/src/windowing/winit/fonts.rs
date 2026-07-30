@@ -250,6 +250,200 @@ fn background_scan_tx() -> &'static std::sync::mpsc::Sender<PathBuf> {
     })
 }
 
+lazy_static! {
+    /// Global cache of per-face bit7 glyph corruption check results.
+    /// Key: (path, face_index), value: `true` = clean, `false` = corrupted.
+    static ref BIT7_CHECKED_FONTS: DashMap<(PathBuf, u32), bool> = DashMap::new();
+
+    /// Paths whose every face has been scanned by the background scanner.
+    static ref SCANNED_PATHS: dashmap::DashSet<PathBuf> = dashmap::DashSet::new();
+
+    /// Paths that the background scanner found corrupted, pending removal from fontdb.
+    static ref PENDING_CORRUPTED_FONTS: std::sync::Mutex<Vec<PathBuf>> =
+        std::sync::Mutex::new(Vec::new());
+}
+
+/// Number of font faces in a font file (TTF or TTC).
+fn count_font_faces(data: &[u8]) -> usize {
+    if data.len() >= 12 && &data[0..4] == b"ttcf" {
+        let header_count = u32::from_be_bytes([data[8], data[9], data[10], data[11]]) as usize;
+        let max_from_data = data.len().saturating_sub(12) / 4;
+        header_count.min(max_from_data)
+    } else {
+        1
+    }
+}
+
+/// Checks whether any simple glyph in the `glyf` table has reserved bit 7 set
+/// on its coordinate flags. Fully parses all flags (respecting the repeat flag)
+/// for every simple glyph, rather than sampling.
+///
+/// Some fonts (notably DroidSansFallback.ttf) have this corruption, which
+/// causes skrifa/swash to reject all outline rendering from the font.
+fn has_reserved_bit7_in_glyph_flags(data: &[u8], face_index: u32) -> bool {
+    let face = match owned_ttf_parser::Face::parse(data, face_index) {
+        Ok(f) => f,
+        Err(_) => return false,
+    };
+
+    let glyf_data = match face
+        .raw_face()
+        .table(owned_ttf_parser::Tag::from_bytes(b"glyf"))
+    {
+        Some(d) => d,
+        None => return false,
+    };
+    let loca_data = match face
+        .raw_face()
+        .table(owned_ttf_parser::Tag::from_bytes(b"loca"))
+    {
+        Some(d) => d,
+        None => return false,
+    };
+    let head_data = match face
+        .raw_face()
+        .table(owned_ttf_parser::Tag::from_bytes(b"head"))
+    {
+        Some(d) => d,
+        None => return false,
+    };
+
+    let index_to_loc_format = u16::from_be_bytes([head_data[50], head_data[51]]);
+    let num_glyphs = face.number_of_glyphs() as usize;
+
+    let read_loca = |idx: usize| -> Option<usize> {
+        if index_to_loc_format == 1 {
+            let base = 4 * idx;
+            if base + 4 > loca_data.len() {
+                return None;
+            }
+            Some(u32::from_be_bytes([
+                loca_data[base],
+                loca_data[base + 1],
+                loca_data[base + 2],
+                loca_data[base + 3],
+            ]) as usize)
+        } else {
+            let base = 2 * idx;
+            if base + 2 > loca_data.len() {
+                return None;
+            }
+            Some(u16::from_be_bytes([loca_data[base], loca_data[base + 1]]) as usize * 2)
+        }
+    };
+
+    for glyph_index in 0..num_glyphs {
+        let Some(offset) = read_loca(glyph_index) else {
+            continue;
+        };
+        let Some(next_offset) = read_loca(glyph_index + 1) else {
+            continue;
+        };
+
+        if offset + 2 > next_offset || offset + 2 > glyf_data.len() {
+            continue;
+        }
+
+        let num_contours = i16::from_be_bytes([glyf_data[offset], glyf_data[offset + 1]]);
+        if num_contours <= 0 {
+            continue;
+        }
+
+        let end_pts_offset = offset + 10;
+        let end_pts_count = num_contours as usize;
+        let end_pts_end = end_pts_offset + end_pts_count * 2;
+        if end_pts_end > next_offset || end_pts_end > glyf_data.len() {
+            continue;
+        }
+
+        let total_points =
+            u16::from_be_bytes([glyf_data[end_pts_end - 2], glyf_data[end_pts_end - 1]]) as usize
+                + 1;
+
+        let ins_len_offset = end_pts_end;
+        if ins_len_offset + 2 > next_offset || ins_len_offset + 2 > glyf_data.len() {
+            continue;
+        }
+        let ins_len =
+            u16::from_be_bytes([glyf_data[ins_len_offset], glyf_data[ins_len_offset + 1]]) as usize;
+
+        let flags_start = ins_len_offset + 2 + ins_len;
+        if flags_start > next_offset || flags_start > glyf_data.len() {
+            continue;
+        }
+
+        let mut flags_pos = flags_start;
+        let mut points_processed = 0;
+        while points_processed < total_points {
+            if flags_pos >= next_offset || flags_pos >= glyf_data.len() {
+                break;
+            }
+            let flag = glyf_data[flags_pos];
+            flags_pos += 1;
+            points_processed += 1;
+
+            if flag & 0x80 != 0 {
+                return true;
+            }
+
+            if flag & 0x08 != 0 {
+                if flags_pos >= next_offset || flags_pos >= glyf_data.len() {
+                    break;
+                }
+                let repeat_count = glyf_data[flags_pos];
+                flags_pos += 1;
+                points_processed += repeat_count as usize;
+            }
+        }
+    }
+
+    false
+}
+
+/// Lazily initializes the background font scanner thread and returns a sender.
+/// The scanner reads font files from disk, checks for bit7 glyph corruption
+/// in every face, and caches per-face results in `BIT7_CHECKED_FONTS`.
+/// Corrupted paths are queued for removal from fontdb by
+/// `TextLayoutSystem::drain_corrupted_fonts`.
+fn background_scan_tx() -> &'static std::sync::mpsc::Sender<PathBuf> {
+    static TX: std::sync::OnceLock<std::sync::mpsc::Sender<PathBuf>> = std::sync::OnceLock::new();
+    TX.get_or_init(|| {
+        let (tx, rx) = std::sync::mpsc::channel::<PathBuf>();
+        std::thread::Builder::new()
+            .name("font-bit7-scanner".into())
+            .spawn(move || {
+                let mut scanned = std::collections::HashSet::<PathBuf>::new();
+                while let Ok(path) = rx.recv() {
+                    if !scanned.insert(path.clone()) {
+                        continue;
+                    }
+                    let data = match std::fs::read(&path) {
+                        Ok(d) => d,
+                        Err(_) => continue,
+                    };
+                    let num_faces = count_font_faces(&data);
+                    let mut any_corrupted = false;
+                    for face_index in 0..num_faces {
+                        let index = face_index as u32;
+                        let corrupted = has_reserved_bit7_in_glyph_flags(&data, index);
+                        BIT7_CHECKED_FONTS.insert((path.clone(), index), !corrupted);
+                        any_corrupted |= corrupted;
+                    }
+                    SCANNED_PATHS.insert(path.clone());
+                    if any_corrupted {
+                        log::warn!(
+                            "Background font scan: found corrupted font at {}",
+                            path.display(),
+                        );
+                        PENDING_CORRUPTED_FONTS.lock().unwrap().push(path);
+                    }
+                }
+            })
+            .ok();
+        tx
+    })
+}
+
 struct FontFamily {
     name: String,
     fonts: Vec<FontHandle>,
