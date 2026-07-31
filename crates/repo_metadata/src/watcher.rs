@@ -19,7 +19,7 @@ cfg_if::cfg_if! {
         use watcher::{BulkFilesystemWatcher, BulkFilesystemWatcherEvent};
         use crate::entry::{
             extract_worktree_git_dir, is_commit_related_git_file, is_git_internal_path,
-            is_index_lock_file, is_shared_git_ref,
+            is_index_lock_file, is_shared_git_ref, repo_watch_filter,
         };
         /// Duration between filesystem watch events in milliseconds
         const FILESYSTEM_WATCHER_DEBOUNCE_MILLI_SECS: u64 = 500;
@@ -292,16 +292,14 @@ impl DirectoryWatcher {
         let local_path = directory_path.to_local_path();
         let registration_future = if let Some(ref watcher) = self.watcher {
             if let Some(local_path) = local_path.clone() {
+                let gitignores = crate::gitignores_for_directory(&local_path);
                 watcher.update(ctx, |watcher, _ctx| {
-                    use crate::entry::should_ignore_git_path;
-                    use notify_debouncer_full::notify::{RecursiveMode, WatchFilter};
-                    use std::sync::Arc;
-
-                    let watch_filter = WatchFilter::with_filter(Arc::new(move |watch_path| {
-                        !should_ignore_git_path(watch_path)
-                    }));
-
-                    Some(watcher.register_path(&local_path, watch_filter, RecursiveMode::Recursive))
+                    use notify_debouncer_full::notify::RecursiveMode;
+                    Some(watcher.register_path(
+                        &local_path,
+                        repo_watch_filter(local_path.clone(), gitignores, Vec::new()),
+                        RecursiveMode::Recursive,
+                    ))
                 })
             } else {
                 log::warn!("Cannot watch non-local path: {directory_path}");

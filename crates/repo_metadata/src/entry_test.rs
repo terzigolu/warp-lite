@@ -4,6 +4,39 @@ use virtual_fs::{Stub, VirtualFS};
 
 #[cfg(unix)]
 #[test]
+fn should_watch_prunes_directory_symlinks_but_keeps_force_included_paths() {
+    use super::should_watch_repo_directory;
+    use std::fs;
+
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = dunce::canonicalize(temp_dir.path()).unwrap();
+    fs::create_dir_all(root.join("target/tree")).unwrap();
+    fs::create_dir_all(root.join(".agents/skills")).unwrap();
+    std::os::unix::fs::symlink(root.join("target"), root.join("result")).unwrap();
+    std::os::unix::fs::symlink(root.join("target"), root.join(".agents/skills/linked")).unwrap();
+
+    assert!(!should_watch_repo_directory(
+        &root.join("result"),
+        &root,
+        &[],
+        &[],
+    ));
+    assert!(!should_watch_repo_directory(
+        &root.join("result/tree"),
+        &root,
+        &[],
+        &[],
+    ));
+    assert!(should_watch_repo_directory(
+        &root.join(".agents/skills/linked"),
+        &root,
+        &[],
+        &[".agents/skills".into()],
+    ));
+}
+
+#[cfg(unix)]
+#[test]
 fn test_path_passes_filters_unix() {
     VirtualFS::test("test_path_passes_filters", |dirs, mut sandbox| {
         sandbox.mkdir("my_repo");
