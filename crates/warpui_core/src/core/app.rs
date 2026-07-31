@@ -4141,25 +4141,32 @@ impl AppContext {
                 self.task_done(task_id);
             }
             TaskCallback::ViewFromStream {
-                window_id,
                 view_id,
                 mut on_item,
                 on_done,
             } => {
-                if let Some(mut view) = self
-                    .windows
-                    .get_mut(&window_id)
-                    .and_then(|w| w.views.remove(&view_id))
-                {
-                    on_item(view.as_mut(), output, self, window_id, view_id);
-                    self.windows
-                        .get_mut(&window_id)
-                        .ok_or_else(|| anyhow!("Unable to retrieve window for view"))?
-                        .views
-                        .insert(view_id, view);
+                // A stream can outlive a cross-window view transfer, so resolve the view's current
+                // window when each item arrives.
+                if let Some(current_window_id) = self.view_to_window.get(&view_id).copied() {
+                    if let Some(mut view) = self
+                        .windows
+                        .get_mut(&current_window_id)
+                        .and_then(|w| w.views.remove(&view_id))
+                    {
+                        on_item(view.as_mut(), output, self, current_window_id, view_id);
+                        self.windows
+                            .get_mut(&current_window_id)
+                            .ok_or_else(|| anyhow!("Unable to retrieve window for view"))?
+                            .views
+                            .insert(view_id, view);
+                    } else {
+                        result = Err(anyhow!(
+                            "Unable to retrieve view when relaying task output from stream"
+                        ));
+                    }
                 } else {
                     result = Err(anyhow!(
-                        "Unable to retrieve view when relaying task output from stream"
+                        "Unable to retrieve window when relaying task output from stream"
                     ));
                 }
                 // Streams go through different code paths compared to Futures.
@@ -4168,7 +4175,6 @@ impl AppContext {
                 self.task_callbacks.insert(
                     task_id,
                     TaskCallback::ViewFromStream {
-                        window_id,
                         view_id,
                         on_item,
                         on_done,
@@ -4195,22 +4201,24 @@ impl AppContext {
                 }
             }
             TaskCallback::ViewFromStream {
-                window_id,
                 view_id,
                 on_done: callback,
                 ..
             } => {
-                if let Some(mut view) = self
-                    .windows
-                    .get_mut(&window_id)
-                    .and_then(|w| w.views.remove(&view_id))
-                {
-                    callback(view.as_mut(), self, window_id, view_id);
-                    self.windows
-                        .get_mut(&window_id)
-                        .expect("Window should exist.")
-                        .views
-                        .insert(view_id, view);
+                // Completion must use the same current window as item delivery.
+                if let Some(current_window_id) = self.view_to_window.get(&view_id).copied() {
+                    if let Some(mut view) = self
+                        .windows
+                        .get_mut(&current_window_id)
+                        .and_then(|w| w.views.remove(&view_id))
+                    {
+                        callback(view.as_mut(), self, current_window_id, view_id);
+                        self.windows
+                            .get_mut(&current_window_id)
+                            .expect("Window should exist.")
+                            .views
+                            .insert(view_id, view);
+                    }
                 }
             }
             _ => {}
