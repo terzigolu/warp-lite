@@ -10,8 +10,9 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use typed_path::{
-    PathType, TypedComponent, TypedPath, TypedPathBuf, UnixComponent, WindowsComponent,
-    WindowsPath, WindowsPathBuf,
+    PathType, TypedComponent, TypedPath, TypedPathBuf, UnixComponent, Utf8Component,
+    Utf8WindowsComponent, Utf8WindowsPath, Utf8WindowsPrefix, WindowsComponent, WindowsPath,
+    WindowsPathBuf,
 };
 
 use crate::standardized_path::StandardizedPath;
@@ -486,6 +487,56 @@ pub fn convert_wsl_to_windows_host_path(
             PathBuf::try_from(windows_path).map_err(WSLPathConversionError::CouldNotConvertToPath)
         }
     }
+}
+
+/// A path inside a WSL distribution, decomposed from the UNC form that
+/// [`convert_wsl_to_windows_host_path`] produces.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WslUncPath {
+    /// The distribution name exactly as it appears in the UNC path (case preserved).
+    pub distro: String,
+    /// The Linux absolute path, using `/` separators. The distribution root maps to `/`.
+    pub linux_path: String,
+}
+
+/// The host components that identify a WSL UNC path.
+const WSL_UNC_HOSTS: &[&str] = &["wsl$", "wsl.localhost"];
+
+/// Parses a WSL UNC path into its distribution and Linux path, the inverse of
+/// [`convert_wsl_to_windows_host_path`]. Accepts the `\\wsl$\...`, `\\wsl.localhost\...`,
+/// verbatim `\\?\UNC\wsl$\...`, and forward-slash `//wsl$/...` spellings, matching the host
+/// case-insensitively. Returns `None` for non-WSL UNC paths, drive-letter paths, and relative
+/// paths.
+pub fn parse_wsl_unc_path(path: &Path) -> Option<WslUncPath> {
+    let mut components = Utf8WindowsPath::new(path.to_str()?).components();
+    let (host, distro) = match components.next()? {
+        Utf8WindowsComponent::Prefix(prefix) => match prefix.kind() {
+            Utf8WindowsPrefix::UNC(host, distro) | Utf8WindowsPrefix::VerbatimUNC(host, distro) => {
+                (host, distro)
+            }
+            _ => return None,
+        },
+        _ => return None,
+    };
+    if distro.is_empty() || !WSL_UNC_HOSTS.iter().any(|h| host.eq_ignore_ascii_case(h)) {
+        return None;
+    }
+
+    let linux_path: String = components
+        .filter_map(|component| match component {
+            Utf8WindowsComponent::RootDir => None,
+            component => Some(format!("/{}", component.as_str())),
+        })
+        .collect();
+
+    Some(WslUncPath {
+        distro: distro.to_string(),
+        linux_path: if linux_path.is_empty() {
+            "/".to_string()
+        } else {
+            linux_path
+        },
+    })
 }
 
 #[cfg(windows)]
