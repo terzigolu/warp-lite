@@ -1503,6 +1503,7 @@ impl TerminalModel {
         if self.handled_exit {
             return;
         }
+        log::debug!("Terminal model exiting: reason={reason:?}");
 
         self.handled_exit = true;
         // Forcibly exit the alt screen so that we can show the user the
