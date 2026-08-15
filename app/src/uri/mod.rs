@@ -16,8 +16,7 @@ use crate::server::ids::ServerId;
 use crate::server::telemetry::{LaunchConfigUiLocation, TelemetryEvent};
 use crate::tab_configs::TabConfig;
 use crate::util::openable_file_type::{
-    is_file_openable_in_warp, is_markdown_file, is_runnable_shell_script,
-    renders_in_warp_notebook_viewer, starts_with_shebang,
+    is_file_openable_in_warp, is_markdown_file, is_runnable_shell_script, starts_with_shebang,
 };
 use crate::workspace::{Workspace, WorkspaceAction, WorkspaceRegistry};
 use crate::{cloud_object::ObjectType, workspace::ToastStack};
@@ -1166,8 +1165,7 @@ enum OpenFileAction {
 /// Markdown file to the in-Warp notebook viewer. Other notebook viewer formats,
 /// such as Jupyter notebooks, are controlled by their own routing checks.
 fn classify_open_file_action(path: &Path, prefer_markdown_viewer: bool) -> OpenFileAction {
-    if renders_in_warp_notebook_viewer(path) && (!is_markdown_file(path) || prefer_markdown_viewer)
-    {
+    if is_markdown_file(path) && prefer_markdown_viewer {
         OpenFileAction::Notebook
     } else if is_runnable_shell_script(path) {
         OpenFileAction::ExecuteInSession
