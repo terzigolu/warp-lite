@@ -56,3 +56,29 @@ fn show_vertical_tab_panel_in_restored_windows_uses_vertical_tabs_path() {
         "show_panel_in_restored_windows"
     );
 }
+#[test]
+fn hide_title_bar_search_bar_in_vertical_tabs_defaults_to_false() {
+    App::test((), |mut app| async move {
+        initialize_settings_for_tests(&mut app);
+
+        TabSettings::handle(&app).read(&app, |settings, _ctx| {
+            assert!(!*settings.hide_title_bar_search_bar_in_vertical_tabs);
+        });
+    });
+}
+
+#[test]
+fn hide_title_bar_search_bar_in_vertical_tabs_uses_vertical_tabs_path() {
+    assert_eq!(
+        HideTitleBarSearchBarInVerticalTabs::toml_path(),
+        Some("appearance.vertical_tabs.hide_title_bar_search_bar")
+    );
+    assert_eq!(
+        HideTitleBarSearchBarInVerticalTabs::hierarchy(),
+        Some("appearance.vertical_tabs")
+    );
+    assert_eq!(
+        HideTitleBarSearchBarInVerticalTabs::toml_key(),
+        "hide_title_bar_search_bar"
+    );
+}

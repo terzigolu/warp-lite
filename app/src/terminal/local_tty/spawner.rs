@@ -14,6 +14,9 @@ use {
     crate::report_error,
     crate::terminal::local_tty::server::TerminalServer,
     anyhow::{bail, Context},
+    std::cmp::Reverse,
+    std::collections::HashMap,
+    std::ffi::OsString,
     std::process::Child,
 };
 /// A handle that can be used to interact with a pty process.
@@ -187,11 +190,17 @@ impl PtySpawner {
 
         #[cfg(unix)]
         if let Some(server) = &self.server {
-            let result = Self::spawn_pty_via_server(server, options.clone()).context(
-                "Failed to spawn pty via terminal server; falling back to spawning locally...",
-            );
+            let result = Self::spawn_pty_via_server(server, options.clone());
             if let Err(err) = result {
-                report_error!(err);
+                log_env_var_diagnostics(&options.env_vars);
+                if is_e2big(&err) {
+                    return Err(err.context(
+                        "This can happen when environment variables are too long.",
+                    ));
+                }
+                report_error!(err.context(
+                    "Failed to spawn pty via terminal server; falling back to spawning locally...",
+                ));
                 is_fallback = true;
             } else {
                 return result;
@@ -255,3 +264,51 @@ impl Entity for PtySpawner {
 }
 
 impl SingletonEntity for PtySpawner {}
+
+#[cfg(unix)]
+fn is_e2big(err: &anyhow::Error) -> bool {
+    if err.chain().any(|cause| {
+        cause
+            .downcast_ref::<std::io::Error>()
+            .and_then(|error| error.raw_os_error())
+            .is_some_and(|code| code == libc::E2BIG)
+    }) {
+        return true;
+    }
+
+    let message = format!("{err:#}");
+    message.contains("os error 7") || message.contains("Argument list too long")
+}
+
+/// Logs environment-variable names and sizes only; values may contain secrets.
+#[cfg(unix)]
+fn log_env_var_diagnostics(extra_env_vars: &HashMap<OsString, OsString>) {
+    log::error!("Shell spawn environment diagnostics (names and sizes only, no values):");
+
+    let mut extra: Vec<(&OsString, usize)> = extra_env_vars
+        .iter()
+        .map(|(key, value)| (key, key.len() + value.len() + 2))
+        .collect();
+    extra.sort_by_key(|(_, size)| Reverse(*size));
+    log::error!("  PtyOptions env_vars ({} entries):", extra_env_vars.len());
+    for (key, size) in extra.iter().take(20) {
+        log::error!("    {:?} — {} bytes", key, size);
+    }
+
+    let mut inherited: Vec<(OsString, usize)> = std::env::vars_os()
+        .map(|(key, value)| {
+            let size = key.len() + value.len() + 2;
+            (key, size)
+        })
+        .collect();
+    inherited.sort_by_key(|(_, size)| Reverse(*size));
+    let total: usize = inherited.iter().map(|(_, size)| size).sum();
+    log::error!(
+        "  Inherited process env ({} vars, ~{} bytes total):",
+        inherited.len(),
+        total
+    );
+    for (key, size) in inherited.iter().take(20) {
+        log::error!("    {:?} — {} bytes", key, size);
+    }
+}

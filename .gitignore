@@ -63,3 +63,7 @@ WarpLite.dmg
 WarpLite.app/
 nohup.out
 STATUS_REPORT.md
+
+# Project notes
+.note/
+.claude/scheduled_tasks.lock

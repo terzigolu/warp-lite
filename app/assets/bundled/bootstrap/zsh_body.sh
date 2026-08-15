@@ -296,6 +296,16 @@ if [[ -z $WARP_BOOTSTRAPPED ]]; then
     GIT_OPTIONAL_LOCKS=0 command git "$@"
   }
 
+  # Clears the line editor's buffer and, if the active keymap is "vicmd" (vi command/normal
+  # mode), switches back to "viins" (its insert companion).
+  function warp_kill_buffer_and_reset_insert_mode () {
+    zle kill-buffer
+    if [[ $KEYMAP == vicmd ]]; then
+      zle -K viins
+    fi
+  }
+  zle -N warp_kill_buffer_and_reset_insert_mode
+
   # Note that this is very performance sensitive code, so try not to
   # invoke any external commands in here.
   warp_precmd () {
@@ -344,8 +354,19 @@ if [[ -z $WARP_BOOTSTRAPPED ]]; then
       # Reset the custom kill-buffer binding as the user's zshrc (which is sourced after zshrc_warp)
       # could have added a bindkey. This won't have any user-impact because these shortcuts are only run
       # in the context of the zsh line editor, which isn't displayed in Warp.
-      bindkey -r '^P'
-      bindkey '^P' kill-buffer
+      #
+      # We explicitly rebind on every standard keymap (not just "main", which is only a link to
+      # whichever of emacs/viins is currently selected) because a user's rc file can switch editing
+      # modes after we've bound "main" (e.g. `bindkey -v`, as used by the "cursor_mode" zsh function
+      # and by prezto). `bindkey -v` re-links "main" to "viins" and leaves "vicmd" (vi command mode)
+      # bound to its default of up-history. If the active keymap when Warp sends its pre-command ^P
+      # ends up being one we didn't rebind, the clear becomes a no-op and any leftover bootstrap bytes
+      # still sitting in the line editor's buffer get echoed alongside the next command.
+      # See https://github.com/warpdotdev/warp/issues/7099.
+      local warp_keymap
+      for warp_keymap in main emacs viins vicmd; do
+        bindkey -M "$warp_keymap" '^P' warp_kill_buffer_and_reset_insert_mode 2>/dev/null || :
+      done
 
       # Reset the custom input-reporting binding as well, in case it was overridden
       # by the user's zshrc.
@@ -661,6 +682,37 @@ if [[ -z $WARP_BOOTSTRAPPED ]]; then
       fi
   }
 
+  # Strips prompt constructs that zsh counts as visible "glitch" columns even
+  # when they appear inside a %{...%} zero-width region, returning the result
+  # in $REPLY. The explicit-width form %n{ is rewritten to %{ (preserving the
+  # brace pairing), and the %G, %nG, and %-nG forms are removed entirely.
+  # Neither change affects the rendered prompt bytes, only zsh's internal
+  # width accounting. Literal %% escapes are matched first so that they cannot
+  # form false positives (e.g. %%1{ renders as literal text and must be left
+  # alone).
+  function warp_strip_glitch_width_constructs() {
+    setopt localoptions extendedglob
+    local match mbegin mend
+    REPLY=${1:-}
+    REPLY=${REPLY//(#b)(%%|%<->\{|%(-|)(<->|)G)/${${match[1]:#%(-|)(<->|)G}/(#s)%<->\{(#e)/%\{}}
+  }
+
+  # Called live via PROMPT_SUBST on every prompt render. Uses ${(e)...} to recursively evaluate
+  # _WARP_RAW_PROMPT — expanding any embedded subshells like $(git_prompt_info) so their output
+  # (which may contain %n{...%} glitch constructs) is visible before stripping. The stripped output
+  # is returned for use inside %{...%} so that zsh's countprompt() sees zero glitch columns, keeping
+  # its cursor-column model in sync with the physical cursor. Async prompt updates (zle reset-prompt)
+  # re-invoke this automatically.
+  function _warp_stripped_prompt() {
+    [[ -z "${_WARP_RAW_PROMPT:-}" ]] && return
+    local REPLY
+    warp_strip_glitch_width_constructs "${(e)_WARP_RAW_PROMPT}"
+    # Append %{%} (a zero-width no-op in zsh prompt syntax) so that command
+    # substitution does not strip any trailing newlines from the prompt content.
+    # %{%} is harmless: it outputs nothing and has no effect on width counting.
+    print -rn -- "${REPLY}%{%}"
+  }
+
   # Check whether the prompt-related variables have OSC prompt marker sequences,
   # and if not, wrap them with the appropriate markers so that we can direct the
   # prompt bytes to the appropriate grids.
@@ -742,12 +794,34 @@ if [[ -z $WARP_BOOTSTRAPPED ]]; then
         PROMPT=$preceding_suffix$following_suffix
       fi
 
+      # Update _WARP_RAW_PROMPT — the user's true raw prompt content that
+      # _warp_stripped_prompt evaluates at render time.
+      #
+      # After the marker-stripping above, $PROMPT is the inner content:
+      #  - Exactly '$(_warp_stripped_prompt)': our placeholder from a previous
+      #    run — _WARP_RAW_PROMPT is already correct, leave it alone.
+      #  - Contains '$(_warp_stripped_prompt)' but isn't exactly it (e.g. a
+      #    plugin prepended or appended content around the placeholder):
+      #    extract the prefix and suffix, strip them from _WARP_RAW_PROMPT to
+      #    get the base, then reassemble. This is idempotent.
+      #  - Anything else: a genuine new prompt from the user.
+      if [[ "$PROMPT" == '$(_warp_stripped_prompt)' ]]; then
+        : # _WARP_RAW_PROMPT is already correct
+      elif [[ "$PROMPT" == *'$(_warp_stripped_prompt)'* ]]; then
+        local _warp_extra_pfx="${PROMPT%%'$(_warp_stripped_prompt)'*}"
+        local _warp_extra_sfx="${PROMPT#*'$(_warp_stripped_prompt)'}"
+        local _warp_base="${_WARP_RAW_PROMPT:-}"
+        [[ -n "$_warp_extra_pfx" ]] && _warp_base="${_warp_base#"$_warp_extra_pfx"}"
+        [[ -n "$_warp_extra_sfx" ]] && _warp_base="${_warp_base%"$_warp_extra_sfx"}"
+        _WARP_RAW_PROMPT="${_warp_extra_pfx}${_warp_base}${_warp_extra_sfx}"
+      else
+        _WARP_RAW_PROMPT="$PROMPT"
+      fi
       ORIGINAL_PROMPT=$PROMPT
       PROMPT="$prompt_prefix$PROMPT$suffix"
     fi
 
     if [[ -n "${RPROMPT:-}" && "${RPROMPT:-}" != *"$rprompt_prefix"* ]]; then
-      ORIGINAL_RPROMPT=$RPROMPT
       RPROMPT="$rprompt_prefix$RPROMPT$suffix"
     fi
 
@@ -762,14 +836,28 @@ if [[ -z $WARP_BOOTSTRAPPED ]]; then
     # If we are using the Warp prompt, we pass a "hidden left prompt" to the prompt
     # preview grid (the hidden prompt grid) with cursor markers surrounding the entire prompt.
     if [[ "$WARP_HONOR_PS1" != "1" ]]; then
-      if [[ "$PROMPT" != "%{$prompt_prefix$ORIGINAL_PROMPT$suffix%}" ]]; then
-        # We purposefully surround this entire prompt with cursor markers to prevent
-        # the shell from moving its internal state of the cursor position, for purposes
-        # of printing the command with the Warp prompt.
-        # Note that the Warp prompt is always ABOVE the combined grid in finished blocks
-        # (same line prompt only affects the input editor with Warp prompt, not
-        # finished blocks).
-        PROMPT="%{$prompt_prefix$ORIGINAL_PROMPT$suffix%}"
+      # We purposefully surround this entire prompt with cursor markers to prevent
+      # the shell from moving its internal state of the cursor position, for purposes
+      # of printing the command with the Warp prompt.
+      # Note that the Warp prompt is always ABOVE the combined grid in finished blocks
+      # (same line prompt only affects the input editor with Warp prompt, not
+      # finished blocks).
+      if [[ -o promptsubst ]]; then
+        # PROMPT_SUBST is on: subshells in PROMPT are evaluated at render time, so
+        # dynamic glitch constructs (e.g. from $(git_prompt_info)) can appear. Use
+        # the live-stripping wrapper to catch and strip them on every render.
+        if [[ "$PROMPT" != "%{$prompt_prefix\$(_warp_stripped_prompt)$suffix%}" ]]; then
+          PROMPT="%{$prompt_prefix\$(_warp_stripped_prompt)$suffix%}"
+        fi
+      else
+        # PROMPT_SUBST is off: subshells are never evaluated in PROMPT, so glitch
+        # constructs can only come from static content. Strip them now at precmd
+        # time and embed the result directly, honoring the user's setting.
+        local REPLY
+        warp_strip_glitch_width_constructs "${_WARP_RAW_PROMPT:-}"
+        if [[ "$PROMPT" != "%{$prompt_prefix$REPLY$suffix%}" ]]; then
+          PROMPT="%{$prompt_prefix$REPLY$suffix%}"
+        fi
       fi
     # Otherwise, if we are using the PS1, we use the normal prompt markers.
     else
@@ -865,11 +953,23 @@ if [[ -z $WARP_BOOTSTRAPPED ]]; then
           fi
       }
 
-      function warp_ssh_helper() {
-          # Hex-encode the ZSH environment script we use to bootstrap remote zsh b/c it contains control characters
+    function warp_ssh_helper() {
+
+        # If the user's SSH config sets a RemoteCommand for this destination,
+          # OpenSSH refuses to also run our bootstrap as a command-line remote
+          # command, aborting with "Cannot execute command-line and remote
+          # command." Warpification is structurally impossible there, so fall
+          # back to plain SSH. `ssh -G` prints `remotecommand none` when unset.
+          local user_remote_command=$(command ssh -G "${@:1}" 2>/dev/null | command -p sed -n 's/^remotecommand //p')
+          if [[ -n "$user_remote_command" && "$user_remote_command" != "none" ]]; then
+              command ssh "${@:1}"
+            return
+        fi
+
+        # Hex-encode the ZSH environment script we use to bootstrap remote zsh b/c it contains control characters
           # We decode on the SSH server using xxd if its available, otherwise fall back to a for-loop over each byte
           # and use printf to convert back to plaintext
-          local zsh_env_script=$(printf '%s' 'unsetopt ZLE; unset RCS; unset GLOBAL_RCS; WARP_SESSION_ID="$(command -p date +%s)$RANDOM"; WARP_USING_WINDOWS_CON_PTY=@@USING_CON_PTY_BOOLEAN@@; _hostname=$(command -pv hostname >/dev/null 2>&1 && command -p hostname 2>/dev/null || command -p uname -n); _user=$(command -pv whoami >/dev/null 2>&1 && command -p whoami 2>/dev/null || echo $USER); _msg=$(printf "{\"hook\": \"InitShell\", \"value\": {\"session_id\": $WARP_SESSION_ID, \"shell\": \"zsh\", \"user\": \"%s\", \"hostname\": \"%s\"}}" "$_user" "$_hostname" | command -p od -An -v -tx1 | command -p tr -d '"'"' \n'"'"'); printf '"'"'\e]9278;d;%s\x07'"'"' $_msg; unset _hostname _user _msg' | command -p od -An -v -tx1 | command -p tr -d ' \n')
+          local zsh_env_script=$(printf '%s' 'unsetopt ZLE RCS GLOBAL_RCS; WARP_SESSION_ID="$(command -p date +%s)$RANDOM"; WARP_USING_WINDOWS_CON_PTY=@@USING_CON_PTY_BOOLEAN@@; _hostname=$(command -pv hostname >/dev/null 2>&1 && command -p hostname 2>/dev/null || command -p uname -n); _user=$(command -pv whoami >/dev/null 2>&1 && command -p whoami 2>/dev/null || echo $USER); _msg=$(printf "{\"hook\": \"InitShell\", \"value\": {\"session_id\": $WARP_SESSION_ID, \"shell\": \"zsh\", \"user\": \"%s\", \"hostname\": \"%s\"}}" "$_user" "$_hostname" | command -p od -An -v -tx1 | command -p tr -d '"'"' \n'"'"'); printf '"'"'\e]9278;d;%s\x07'"'"' $_msg; unset _hostname _user _msg' | command -p od -An -v -tx1 | command -p tr -d ' \n')
 
           # Keep remote commands up-to-date with shell.rs & bash.sh.
           # Note that in this command, we're passing a string to the remote shell. Any variable expansions need to be
@@ -1033,26 +1133,26 @@ esac
 
   # If this is a subshell, the user and system RC files have already been sourced.
   if [[ -z $WARP_IS_SUBSHELL ]]; then
-      if [[ -e ${ZDOTDIR:-$HOME}/.zshenv ]]; then
-          source ${ZDOTDIR:-$HOME}/.zshenv;
+      if [[ -e "${ZDOTDIR:-$HOME}/.zshenv" ]]; then
+          source "${ZDOTDIR:-$HOME}/.zshenv";
       fi
       if [[ -e /etc/zprofile ]]; then
           source /etc/zprofile;
       fi
-      if [[ -e ${ZDOTDIR:-$HOME}/.zprofile ]]; then
-          source ${ZDOTDIR:-$HOME}/.zprofile;
+      if [[ -e "${ZDOTDIR:-$HOME}/.zprofile" ]]; then
+          source "${ZDOTDIR:-$HOME}/.zprofile";
       fi
       if [[ -e /etc/zshrc ]]; then
           source /etc/zshrc;
       fi
-      if [[ -e ${ZDOTDIR:-$HOME}/.zshrc ]]; then
-          source ${ZDOTDIR:-$HOME}/.zshrc;
+      if [[ -e "${ZDOTDIR:-$HOME}/.zshrc" ]]; then
+          source "${ZDOTDIR:-$HOME}/.zshrc";
       fi
       if [[ -e /etc/zlogin ]]; then
           source /etc/zlogin;
       fi
-      if [[ -e ${ZDOTDIR:-$HOME}/.zlogin ]]; then
-          source ${ZDOTDIR:-$HOME}/.zlogin;
+      if [[ -e "${ZDOTDIR:-$HOME}/.zlogin" ]]; then
+          source "${ZDOTDIR:-$HOME}/.zlogin";
       fi
   fi
 

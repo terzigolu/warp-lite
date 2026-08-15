@@ -27,7 +27,7 @@ use notify_debouncer_full::notify::{RecursiveMode, WatchFilter};
 use repo_metadata::{
     repositories::DetectedRepositories,
     repository::{RepositorySubscriber, SubscriberId},
-    CanonicalizedPath, Repository, RepositoryUpdate,
+    CanonicalizedPath, Repository, RepositoryUpdate, RepositoryWatchMode,
 };
 use warp_util::content_version::ContentVersion;
 use warp_util::file::FileSaveError;
@@ -424,33 +424,40 @@ impl FileModel {
                     .map_err(FileLoadError::from);
                 (file_id, contents)
             },
-            move |me, (file_id, load_result), ctx| match load_result {
-                Ok(content) => {
-                    let version = ContentVersion::new();
-                    me.set_version(file_id, version);
+            move |me, (file_id, load_result), ctx| {
+                // A completion may already be queued when its view cancels and unsubscribes.
+                // Do not resurrect watcher state or emit an event for an untracked file.
+                if me.file_state.get(file_id).is_none() {
+                    return;
+                }
+                match load_result {
+                    Ok(content) => {
+                        let version = ContentVersion::new();
+                        me.set_version(file_id, version);
 
-                    // Only register individual watcher if not using repo subscription
-                    if use_individual_watcher {
-                        me.watcher.update(ctx, |watcher, _ctx| {
-                            std::mem::drop(watcher.register_path(
-                                &file_path_clone,
-                                WatchFilter::accept_all(),
-                                RecursiveMode::Recursive,
-                            ));
+                        // Only register individual watcher if not using repo subscription
+                        if use_individual_watcher {
+                            me.watcher.update(ctx, |watcher, _ctx| {
+                                std::mem::drop(watcher.register_path(
+                                    &file_path_clone,
+                                    WatchFilter::accept_all(),
+                                    RecursiveMode::Recursive,
+                                ));
+                            });
+                        }
+
+                        ctx.emit(FileModelEvent::FileLoaded {
+                            content,
+                            id: file_id,
+                            version,
                         });
                     }
-
-                    ctx.emit(FileModelEvent::FileLoaded {
-                        content,
-                        id: file_id,
-                        version,
-                    });
-                }
-                Err(err) => {
-                    ctx.emit(FileModelEvent::FailedToLoad {
-                        id: file_id,
-                        error: Rc::new(err),
-                    });
+                    Err(err) => {
+                        ctx.emit(FileModelEvent::FailedToLoad {
+                            id: file_id,
+                            error: Rc::new(err),
+                        });
+                    }
                 }
             },
         );
@@ -935,7 +942,8 @@ impl FileModel {
         // Create a new subscription
         let (repository_update_tx, repository_update_rx) = async_channel::unbounded();
         let start = repository.update(ctx, |repo, ctx| {
-            repo.start_watching(
+            repo.start_watching_with_mode(
+                RepositoryWatchMode::FilesystemOnly,
                 Box::new(FileRepositorySubscriber {
                     repository_update_tx,
                 }),

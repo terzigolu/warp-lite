@@ -696,15 +696,17 @@ impl EditorModel {
         // 2) we star the the batch on the correct (regular vs. ephemeral) buffer
         let restore_from_snapshot = if can_edit && edit.is_ephemeral() {
             let snapshot = self.as_snapshot(ctx);
+            let vim_visual_tail_offsets = self.vim_visual_tail_offsets(ctx);
             self.buffer_and_display_map
                 .activate_new_ephemeral_state(ctx);
-            Some(snapshot)
+            Some((snapshot, vim_visual_tail_offsets))
         } else if can_edit && self.is_ephemeral() && edit.update_buffer.is_some() {
             // We're materializing an ephemeral edit, so snapshot the ephemeral buffer
-            // so that we can apply it to the regular buffer.
+            // and Vim visual tail so both can be restored on the regular buffer.
             let snapshot = self.as_snapshot(ctx);
+            let vim_visual_tail_offsets = self.vim_visual_tail_offsets(ctx);
             self.buffer_and_display_map.deactivate_ephemeral_state();
-            Some(snapshot)
+            Some((snapshot, vim_visual_tail_offsets))
         } else {
             None
         };
@@ -720,8 +722,8 @@ impl EditorModel {
         // right buffer state. For example, if we tried to select
         // without having restored the snapshot, we would be selecting
         // on the wrong underlying buffer.
-        if let Some(snapshot) = restore_from_snapshot {
-            self.restore_from_snapshot(snapshot, ctx);
+        if let Some((snapshot, vim_visual_tail_offsets)) = restore_from_snapshot {
+            self.restore_from_snapshot(snapshot, vim_visual_tail_offsets, ctx);
             // Refresh batch version here as we already recorded edits for the snapshot
             // restoration.
             self.refresh_batch_version(ctx);
@@ -1283,8 +1285,21 @@ impl EditorModel {
         );
     }
 
+    fn vim_visual_tail_offsets<C: ModelAsRef>(&self, ctx: &C) -> Vec<CharOffset> {
+        let buffer = self.buffer(ctx);
+        self.vim_visual_tails
+            .iter()
+            .filter_map(|tail| tail.to_char_offset(buffer).ok())
+            .collect()
+    }
+
     // Used for restoring the buffer from a snapshot.
-    fn restore_from_snapshot(&mut self, snapshot: EditorSnapshot, ctx: &mut ModelContext<Self>) {
+    fn restore_from_snapshot(
+        &mut self,
+        snapshot: EditorSnapshot,
+        vim_visual_tail_offsets: Vec<CharOffset>,
+        ctx: &mut ModelContext<Self>,
+    ) {
         let version = self.buffer_handle().as_ref(ctx).versions();
         self.clear_selections(ctx);
         self.clear_buffer(ctx);
@@ -1359,6 +1374,15 @@ impl EditorModel {
             }]
         };
         self.change_selections(new_selections, ctx);
+
+        let new_visual_tails: Vec<Anchor> = {
+            let buffer = self.buffer(ctx);
+            vim_visual_tail_offsets
+                .iter()
+                .filter_map(|offset| buffer.anchor_before(*offset).ok())
+                .collect()
+        };
+        self.vim_visual_tails = new_visual_tails;
     }
 
     pub fn selection_insertion_index(&self, start: &Anchor, app: &AppContext) -> usize {
@@ -2383,7 +2407,7 @@ impl EditorModel {
         operand_count: u32,
         ctx: &mut ModelContext<Self>,
     ) {
-        let include_newline = *operator != VimOperator::Change;
+        let include_newline = operator.includes_trailing_newline();
         match motion {
             CharacterMotion::Down => {
                 self.extend_selection_below(operand_count, ctx);
@@ -2464,7 +2488,7 @@ impl EditorModel {
         operand_count: u32,
         ctx: &mut ModelContext<Self>,
     ) {
-        let include_newline = *operator != VimOperator::Change;
+        let include_newline = operator.includes_trailing_newline();
         match motion {
             FirstNonWhitespaceMotion::Down => {
                 self.extend_selection_below(operand_count, ctx);
@@ -2555,7 +2579,7 @@ impl EditorModel {
         };
         let _ = self.select_ranges_by_offset(new_selections, ctx);
         if let TextObjectType::Paragraph = object_type {
-            let include_newline = *operator != VimOperator::Change;
+            let include_newline = operator.includes_trailing_newline();
             self.extend_selection_linewise(include_newline, ctx);
         }
     }

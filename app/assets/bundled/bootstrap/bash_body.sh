@@ -973,10 +973,21 @@ if [ -z "$WARP_BOOTSTRAPPED" ]; then
             init_shell_bash=$(init_shell_hook "bash")
             init_shell_zsh=$(init_shell_hook "zsh")
 
+            # If the user's SSH config sets a RemoteCommand for this destination,
+            # OpenSSH refuses to also run our bootstrap as a command-line remote
+            # command, aborting with "Cannot execute command-line and remote
+            # command." Warpification is structurally impossible there, so fall
+            # back to plain SSH. `ssh -G` prints `remotecommand none` when unset.
+            local user_remote_command=$(command ssh -G "${@:1}" 2>/dev/null | command -p sed -n 's/^remotecommand //p')
+            if [[ -n "$user_remote_command" && "$user_remote_command" != "none" ]]; then
+                command ssh "${@:1}"
+                return
+            fi
+
             # Hex-encode the ZSH environment script we use to bootstrap remote zsh b/c it contains control characters
             # We decode on the SSH server using xxd if its available, otherwise fall back to a for-loop over each byte
             # and use printf to convert back to plaintext
-            local zsh_env_script=$(printf '%s' 'unsetopt ZLE; unset RCS; unset GLOBAL_RCS; WARP_SESSION_ID="$(command -p date +%s)$RANDOM"; WARP_USING_WINDOWS_CON_PTY=@@USING_CON_PTY_BOOLEAN@@; WARP_HONOR_PS1='$WARP_HONOR_PS1'; _hostname=$(command -pv hostname >/dev/null 2>&1 && command -p hostname 2>/dev/null || command -p uname -n); _user=$(command -pv whoami >/dev/null 2>&1 && command -p whoami 2>/dev/null || echo $USER); _msg=$(printf "{\"hook\": \"InitShell\", \"value\": {\"session_id\": $WARP_SESSION_ID, \"shell\": \"zsh\", \"user\": \"%s\", \"hostname\": \"%s\"}}" "$_user" "$_hostname" | command -p od -An -v -tx1 | command -p tr -d '"'"' \n'"'"'); printf '"'"'\e]9278;d;%s\x07'"'"' $_msg; unset _hostname _user _msg' | command -p od -An -v -tx1 | command -p tr -d ' \n')
+            local zsh_env_script=$(printf '%s' 'unsetopt ZLE RCS GLOBAL_RCS; WARP_SESSION_ID="$(command -p date +%s)$RANDOM"; WARP_USING_WINDOWS_CON_PTY=@@USING_CON_PTY_BOOLEAN@@; WARP_HONOR_PS1='$WARP_HONOR_PS1'; _hostname=$(command -pv hostname >/dev/null 2>&1 && command -p hostname 2>/dev/null || command -p uname -n); _user=$(command -pv whoami >/dev/null 2>&1 && command -p whoami 2>/dev/null || echo $USER); _msg=$(printf "{\"hook\": \"InitShell\", \"value\": {\"session_id\": $WARP_SESSION_ID, \"shell\": \"zsh\", \"user\": \"%s\", \"hostname\": \"%s\"}}" "$_user" "$_hostname" | command -p od -An -v -tx1 | command -p tr -d '"'"' \n'"'"'); printf '"'"'\e]9278;d;%s\x07'"'"' $_msg; unset _hostname _user _msg' | command -p od -An -v -tx1 | command -p tr -d ' \n')
 
             # Keep remote commands up-to-date with shell.rs & bash.sh.
             # Note that in this command, we're passing a string to the remote shell. Any variable expansions need to be
@@ -1122,12 +1133,12 @@ esac
             source /etc/bash.bashrc
         fi
 
-        if [[ -e $HOME/.bash_profile ]]; then
-            source $HOME/.bash_profile
-        elif [[ -e $HOME/.bash_login ]]; then
-            source $HOME/.bash_login
-        elif [[ -e $HOME/.profile ]]; then
-            source $HOME/.profile
+        if [[ -e "$HOME/.bash_profile" ]]; then
+            source "$HOME/.bash_profile"
+        elif [[ -e "$HOME/.bash_login" ]]; then
+            source "$HOME/.bash_login"
+        elif [[ -e "$HOME/.profile" ]]; then
+            source "$HOME/.profile"
         fi
 
         rcfiles_end_time="$(LC_ALL="C"; echo $EPOCHREALTIME)"

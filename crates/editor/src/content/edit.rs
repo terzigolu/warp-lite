@@ -90,6 +90,7 @@ pub fn resolve_asset_source_relative_to_directory(
     } else if source.starts_with("/") {
         AssetSource::LocalFile {
             path: source.to_string(),
+            content_version: None,
         }
     } else {
         let resolved_path = if let Some(base_directory) = base_directory {
@@ -103,13 +104,19 @@ pub fn resolve_asset_source_relative_to_directory(
                 Ok(canon) => canon.to_string_lossy().to_string(),
                 Err(_) => resolved_path.to_string_lossy().to_string(),
             },
+            content_version: None,
         }
     }
 }
 
+/// Resolve an image source when its Markdown block is laid out.
+///
+/// Local-file metadata is read here so refreshes get a new cache key, while
+/// ordinary frame rendering continues to reuse the resolved source without I/O.
 fn resolve_asset_source(source: &str, base_path: Option<&Path>) -> AssetSource {
     let base_directory = base_path.map(|base| base.parent().unwrap_or(base));
     resolve_asset_source_relative_to_directory(source, base_directory)
+        .with_local_file_content_version()
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -122,6 +129,7 @@ pub fn resolve_asset_source_relative_to_directory(
     } else {
         AssetSource::LocalFile {
             path: source.to_string(),
+            content_version: None,
         }
     }
 }

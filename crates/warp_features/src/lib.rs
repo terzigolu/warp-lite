@@ -203,6 +203,10 @@ pub enum FeatureFlag {
     /// Maximizes data in flat storage to reduce memory usage.
     MaximizeFlatStorage,
 
+    /// Recognizes the OSC 8 hyperlink escape sequence and makes the
+    /// linked text Cmd+click-able.
+    OscHyperlinks,
+
     ImeMarkedText,
 
     /// Enables partial next command suggestions with a prefix.
@@ -842,6 +846,15 @@ pub enum FeatureFlag {
 
     /// Enables grouping tabs together in the vertical tab list.
     GroupedTabs,
+    /// Renders supported solid box-drawing characters (`U+2500..=U+257F`)
+    /// procedurally as cell-filling rectangles instead of from the font,
+    /// eliminating seams between adjacent box-drawing cells in the terminal.
+    BoxDrawingGlyphs,
+
+    /// Gates the Pinned Tabs feature, which lets users pin individual tabs
+    /// and whole tab groups so they stay at the front of the tab list and
+    /// are protected from reordering.
+    PinnedTabs,
 }
 
 static FLAG_STATES: [AtomicBool; cardinality::<FeatureFlag>()] =
@@ -918,6 +931,7 @@ pub const DOGFOOD_FLAGS: &[FeatureFlag] = &[
     FeatureFlag::VerticalTabsSummaryMode,
     FeatureFlag::CloudModeSetupV2,
     FeatureFlag::AsyncFind,
+    FeatureFlag::BoxDrawingGlyphs,
 ];
 
 /// Features enabled for feature preview build users (e.g.: Friends of Warp).

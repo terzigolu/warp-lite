@@ -494,7 +494,7 @@ impl RemoteServerClient {
             if let Err(e) = protocol::write_client_message(&mut writer, &msg).await {
                 let request_id = RequestId::from(msg.request_id);
                 if !e.is_write_recoverable() {
-                    log::error!("Writer task fatal error: request_id={request_id}: {e}");
+                    log::error!("Writer task fatal error: request_id={request_id}: {e:#}");
                     pending_requests.clear();
                     break;
                 }

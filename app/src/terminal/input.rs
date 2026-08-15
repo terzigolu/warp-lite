@@ -84,6 +84,7 @@ use crate::terminal::input::suggestions_mode_model::{
 use crate::terminal::input::terminal_message_bar::TerminalInputMessageBar;
 use crate::terminal::input::user_query::{UserQueryMenuEvent, UserQueryMenuView};
 use crate::terminal::model::session::active_session::ActiveSession;
+use crate::terminal::model::session::shell_quote_arg;
 use crate::terminal::package_installers::command_at_cursor_has_common_package_installer_prefix;
 use crate::terminal::prompt_render_helper::should_render_ps1_prompt;
 use crate::terminal::universal_developer_input::AtContextMenuDisabledReason;
@@ -139,7 +140,7 @@ use crate::{
     completer::SessionContext,
     context_chips::{
         display::{PromptDisplay, PromptDisplayEvent},
-        display_chip::DisplayChipConfig,
+        display_chip::{DisplayChipConfig, PromptChipShellCommand},
         prompt_type::PromptType,
     },
     debounce::debounce,
@@ -900,6 +901,33 @@ impl CommandExecutionSource {
                     ..
                 }
         )
+    }
+}
+
+fn render_prompt_chip_shell_command(
+    command: &PromptChipShellCommand,
+    shell_type: ShellType,
+) -> String {
+    match command {
+        PromptChipShellCommand::GitCheckout { branch_name } => {
+            format!("git checkout {}", shell_quote_arg(branch_name, shell_type))
+        }
+        PromptChipShellCommand::GitCreateAndCheckoutBranch { branch_name } => {
+            format!(
+                "git checkout -b {} --",
+                shell_quote_arg(branch_name, shell_type)
+            )
+        }
+        PromptChipShellCommand::ChangeDirectory { dir_name } => {
+            format!("cd {}", shell_quote_arg(dir_name, shell_type))
+        }
+        PromptChipShellCommand::NvmUse { version } => {
+            format!("nvm use {}", shell_quote_arg(version, shell_type))
+        }
+        PromptChipShellCommand::NvmInstallLatestNode => "nvm install node".to_string(),
+        PromptChipShellCommand::Echo { message } => {
+            format!("echo {}", shell_quote_arg(message, shell_type))
+        }
     }
 }
 
@@ -4902,9 +4930,17 @@ impl Input {
                 });
             }
             PromptDisplayEvent::TryExecuteCommand(command) => {
+                let Some(shell_type) = self
+                    .active_session(ctx)
+                    .map(|session| session.shell().shell_type())
+                else {
+                    log::warn!("Tried to execute prompt chip command without an active session");
+                    return;
+                };
+                let command = render_prompt_chip_shell_command(command, shell_type);
                 // Snapshot the current input so we can restore it after the command completes.
                 let current_input = self.buffer_text(ctx);
-                if self.try_execute_command_from_source(command, CommandExecutionSource::User, ctx)
+                if self.try_execute_command_from_source(&command, CommandExecutionSource::User, ctx)
                 {
                     self.cancel_active_conversation(ctx, CancellationReason::UserCommandExecuted);
                     if !current_input.is_empty() {
@@ -8814,6 +8850,19 @@ impl Input {
                 // e.g., we don't want to sync EditorEvent::CmdUpOnFirstRow.
                 self.send_input_sync_event(edit_origin, ctx);
 
+                // Distinguish edits the completion system applied itself (accepting or
+                // cycling through a candidate) from edits the user made (typing,
+                // backspacing, pasting). System-applied edits are allowed to diverge from
+                // the original completion query so that classic cycling keeps working;
+                // user edits still have to be revalidated against that query.
+                let is_user_edit = !matches!(
+                    self.editor.as_ref(ctx).get_last_action(ctx),
+                    Some(
+                        PlainTextEditorViewAction::AcceptCompletionSuggestion
+                            | PlainTextEditorViewAction::CycleCompletionSuggestion
+                    )
+                );
+
                 let mode = self.suggestions_mode_model.as_ref(ctx).mode().clone();
                 match &mode {
                     InputSuggestionsMode::CompletionSuggestions {
@@ -8887,6 +8936,7 @@ impl Input {
                                 replacement_start,
                                 buffer_text_original.as_str(),
                                 &completion_results,
+                                is_user_edit,
                                 ctx,
                             );
                             if should_close {
@@ -9055,10 +9105,13 @@ impl Input {
                             let replacement_start = *replacement_start;
                             let buffer_text_original = buffer_text_original.clone();
                             let completion_results = completion_results.clone();
+                            // A selection change is a cursor move, not a buffer edit, so it
+                            // never counts as a user edit for invalidation purposes.
                             let should_close = self.update_tab_completion_menu(
                                 replacement_start,
                                 buffer_text_original.as_str(),
                                 &completion_results,
+                                /*is_user_edit=*/ false,
                                 ctx,
                             );
 
@@ -9939,6 +9992,7 @@ impl Input {
         replacement_start: usize,
         buffer_text_original: &str,
         completion_results: &SuggestionResults,
+        is_user_edit: bool,
         ctx: &mut ViewContext<Input>,
     ) -> bool {
         let editor_text = self.editor.as_ref(ctx).buffer_text(ctx);
@@ -9955,13 +10009,18 @@ impl Input {
         // then we should close the completion menu because the result set
         // was based on a different query.
         //
-        // For classic completions, this is a poor heuristic: when you cycle
-        // through fuzzy matches, the text up to the cursor might not start
-        // with the original buffer text anymore.
-        // TODO: there's a bug here where if you hit tab and backspace,
-        // the result set won't go away (stale).
+        // Classic completions get an exemption from this check, but only for
+        // system-applied edits: when the completion system cycles through fuzzy
+        // matches it rewrites the buffer to each candidate, and the text up to the
+        // cursor may no longer start with the original buffer text. Keeping the
+        // result set alive in that case is what lets cycling work.
+        //
+        // A user edit (typing, backspacing, pasting) that diverges from the original
+        // query must still invalidate the result set. Otherwise a Tab followed by
+        // Backspace past the replacement boundary would leave stale suggestions on
+        // screen (and an empty prefix would re-show the entire original result set).
         if !text_up_to_cursor.starts_with(buffer_text_original)
-            && !self.is_classic_completions_enabled(ctx)
+            && (!self.is_classic_completions_enabled(ctx) || is_user_edit)
         {
             // Close the input suggestions since the buffer was edited to no longer
             // contain the text that triggered tab completion.

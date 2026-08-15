@@ -10,7 +10,7 @@ use warpui::{
     AppContext, Element, EventContext,
 };
 
-use super::{TerminalAction, TerminalView};
+use super::{GridHighlightedLink, TerminalAction, TerminalView};
 use crate::util::tooltips::{TooltipLink, TooltipRedaction};
 use crate::{
     appearance::Appearance,
@@ -26,7 +26,6 @@ use crate::{
 cfg_if::cfg_if! {
     if #[cfg(feature = "local_fs")] {
         use crate::terminal::view::RichContentLink;
-        use super::GridHighlightedLink;
     }
 }
 
@@ -236,7 +235,13 @@ impl TerminalView {
             }
 
             links.push(GridTooltipLink {
-                text: link.tooltip_text().to_owned(),
+                // OSC 8 links hide the destination behind arbitrary visible
+                // text, so show the URI itself in the tooltip; auto-detected
+                // URLs already show their destination as the visible text.
+                text: match link {
+                    GridHighlightedLink::Hyperlink { uri, .. } => uri.clone(),
+                    _ => link.tooltip_text().to_owned(),
+                },
                 action: TerminalAction::OpenGridLink(link.clone()),
                 mouse_state: self.mouse_states.grid_link_tooltip.clone(),
                 detail,

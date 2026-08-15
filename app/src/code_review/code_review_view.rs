@@ -3461,7 +3461,7 @@ impl CodeReviewView {
         ctx: &mut ViewContext<Self>,
     ) {
         match event {
-            LocalCodeEditorEvent::FileSaved => {
+            LocalCodeEditorEvent::FileSaved { .. } => {
 
                 ctx.emit(CodeReviewViewEvent::FileSaved {
                     path: full_file_path.to_path_buf(),

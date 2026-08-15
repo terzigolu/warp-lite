@@ -1077,13 +1077,8 @@ impl Action {
 /// Handles all incoming urls. These urls are file urls, auth urls for login,
 /// and team urls for opening team settings.
 pub fn handle_incoming_uri(url: &Url, ctx: &mut AppContext) {
-    // Non-dogfood builds must never log the full URL here: URLs routed to this
-    // handler can carry secrets in their query string (for example, the
-    // Firebase `refresh_token` on `warp://auth/desktop_redirect?...`). Log
-    // only the non-sensitive components (scheme, host, path) on release
-    // channels; dogfood builds retain the full URL for local debugging.
     safe_info!(
-        safe: ("received url {}", safe_url_log_fields(url)),
+        safe: ("received url"),
         full: ("received url {:?}", &url)
     );
 
@@ -1162,8 +1157,15 @@ enum OpenFileAction {
 
 /// Pure routing decision for `open_file`. Extracted so it can be unit-tested without
 /// standing up a full `AppContext`.
-fn classify_open_file_action(path: &Path) -> OpenFileAction {
-    if is_markdown_file(path) {
+///
+/// The Markdown Viewer preference is passed in because macOS can hand Markdown
+/// file URLs to Warp via the file type registration in `Info.plist`. Since Warp
+/// cannot easily update that registration when the user toggles the viewer
+/// preference, the URI handler must check the preference before routing a
+/// Markdown file to the in-Warp notebook viewer. Other notebook viewer formats,
+/// such as Jupyter notebooks, are controlled by their own routing checks.
+fn classify_open_file_action(path: &Path, prefer_markdown_viewer: bool) -> OpenFileAction {
+    if is_markdown_file(path) && prefer_markdown_viewer {
         OpenFileAction::Notebook
     } else if is_runnable_shell_script(path) {
         OpenFileAction::ExecuteInSession
@@ -1182,7 +1184,8 @@ fn can_open_file_editor_path(path: &Path) -> bool {
 }
 
 /// Handle an incoming `file://` URL.
-/// * Markdown files are opened as notebook panes.
+/// * Markdown files are opened as notebook panes when the viewer preference is enabled.
+/// * Jupyter notebook files are opened as notebook panes when their feature flag is enabled.
 /// * For directories, open a new session at the directory path.
 /// * For other files, open a new session at the parent directory path, then possibly execute the
 ///   file.
@@ -1197,7 +1200,15 @@ fn open_file(window_id: Option<WindowId>, path: PathBuf, ctx: &mut AppContext) {
             .map(|view_id| (window_id, view_id))
     });
 
-    let action = classify_open_file_action(&path);
+    #[cfg(feature = "local_fs")]
+    let prefer_markdown_viewer = {
+        use crate::util::file::external_editor::EditorSettings;
+        *EditorSettings::as_ref(ctx).prefer_markdown_viewer
+    };
+    #[cfg(not(feature = "local_fs"))]
+    let prefer_markdown_viewer = true;
+
+    let action = classify_open_file_action(&path, prefer_markdown_viewer);
 
     if action == OpenFileAction::Notebook {
         if let Some((primary_window_id, root_view_id)) = primary_window_and_view {
@@ -1559,19 +1570,7 @@ fn validate_custom_uri(url: &Url) -> Result<UriHost> {
     Ok(host)
 }
 
-/// Formats the non-sensitive components of an incoming URL for logging on
-/// release channels.
-///
-/// The returned string contains only the URL's scheme, host, and path — never
-/// its query string, fragment, or userinfo component. URLs that reach
-/// [`handle_incoming_uri`] can carry secrets in their query (for example, the
-/// Firebase refresh token in `warp://auth/desktop_redirect?refresh_token=...`),
-/// so this helper exists to give [`safe_info!`] a redacted representation that
-/// still preserves enough signal for triage.
-///
-/// `url.host_str()` can return `None` for schemes that don't require a host
-/// (e.g. some `file://` URLs on certain platforms); the literal `-` is used
-/// as a placeholder in that case so the formatter never panics.
+#[cfg(test)]
 fn safe_url_log_fields(url: &Url) -> String {
     format!(
         "scheme={} host={} path={}",

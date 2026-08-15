@@ -532,13 +532,14 @@ mod tests {
 
             // Create initial directory structure and files
             fs.mkdir("src")
+                .mkdir("target")
                 .with_files(vec![
                     Stub::FileWithContent("src/main.rs", "fn main() {}"),
                     Stub::FileWithContent(".gitignore", "*.log\n/target/"),
                     Stub::FileWithContent("debug.log", "log content"),
                     Stub::FileWithContent("README.md", "# Project"),
-                ])
-                .mkdir("target");
+                    Stub::FileWithContent("target/generated.o", "generated content"),
+                ]);
 
             let gitignore_path = repo_path.join(".gitignore");
             let (gitignore, _) = Gitignore::new(&gitignore_path);
@@ -577,6 +578,7 @@ mod tests {
             let mutations = block_on(LocalRepoMetadataModel::compute_file_tree_mutations(
                 &update,
                 &gitignores,
+                false,
             ));
             LocalRepoMetadataModel::apply_file_tree_mutations(&mut root, mutations, false, false);
 
@@ -588,9 +590,12 @@ mod tests {
             let readme_std = StandardizedPath::try_from_local(&readme_file).unwrap();
             let log_std = StandardizedPath::try_from_local(&log_file).unwrap();
             let target_std = StandardizedPath::try_from_local(&target_dir).unwrap();
+            let generated_std =
+                StandardizedPath::try_from_local(&target_dir.join("generated.o")).unwrap();
             assert!(all_paths.contains(&readme_std));
             assert!(all_paths.contains(&log_std));
             assert!(all_paths.contains(&target_std));
+            assert!(!all_paths.contains(&generated_std));
 
             // Make sure that the ignored files and folders are marked as ignored.
             assert!(root

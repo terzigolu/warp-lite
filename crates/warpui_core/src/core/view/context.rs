@@ -660,7 +660,6 @@ impl<'a, T: View> ViewContext<'a, T> {
         self.app.task_callbacks.insert(
             task_id,
             TaskCallback::ViewFromStream {
-                window_id: self.window_id,
                 view_id: self.view_id,
                 on_item: Box::new(move |view, output, app, window_id, view_id| {
                     let view = view.as_any_mut().downcast_mut().expect("this downcast should never fail, as correct typing is statically enforced via the generic parameters on spawn_local");
@@ -780,7 +779,6 @@ impl<'a, T: View> ViewContext<'a, T> {
         self.app.task_callbacks.insert(
             task_id,
             TaskCallback::ViewFromStream {
-                window_id: self.window_id,
                 view_id: self.view_id,
                 on_item: Box::new(move |view, task, app, window_id, view_id| {
                     let view = view

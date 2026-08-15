@@ -2406,6 +2406,136 @@ fn test_banner_for_incompatible_plugins() {
     })
 }
 
+/// Regression test for #9011: the slow-bootstrap banner used to persist
+/// indefinitely when shell integration never sent the bootstrap signal
+/// (e.g. the user's shell `exec`s into `expect` before Warp's integration
+/// runs). The auto-dismiss timer scheduled when the banner opens must
+/// eventually close it.
+#[test]
+fn test_slow_bootstrap_banner_auto_dismisses() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let terminal =
+            MockTerminalManager::create_new_terminal_view_window_for_test(&mut app, None);
+
+        // Open the banner directly and schedule a short-duration auto-dismiss
+        // timer. We bypass `on_bootstrap_failed_timer_complete` (which itself
+        // waits the 7-second bootstrap timeout) to keep this test fast — the
+        // important behavior under test is the auto-dismiss path.
+        terminal.update(&mut app, |view, ctx| {
+            view.is_slow_bootstrap_banner_open = true;
+            view.slow_bootstrap_banner_auto_dismiss_handle = Some(
+                view.start_slow_bootstrap_banner_auto_dismiss_timer(Duration::from_millis(50), ctx),
+            );
+        });
+
+        assert!(terminal.read(&app, |view, _ctx| view.is_slow_bootstrap_banner_open));
+
+        assert_eventually!(
+            200 => terminal.read(&app, |view, _ctx| !view.is_slow_bootstrap_banner_open
+                && view.slow_bootstrap_banner_auto_dismiss_handle.is_none()),
+            "Slow bootstrap banner did not auto-dismiss"
+        );
+    })
+}
+
+/// Regression test for #9011: when the banner is dismissed by another path
+/// (manual user dismissal or a successful bootstrap event), any pending
+/// auto-dismiss timer should be aborted so it can't fire after the fact.
+#[test]
+fn test_hide_slow_bootstrap_banner_aborts_pending_auto_dismiss() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let terminal =
+            MockTerminalManager::create_new_terminal_view_window_for_test(&mut app, None);
+
+        terminal.update(&mut app, |view, ctx| {
+            view.is_slow_bootstrap_banner_open = true;
+            view.slow_bootstrap_banner_auto_dismiss_handle =
+                Some(view.start_slow_bootstrap_banner_auto_dismiss_timer(
+                    // Long enough that the timer can't fire before we hide.
+                    Duration::from_secs(60),
+                    ctx,
+                ));
+            view.hide_slow_bootstrap_banner(ctx);
+        });
+
+        terminal.read(&app, |view, _ctx| {
+            assert!(!view.is_slow_bootstrap_banner_open);
+            assert!(view.slow_bootstrap_banner_auto_dismiss_handle.is_none());
+        });
+    })
+}
+
+// Regression test for GH#3548 / GH#6093: the "Seems like your completions are not
+// working" banner must offer a permanent "Don't show me again" dismissal that is
+// persisted, while the "x" close button keeps its existing per-session behavior.
+#[test]
+fn test_control_master_banner_permanent_dismissal_persists() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let terminal =
+            MockTerminalManager::create_new_terminal_view_window_for_test(&mut app, None);
+
+        terminal.update(&mut app, |view, ctx| {
+            // Temporary dismissal (the "x" button) clears the banner for this session
+            // but must not persist a "don't show again" preference.
+            view.control_master_error_banner_state.is_open = true;
+            view.handle_controlmaster_error_banner_event(
+                &BannerEvent::Dismiss(DismissalType::Temporary),
+                ctx,
+            );
+            assert!(!view.control_master_error_banner_state.is_open);
+            assert!(!view.control_master_error_banner_suppressed);
+            assert_eq!(
+                ctx.private_user_preferences()
+                    .read_value(CONTROL_MASTER_BANNER_SUPPRESSED_KEY)
+                    .unwrap(),
+                None,
+                "temporary dismissal should not persist a preference"
+            );
+
+            // Permanent dismissal ("Don't show me again") clears the banner and persists
+            // the choice so it never reopens.
+            view.control_master_error_banner_state.is_open = true;
+            view.handle_controlmaster_error_banner_event(
+                &BannerEvent::Dismiss(DismissalType::Permanent),
+                ctx,
+            );
+            assert!(!view.control_master_error_banner_state.is_open);
+            assert!(view.control_master_error_banner_suppressed);
+            assert_eq!(
+                ctx.private_user_preferences()
+                    .read_value(CONTROL_MASTER_BANNER_SUPPRESSED_KEY)
+                    .unwrap(),
+                Some("true".to_owned()),
+                "permanent dismissal should persist a preference"
+            );
+        });
+    })
+}
+
+// Regression test for GH#3548 / GH#6093: once the banner has been permanently
+// dismissed it must not reopen on subsequent sessions.
+#[test]
+fn test_control_master_banner_suppressed_does_not_reopen() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let terminal =
+            MockTerminalManager::create_new_terminal_view_window_for_test(&mut app, None);
+
+        terminal.update(&mut app, |view, _ctx| {
+            // Without a prior dismissal, the banner may open.
+            view.control_master_error_banner_suppressed = false;
+            assert!(view.should_open_control_master_banner());
+
+            // Once permanently dismissed it must never reopen.
+            view.control_master_error_banner_suppressed = true;
+            assert!(!view.should_open_control_master_banner());
+        });
+    })
+}
+
 #[test]
 fn test_bash_vim_banner_already_shown() {
     App::test((), |mut app| async move {

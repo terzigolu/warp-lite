@@ -24,6 +24,7 @@ pub use init_project::{
 };
 use onboarding::callout::{FinalState, OnboardingCalloutViewEvent, OnboardingQuery};
 use onboarding::{OnboardingCalloutView, OnboardingKeybindings};
+use repo_metadata::CanonicalizedPath;
 pub(crate) mod docker_sandbox;
 mod link_detection;
 mod open_in_warp;
@@ -668,6 +669,14 @@ const BOOTSTRAP_FAILED_DURATION: Duration = Duration::from_secs(7);
 /// a user needing to type in one or many secret manager passwords
 /// during the bootstrap period.
 const ENV_VAR_BOOTSTRAP_FAILED_DURATION: Duration = Duration::from_secs(60);
+/// How long the slow-bootstrap banner stays visible after it first appears
+/// before it auto-dismisses. The banner used to persist until the user
+/// dismissed it manually or bootstrap finished, but in workflows where
+/// bootstrap will never complete (e.g. a shell that `exec`s into `expect`
+/// before Warp's shell integration runs), nothing ever clears it. Auto-
+/// dismissal keeps the warning informational without turning it into a
+/// permanent fixture.
+const SLOW_BOOTSTRAP_BANNER_AUTO_DISMISS_DURATION: Duration = Duration::from_secs(30);
 const KNOWN_ISSUES_URL: &str =
     "https://docs.warp.dev/support-and-community/troubleshooting-and-support/known-issues";
 
@@ -699,6 +708,20 @@ pub const NOTIFICATIONS_TROUBLESHOOT_URL: &str =
 
 const DEBOUNCE_PERIOD: Duration = Duration::from_millis(40);
 
+/// Key used in user preferences to persist the "don't show again" choice for the SSH
+/// ControlMaster / "completions are not working" banner.
+const CONTROL_MASTER_BANNER_SUPPRESSED_KEY: &str = "ControlMasterBannerSuppressed";
+
+/// Key used in user preferences to persist the "don't show again" choice for the OSC 52
+/// clipboard blocked banner.
+const OSC52_CLIPBOARD_BANNER_SUPPRESSED_KEY: &str = "Osc52ClipboardBannerSuppressed";
+
+/// Which type of OSC 52 clipboard operation was blocked.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Osc52ClipboardBlockedType {
+    Read,
+    Write,
+}
 /// Key used in user defaults to save whether the user has seen the banner.
 pub const ALIAS_EXPANSION_BANNER_SEEN_KEY: &str = "AliasExpansionBannerSeen";
 
@@ -2387,6 +2410,13 @@ impl DropTargetData for TerminalDropTargetData {
     }
 }
 
+/// Cached result of [`TerminalView::canonical_session_pwd_if_local`].
+struct LocalSessionCanonicalPwdCache {
+    /// Non-canonical path
+    path: PathBuf,
+    canonical: CanonicalizedPath,
+}
+
 pub struct TerminalView {
     pub model: Arc<FairMutex<TerminalModel>>,
     view_handle: WeakViewHandle<Self>,
@@ -2496,6 +2526,13 @@ pub struct TerminalView {
     enter_agent_view_after_pending_commands: bool,
     slow_bootstrap_banner: ViewHandle<Banner<TerminalAction>>,
     is_slow_bootstrap_banner_open: bool,
+    /// Timer that auto-dismisses the slow-bootstrap banner after
+    /// [`SLOW_BOOTSTRAP_BANNER_AUTO_DISMISS_DURATION`]. Held so it can be
+    /// aborted when the banner is hidden for any other reason (manual
+    /// dismissal, successful bootstrap completion) — letting an in-flight
+    /// timer fire afterwards would be a no-op since `hide_slow_bootstrap_banner`
+    /// is idempotent, but aborting avoids spurious work.
+    slow_bootstrap_banner_auto_dismiss_handle: Option<SpawnedFutureHandle>,
 
     /// The handle to any currently hovered secret. Used to determine whether the
     /// secret gets a special hovered treatment.
@@ -2506,6 +2543,8 @@ pub struct TerminalView {
 
     control_master_error_banner: ViewHandle<Banner<TerminalAction>>,
     control_master_error_banner_state: ControlMasterErrorBannerState,
+    /// Whether the user has permanently dismissed the control master error banner.
+    control_master_error_banner_suppressed: bool,
 
     /// Banner to show if we detect a configuration in the user's rc files that
     /// is incompatible with Warp.
@@ -2517,11 +2556,20 @@ pub struct TerminalView {
     emacs_bindings_banner: ViewHandle<Banner<TerminalAction>>,
     is_emacs_bindings_banner_open: bool,
 
+    /// Banner shown when an OSC 52 clipboard operation is blocked by the user's setting.
+    osc52_clipboard_blocked_banner: ViewHandle<Banner<TerminalAction>>,
+    /// Which type of clipboard operation was blocked (if the banner is visible).
+    osc52_clipboard_blocked_type: Option<Osc52ClipboardBlockedType>,
+    /// Whether the user has permanently dismissed the clipboard blocked banner.
+    osc52_clipboard_banner_suppressed: bool,
+
     pane_configuration: ModelHandle<PaneConfiguration>,
     focus_handle: Option<PaneFocusHandle>,
 
     sessions: ModelHandle<Sessions>,
     active_block_metadata: Option<BlockMetadata>,
+    /// Memoized result of `canonical_session_pwd_if_local`.
+    canonical_session_pwd_cache: RefCell<Option<LocalSessionCanonicalPwdCache>>,
 
     block_text_selection_start_position: Option<Vector2F>,
 
@@ -3725,7 +3773,7 @@ impl TerminalView {
         });
 
         let control_master_error_banner = ctx.add_typed_action_view(|_| {
-            Banner::new(BannerTextContent::formatted_text(vec![
+            Banner::new_permanently_dismissible(BannerTextContent::formatted_text(vec![
                 FormattedTextFragment::plain_text("Seems like your completions are not working ("),
                 FormattedTextFragment::hyperlink("more info", CONTROLMASTER_ISSUES_URL),
                 FormattedTextFragment::plain_text("). Enabling tmux warpification in "),
@@ -3795,6 +3843,50 @@ impl TerminalView {
             });
         }
 
+        let control_master_error_banner_suppressed = ctx
+            .private_user_preferences()
+            .read_value(CONTROL_MASTER_BANNER_SUPPRESSED_KEY)
+            .ok()
+            .flatten()
+            .is_some_and(|v| v == "true");
+
+        let osc52_clipboard_blocked_banner = ctx.add_typed_action_view(|_| {
+            Banner::<TerminalAction>::new_with_buttons(
+                BannerTextContent::plain_text(
+                    "A terminal program tried to access your clipboard. This is disabled by default for security reasons.",
+                ),
+                vec![
+                    BannerTextButton::new(
+                        "Allow".to_string(),
+                        Rc::new(|event_ctx, _ctx, _position| {
+                            event_ctx.dispatch_typed_action(BannerAction::<TerminalAction>::Action(
+                                TerminalAction::Osc52AllowBlockedClipboardOperation,
+                            ));
+                        }),
+                    ),
+                    BannerTextButton::new(
+                        "Don't show again".to_string(),
+                        Rc::new(|event_ctx, _ctx, _position| {
+                            event_ctx.dispatch_typed_action(
+                                BannerAction::<TerminalAction>::Dismiss(DismissalType::Permanent),
+                            );
+                        }),
+                    ),
+                ],
+                true,
+            )
+            .with_icon(icons::Icon::AlertTriangle)
+        });
+        ctx.subscribe_to_view(&osc52_clipboard_blocked_banner, |me, _, event, ctx| {
+            me.handle_osc52_clipboard_banner_event(event, ctx);
+        });
+
+        let osc52_clipboard_banner_suppressed = ctx
+            .private_user_preferences()
+            .read_value(OSC52_CLIPBOARD_BANNER_SUPPRESSED_KEY)
+            .ok()
+            .flatten()
+            .is_some_and(|v| v == "true");
         let windowing_state_handle = WindowManager::handle(ctx);
         ctx.subscribe_to_model(&windowing_state_handle, |me, _handle, evt, ctx| match evt {
             windowing::StateEvent::ValueChanged { current, previous } => {
@@ -4088,17 +4180,23 @@ impl TerminalView {
             enter_agent_view_after_pending_commands: false,
             slow_bootstrap_banner,
             is_slow_bootstrap_banner_open: false,
+            slow_bootstrap_banner_auto_dismiss_handle: None,
             incompatible_configuration_banner,
             is_incompatible_configuration_banner_open: false,
             emacs_bindings_banner,
             is_emacs_bindings_banner_open: false,
             control_master_error_banner,
             control_master_error_banner_state: Default::default(),
+            control_master_error_banner_suppressed,
+            osc52_clipboard_blocked_banner,
+            osc52_clipboard_blocked_type: None,
+            osc52_clipboard_banner_suppressed,
             pane_configuration,
             focus_handle: None,
             sessions,
             remote_server_shimmer_handle: ShimmeringTextStateHandle::new(),
             active_block_metadata: None,
+            canonical_session_pwd_cache: RefCell::new(None),
             block_text_selection_start_position: None,
             background_executor: ctx.background_executor().clone(),
             inline_banners_state: Default::default(),
@@ -6489,6 +6587,36 @@ impl TerminalView {
         }
     }
 
+    /// Returns the active local session's CWD, canonicalized via `dunce::canonicalize` to resolve
+    /// symlinks and normalize the path.
+    ///
+    /// The canonicalization is memoized in `canonical_session_pwd_cache`, keyed on the
+    /// non-canonical path, and only recomputed when that path changes.
+    pub fn canonical_session_pwd_if_local<C: ModelAsRef>(
+        &self,
+        ctx: &C,
+    ) -> Option<CanonicalizedPath> {
+        let path = self.active_session_path_if_local(ctx)?;
+
+        // Return the cached value when the non-canonical path has not changed.
+        if let Some(cached) = self.canonical_session_pwd_cache.borrow().as_ref() {
+            if cached.path == path {
+                return Some(cached.canonical.clone());
+            }
+        }
+
+        let canonical = CanonicalizedPath::try_from(&path).ok()?;
+
+        if let Ok(mut cache) = self.canonical_session_pwd_cache.try_borrow_mut() {
+            *cache = Some(LocalSessionCanonicalPwdCache {
+                path,
+                canonical: canonical.clone(),
+            });
+        }
+
+        Some(canonical)
+    }
+
     pub fn input(&self) -> &ViewHandle<Input> {
         &self.input
     }
@@ -7881,13 +8009,19 @@ impl TerminalView {
         // up eventually.
         if self.control_master_error_banner_state.associated_session_id != active_session_id {
             self.control_master_error_banner_state = ControlMasterErrorBannerState {
-                is_open: true,
+                is_open: self.should_open_control_master_banner(),
                 associated_session_id: active_session_id,
             };
 
             ctx.notify();
 
         }
+    }
+
+    /// The control master / completions banner should remain closed after the user has
+    /// permanently dismissed it via "Don't show me again".
+    fn should_open_control_master_banner(&self) -> bool {
+        !self.control_master_error_banner_suppressed
     }
 
     fn read_from_clipboard(
@@ -10107,18 +10241,34 @@ impl TerminalView {
                 }
             }
             ModelEvent::ClipboardStore(_, contents) => {
-                ctx.clipboard()
-                    .write(ClipboardContent::plain_text(contents.to_owned()));
+                let access = *TerminalSettings::as_ref(ctx).osc52_clipboard_access;
+                if access.allows_write() {
+                    ctx.clipboard()
+                        .write(ClipboardContent::plain_text(contents.to_owned()));
+                } else {
+                    log::info!(
+                        "OSC 52 clipboard write blocked by terminal.osc52_clipboard_access setting"
+                    );
+                    self.show_osc52_clipboard_blocked_banner(Osc52ClipboardBlockedType::Write, ctx);
+                }
             }
             ModelEvent::ClipboardLoad(_, format) => {
-                self.write_to_pty(
-                    format(&TerminalView::read_from_clipboard(
-                        Some(self.shell_family(ctx)),
+                let access = *TerminalSettings::as_ref(ctx).osc52_clipboard_access;
+                if access.allows_read() {
+                    self.write_to_pty(
+                        format(&TerminalView::read_from_clipboard(
+                            Some(self.shell_family(ctx)),
+                            ctx,
+                        ))
+                        .into_bytes(),
                         ctx,
-                    ))
-                    .into_bytes(),
-                    ctx,
-                );
+                    );
+                } else {
+                    log::info!(
+                        "OSC 52 clipboard read blocked by terminal.osc52_clipboard_access setting"
+                    );
+                    self.show_osc52_clipboard_blocked_banner(Osc52ClipboardBlockedType::Read, ctx);
+                }
             }
             ModelEvent::CursorBlinkingChange(_) => {}
             ModelEvent::MouseCursorDirty => {}
@@ -11802,10 +11952,9 @@ impl TerminalView {
         self.any_session_contains_remote_blocks |= self.active_block_is_considered_remote(ctx);
         self.update_focused_terminal_info(ctx);
 
-        if let Some(working_directory) = self.pwd_if_local(ctx) {
+        if let Some(working_directory) = self.active_session_path_if_local(ctx) {
             CodebaseIndexManager::handle(ctx).update(ctx, |manager, _ctx| {
-                let path_buf = PathBuf::from(&working_directory);
-                manager.handle_session_bootstrapped(&path_buf);
+                manager.handle_session_bootstrapped(&working_directory);
             });
         }
 
@@ -12185,8 +12334,9 @@ impl TerminalView {
             self.maybe_set_pending_repo_init_path(path_buf);
         }
 
+        let escaped = self.shell_family(ctx).shell_escape(&path);
         self.input.update(ctx, |input, ctx| {
-            input.try_execute_command(format!("cd \"{path}\"").as_str(), ctx);
+            input.try_execute_command(&format!("cd {escaped}"), ctx);
         });
 
         self.toggle_left_panel_file_tree(true, ctx);
@@ -12239,11 +12389,10 @@ impl TerminalView {
         self.init_project(true, ctx);
     }
 
-    // Show or hide codebase index speedbump depending when a settings change happens.
+    /// Show or hide codebase index speedbump depending when a settings change happens.
     fn check_codebase_index_speedbump_on_settings_changed(&mut self, ctx: &mut ViewContext<Self>) {
-        if let Some(working_directory) = self.pwd_if_local(ctx) {
-            let path_buf = PathBuf::from(&working_directory);
-            self.update_repo_banner_state(path_buf, ctx);
+        if let Some(working_directory) = self.active_session_path_if_local(ctx) {
+            self.update_repo_banner_state(working_directory, ctx);
         }
     }
 
@@ -14145,10 +14294,32 @@ impl TerminalView {
     }
 
     fn hide_slow_bootstrap_banner(&mut self, ctx: &mut ViewContext<Self>) {
+        if let Some(handle) = self.slow_bootstrap_banner_auto_dismiss_handle.take() {
+            handle.abort();
+        }
         if self.is_slow_bootstrap_banner_open {
             self.is_slow_bootstrap_banner_open = false;
             ctx.notify();
         }
+    }
+
+    /// Schedule a timer that auto-dismisses the slow-bootstrap banner after
+    /// `duration`. Exposed as a method (rather than inlined) so tests can
+    /// trigger the same scheduling path with a short duration.
+    fn start_slow_bootstrap_banner_auto_dismiss_timer(
+        &self,
+        duration: Duration,
+        ctx: &mut ViewContext<Self>,
+    ) -> SpawnedFutureHandle {
+        ctx.spawn(
+            async move {
+                Timer::after(duration).await;
+            },
+            |me, _, ctx| {
+                me.slow_bootstrap_banner_auto_dismiss_handle = None;
+                me.hide_slow_bootstrap_banner(ctx);
+            },
+        )
     }
 
     #[cfg(not(target_family = "wasm"))]
@@ -14263,6 +14434,17 @@ impl TerminalView {
         if !self.is_login_shell_bootstrapped {
             log::warn!("Showing bootstrap slow toast");
             self.is_slow_bootstrap_banner_open = true;
+            // Replace any prior auto-dismiss timer (defensive — the banner
+            // should only open once per session, but if the path is ever
+            // exercised twice we don't want to leak a SpawnedFutureHandle).
+            if let Some(handle) = self.slow_bootstrap_banner_auto_dismiss_handle.take() {
+                handle.abort();
+            }
+            self.slow_bootstrap_banner_auto_dismiss_handle =
+                Some(self.start_slow_bootstrap_banner_auto_dismiss_timer(
+                    SLOW_BOOTSTRAP_BANNER_AUTO_DISMISS_DURATION,
+                    ctx,
+                ));
             ctx.notify();
         }
 
@@ -14307,7 +14489,9 @@ impl TerminalView {
 
         let new_size = size_update.new_size.pane_size_px();
         if new_size.x() == 0. || new_size.y() == 0. {
-            log::info!("Tried to resize with size {new_size:?}. Skipping resize");
+            // This can recur on every layout pass (e.g. while a pane is collapsed),
+            // so keep it at debug to avoid flooding release logs at frame rate.
+            log::debug!("Tried to resize with size {new_size:?}. Skipping resize");
             return;
         }
 
@@ -14782,6 +14966,25 @@ impl TerminalView {
                             items
                         })
                         .unwrap_or_default()
+                    }
+                    GridHighlightedLink::Hyperlink { uri, .. } => {
+                        // OSC 8 hyperlink right-click. "Copy link" copies the
+                        // URI verbatim; "Open link" dispatches through
+                        // `OpenGridLink`.
+                        vec![
+                            MenuItemFields::new("Open link")
+                                .with_on_select_action(TerminalAction::OpenGridLink(
+                                    highlighted_link.clone(),
+                                ))
+                                .into_item(),
+                            MenuItemFields::new("Copy link")
+                                .with_on_select_action(TerminalAction::ContextMenu(
+                                    ContextMenuAction::CopyUrl {
+                                        url_content: uri.clone(),
+                                    },
+                                ))
+                                .into_item(),
+                        ]
                     }
                 }
             }
@@ -16820,9 +17023,15 @@ impl TerminalView {
                 }
             }
             GridHighlightedLink::Url(url) if url.contains(position) => {
-                let model = self.model.lock();
+                let uri = self
+                    .model
+                    .lock()
+                    .link_at_range(url, RespectObfuscatedSecrets::No);
                 ctx.notify();
-                ctx.open_url(&model.link_at_range(url, RespectObfuscatedSecrets::No));
+                ctx.open_url(&uri);
+            }
+            GridHighlightedLink::Hyperlink { link, uri } if link.contains(position) => {
+                self.open_hyperlink_uri(uri, ctx);
             }
             _ => (),
         }
@@ -16831,6 +17040,16 @@ impl TerminalView {
             ctx.reset_cursor();
             ctx.notify();
         }
+    }
+
+    /// Open an OSC 8 hyperlink URI. The URI comes from untrusted terminal
+    /// output, so it is only opened if it parses as a URL.
+    fn open_hyperlink_uri(&self, uri: &str, ctx: &mut ViewContext<Self>) {
+        if url::Url::parse(uri).is_err() {
+            return;
+        }
+        ctx.notify();
+        ctx.open_url(uri);
     }
 
     fn middle_click_on_grid(
@@ -20105,6 +20324,63 @@ impl TerminalView {
         }
     }
 
+    fn show_osc52_clipboard_blocked_banner(
+        &mut self,
+        blocked_type: Osc52ClipboardBlockedType,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        if self.osc52_clipboard_banner_suppressed {
+            return;
+        }
+        // Dedup: if already showing the same type, do not re-show.
+        if self.osc52_clipboard_blocked_type == Some(blocked_type) {
+            return;
+        }
+        let text = match blocked_type {
+            Osc52ClipboardBlockedType::Write => {
+                "A terminal program tried to write to your clipboard. This is disabled by default for security reasons, to protect against malicious software."
+            }
+            Osc52ClipboardBlockedType::Read => {
+                "A terminal program tried to read your clipboard. This is disabled by default for security reasons, to protect against malicious software."
+            }
+        };
+        let button_label = match blocked_type {
+            Osc52ClipboardBlockedType::Write => "Allow clipboard writes",
+            Osc52ClipboardBlockedType::Read => "Allow clipboard reads and writes",
+        };
+        self.osc52_clipboard_blocked_banner
+            .update(ctx, |banner, ctx| {
+                banner.set_content(BannerTextContent::plain_text(text), ctx);
+                banner.set_action_button_label(0, button_label, ctx);
+            });
+        self.osc52_clipboard_blocked_type = Some(blocked_type);
+        ctx.notify();
+    }
+
+    fn handle_osc52_clipboard_banner_event(
+        &mut self,
+        event: &BannerEvent<TerminalAction>,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        match event {
+            BannerEvent::Dismiss(DismissalType::Temporary) => {
+                self.osc52_clipboard_blocked_type = None;
+                ctx.notify();
+            }
+            BannerEvent::Dismiss(DismissalType::Permanent) => {
+                self.osc52_clipboard_blocked_type = None;
+                self.osc52_clipboard_banner_suppressed = true;
+                let _ = ctx
+                    .private_user_preferences()
+                    .write_value(OSC52_CLIPBOARD_BANNER_SUPPRESSED_KEY, "true".to_owned());
+                ctx.notify();
+            }
+            BannerEvent::Action(terminal_action) => {
+                self.handle_action(terminal_action, ctx);
+            }
+        }
+    }
+
     fn handle_incompatible_configuration_banner_event(
         &mut self,
         event: &BannerEvent<TerminalAction>,
@@ -20227,8 +20503,16 @@ impl TerminalView {
         ctx: &mut ViewContext<Self>,
     ) {
         match event {
-            BannerEvent::Dismiss { .. } => {
+            BannerEvent::Dismiss(DismissalType::Temporary) => {
                 self.control_master_error_banner_state.is_open = false;
+                ctx.notify();
+            }
+            BannerEvent::Dismiss(DismissalType::Permanent) => {
+                self.control_master_error_banner_state.is_open = false;
+                self.control_master_error_banner_suppressed = true;
+                let _ = ctx
+                    .private_user_preferences()
+                    .write_value(CONTROL_MASTER_BANNER_SUPPRESSED_KEY, "true".to_owned());
                 ctx.notify();
             }
             BannerEvent::Action(_) => {
@@ -23439,10 +23723,14 @@ impl TerminalView {
     }
 
     fn warpify_ssh_session(&mut self, ctx: &mut ViewContext<Self>) {
+        let Some(session_id) = self.active_block_session_id() else {
+            return;
+        };
         self.warpify_state.set_shell_detection_in_progress();
         self.begin_ssh_warpify_timeout(SSH_WARPIFY_TIMEOUT_DURATION, ctx);
         self.clear_line_editor_and_write_to_pty(
-            convert_script_to_one_line(&begin_warpify_ssh_session_command(ctx)).into_bytes(),
+            convert_script_to_one_line(&begin_warpify_ssh_session_command(ctx, session_id))
+                .into_bytes(),
             ctx,
         );
     }
@@ -23671,16 +23959,17 @@ impl TerminalView {
     fn start_lsp_server_in_active_pwd(&self, ctx: &mut ViewContext<Self>) {
         use crate::ai::persisted_workspace::LspTask;
 
-        let Some(cwd) = self
-            .pwd_if_local(ctx)
-            .map(PathBuf::from)
-            .and_then(|p| p.canonicalize().ok())
-        else {
+        let Some(cwd) = self.canonical_session_pwd_if_local(ctx) else {
             return;
         };
 
         PersistedWorkspace::handle(ctx).update(ctx, |workspace, ctx| {
-            workspace.execute_lsp_task(LspTask::Spawn { file_path: cwd }, ctx);
+            workspace.execute_lsp_task(
+                LspTask::Spawn {
+                    file_path: cwd.into(),
+                },
+                ctx,
+            );
         });
     }
 
@@ -24038,7 +24327,8 @@ impl TypedActionView for TerminalView {
             | ToggleUsageFooter
             | RevealChildAgent { .. }
             | OpenCLIAgentRichInput
-            | ToggleSessionRecording => Empty,
+            | ToggleSessionRecording
+            | Osc52AllowBlockedClipboardOperation => Empty,
         }
     }
 
@@ -24596,8 +24886,7 @@ impl TypedActionView for TerminalView {
                 }
             }
             HyperlinkClick(hyperlink) => {
-                ctx.notify();
-                ctx.open_url(&hyperlink.url);
+                self.open_hyperlink_uri(&hyperlink.url, ctx);
             }
             AttemptLoginGatedFeature => {
                 AuthManager::handle(ctx).update(ctx, |auth_manager, ctx| {
@@ -25053,6 +25342,22 @@ impl TypedActionView for TerminalView {
                     self.open_cli_agent_rich_input(CLIAgentInputEntrypoint::CtrlG, ctx);
                 }
             }
+            Osc52AllowBlockedClipboardOperation => {
+                use crate::terminal::settings::Osc52ClipboardAccess;
+                if let Some(blocked_type) = self.osc52_clipboard_blocked_type {
+                    let new_value = match blocked_type {
+                        Osc52ClipboardBlockedType::Write => Osc52ClipboardAccess::WriteOnly,
+                        Osc52ClipboardBlockedType::Read => Osc52ClipboardAccess::ReadWrite,
+                    };
+                    TerminalSettings::handle(ctx).update(ctx, |terminal_settings, ctx| {
+                        let _ = terminal_settings
+                            .osc52_clipboard_access
+                            .set_value(new_value, ctx);
+                    });
+                    self.osc52_clipboard_blocked_type = None;
+                    ctx.notify();
+                }
+            }
         }
     }
 }
@@ -25412,6 +25717,8 @@ impl View for TerminalView {
                 stack.add_child(ChildView::new(&self.incompatible_configuration_banner).finish());
             } else if self.is_emacs_bindings_banner_open {
                 stack.add_child(ChildView::new(&self.emacs_bindings_banner).finish());
+            } else if self.osc52_clipboard_blocked_type.is_some() {
+                stack.add_child(ChildView::new(&self.osc52_clipboard_blocked_banner).finish());
             }
         }
 

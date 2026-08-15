@@ -394,6 +394,18 @@ impl platform::Delegate for AppDelegate {
         }
     }
 
+    fn set_dock_icon_visible(&self, visible: bool) {
+        dispatch::Queue::main().exec_async(move || {
+            let value: BOOL = if visible { YES } else { NO };
+            // SAFETY: the closure runs on the main dispatch queue and the Warp application
+            // installs its custom delegate before settings updates can reach this method.
+            unsafe {
+                let app_delegate: id = msg_send![app::get_warp_app(), delegate];
+                let _: BOOL = msg_send![app_delegate, setDockIconVisible: value];
+            }
+        });
+    }
+
     fn terminate_app(&self, termination_mode: TerminationMode) {
         // Execute `[NSApp terminate]` asynchronously on the main thread to
         // ensure we don't accidentally run into any double-borrow errors.

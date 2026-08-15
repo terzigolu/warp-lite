@@ -42,12 +42,43 @@ const PREFIXES_TO_REMOVE: [&str; 2] = ["a/", "b/"];
 #[cfg(feature = "local_fs")]
 const SUFFIXES_TO_REMOVE: [&str; 1] = ["@"];
 
+/// Strips a single trailing sentence period from a captured path token when the
+/// period is sentence punctuation rather than a meaningful path component.
+///
+/// File paths written at the end of a sentence frequently capture the trailing
+/// period (e.g. `notes/README.md.`). No real file name ends in `.`, and on
+/// Windows the NT path normalizer silently strips a trailing `.` during path
+/// resolution — so without trimming, the captured token keeps the period in both
+/// the highlight range and the file extension, defeating extension-based
+/// classification (e.g. opening markdown in the viewer instead of as raw text).
+///
+/// Returns `None` when there is no trailing period, or when the trailing period
+/// is part of a `.`/`..` path component (e.g. `.`, `..`, `foo/.`, `foo/..`),
+/// which are legitimate path segments and must be preserved.
+#[cfg(feature = "local_fs")]
+fn path_without_trailing_sentence_period(path: &str) -> Option<&str> {
+    let trimmed = path.strip_suffix('.')?;
+    match trimmed.chars().next_back() {
+        // Empty (`.`) or a dot/separator immediately before the trailing `.`
+        // means the period is a real path component (`..`, `foo/.`, `foo\.`),
+        // not sentence punctuation.
+        None | Some('.') | Some('/') | Some('\\') => None,
+        _ => Some(trimmed),
+    }
+}
+
 /// Highlighted link within a terminal model grid.
 #[derive(Debug, Clone)]
 pub enum GridHighlightedLink {
     Url(WithinModel<Link>),
     #[cfg(feature = "local_fs")]
     File(WithinModel<FileLink>),
+    /// OSC 8 hyperlink span. Carries the URI directly because — unlike `Url`
+    /// — it isn't recoverable from the cell text.
+    Hyperlink {
+        link: WithinModel<Link>,
+        uri: String,
+    },
 }
 
 impl GridHighlightedLink {
@@ -56,6 +87,7 @@ impl GridHighlightedLink {
             GridHighlightedLink::Url(url) => url.contains(position),
             #[cfg(feature = "local_fs")]
             GridHighlightedLink::File(file_link) => file_link.contains(position),
+            GridHighlightedLink::Hyperlink { link, .. } => link.contains(position),
         }
     }
 
@@ -74,6 +106,7 @@ impl GridHighlightedLink {
             #[cfg(feature = "local_fs")]
             GridHighlightedLink::File(_) => "Open file",
             GridHighlightedLink::Url(_) => "Open link",
+            GridHighlightedLink::Hyperlink { .. } => "Open link",
         }
     }
 }
@@ -91,6 +124,9 @@ impl Serialize for GridHighlightedLink {
             GridHighlightedLink::File(_) => {
                 serializer.serialize_unit_variant("HighlightedLink", 1, "File")
             }
+            GridHighlightedLink::Hyperlink { .. } => {
+                serializer.serialize_unit_variant("HighlightedLink", 2, "Hyperlink")
+            }
         }
     }
 }
@@ -103,6 +139,10 @@ impl TryFrom<GridHighlightedLink> for Link {
             GridHighlightedLink::Url(WithinModel::AltScreen(url)) => Ok(url),
             #[cfg(feature = "local_fs")]
             GridHighlightedLink::File(WithinModel::AltScreen(file_link)) => Ok(file_link.link),
+            GridHighlightedLink::Hyperlink {
+                link: WithinModel::AltScreen(link),
+                ..
+            } => Ok(link),
             _ => Err(anyhow::anyhow!(
                 "HighlightedLink is not within the alt screen"
             )),
@@ -120,6 +160,10 @@ impl TryFrom<GridHighlightedLink> for WithinBlock<Link> {
             GridHighlightedLink::File(WithinModel::BlockList(file_link)) => {
                 Ok(file_link.map(|file_link| file_link.link))
             }
+            GridHighlightedLink::Hyperlink {
+                link: WithinModel::BlockList(link),
+                ..
+            } => Ok(link),
             _ => Err(anyhow::anyhow!(
                 "HighlightedLink is not within the block list"
             )),
@@ -210,6 +254,25 @@ impl HighlightedLinkOption {
                         .set_smart_select_override(file_link.link.range.clone());
                 }
             },
+            GridHighlightedLink::Hyperlink {
+                link: within_model, ..
+            } => match within_model {
+                WithinModel::BlockList(within_block) => {
+                    let point_range = WithinBlock::new(
+                        within_block.inner.range.clone(),
+                        within_block.block_index,
+                        within_block.grid,
+                    );
+                    model
+                        .block_list_mut()
+                        .set_smart_select_override(point_range);
+                }
+                WithinModel::AltScreen(link) => {
+                    model
+                        .alt_screen_mut()
+                        .set_smart_select_override(link.range.clone());
+                }
+            },
         }
         self.inner = Some(link);
     }
@@ -295,22 +358,43 @@ impl super::TerminalView {
             new_cursor_shape = Some(Cursor::Arrow);
         }
 
-        let (url_at_point, new_fragment_boundary) = {
+        let (hyperlink_at_point, url_at_point, new_fragment_boundary) = {
             let model = self.model.lock();
+            // OSC 8 wins over auto-detected URLs on the same cell, so check for
+            // a hyperlink first and only run the urlocator scan when no OSC 8
+            // span covers `position`.
+            let hyperlink_at_point = model.hyperlink_at_point(position);
+            let url_at_point = if hyperlink_at_point.is_none() {
+                model.url_at_point(position)
+            } else {
+                None
+            };
             (
-                model.url_at_point(position),
+                hyperlink_at_point,
+                url_at_point,
                 model.fragment_boundary_at_point(position),
             )
         };
 
-        match (url_at_point, &self.last_hover_fragment_boundary) {
-            (Some(url), _) => {
+        match (
+            hyperlink_at_point,
+            url_at_point,
+            &self.last_hover_fragment_boundary,
+        ) {
+            (Some((link, uri)), _, _) => {
+                self.highlighted_link.set(
+                    GridHighlightedLink::Hyperlink { link, uri },
+                    &mut self.model.lock(),
+                );
+                new_cursor_shape = Some(Cursor::PointingHand);
+            }
+            (None, Some(url), _) => {
                 self.highlighted_link
                     .set(GridHighlightedLink::Url(url), &mut self.model.lock());
                 new_cursor_shape = Some(Cursor::PointingHand);
             }
             // Only scan for links if the mouse hovered on a new word.
-            (_, Some(last_hover_fragment_boundary))
+            (_, _, Some(last_hover_fragment_boundary))
                 if !last_hover_fragment_boundary.contains(position) =>
             {
                 // Use try_send to return an error directly when the channel is full
@@ -321,7 +405,7 @@ impl super::TerminalView {
                 });
             }
             // If there's no last hover fragment boundary, we scan for links.
-            (_, None) => {
+            (_, _, None) => {
                 let _ = self.find_link_tx.try_send(FindLinkArg {
                     position: *position,
                     from_editor,
@@ -381,8 +465,14 @@ impl super::TerminalView {
                 }
             }
             GridHighlightedLink::Url(url) => {
-                let model = self.model.lock();
-                ctx.open_url(&model.link_at_range(url, RespectObfuscatedSecrets::No));
+                let uri = self
+                    .model
+                    .lock()
+                    .link_at_range(url, RespectObfuscatedSecrets::No);
+                ctx.open_url(&uri);
+            }
+            GridHighlightedLink::Hyperlink { uri, .. } => {
+                self.open_hyperlink_uri(uri, ctx);
             }
         };
     }
@@ -498,6 +588,37 @@ impl super::TerminalView {
         let mut link = None;
         'path_loop: for within_model_possible_path in possible_paths {
             let possible_path = within_model_possible_path.get_inner();
+
+            // A file path at the end of a sentence often captures the trailing
+            // sentence period (e.g. `notes/README.md.`). Try the period-trimmed
+            // candidate first so the resolved file, the highlight range, and
+            // extension-based classification all exclude it. This must run before
+            // the untrimmed lookup because on Windows the NT path normalizer
+            // strips trailing dots, so the untrimmed path would otherwise resolve
+            // and leave the period inside the captured link.
+            if let Some(trimmed_path) =
+                path_without_trailing_sentence_period(&possible_path.path.path)
+            {
+                let trimmed_cleaned_path = CleanPathResult {
+                    path: trimmed_path.into(),
+                    line_and_column_num: possible_path.path.line_and_column_num,
+                };
+                if let Some(absolute_path) = absolute_path_if_valid(
+                    &trimmed_cleaned_path,
+                    ShellPathType::ShellNative(working_directory.to_string()),
+                    shell_launch_data.as_ref(),
+                ) {
+                    let new_end_point = possible_path.range.end().wrapping_sub(max_columns, 1);
+                    link = Some(Self::create_valid_link(
+                        absolute_path,
+                        trimmed_cleaned_path.line_and_column_num,
+                        *possible_path.range.start()..=new_end_point,
+                        &within_model_possible_path,
+                    ));
+                    break 'path_loop;
+                }
+            }
+
             // We want to check if the clean path result is a valid path and get the canonical
             // absolute path back.
             let absolute_path = absolute_path_if_valid(
@@ -625,3 +746,7 @@ impl super::TerminalView {
         }
     }
 }
+
+#[cfg(all(test, feature = "local_fs"))]
+#[path = "link_detection_tests.rs"]
+mod tests;

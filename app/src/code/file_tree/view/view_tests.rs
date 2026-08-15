@@ -6,12 +6,14 @@ use repo_metadata::local_model::IndexedRepoState;
 use repo_metadata::repositories::DetectedRepositories;
 use repo_metadata::watcher::DirectoryWatcher;
 use repo_metadata::RepoMetadataModel;
+use settings::Setting;
 use virtual_fs::{Stub, VirtualFS};
 use warp_core::ui::appearance::Appearance;
-use warpui::{platform::WindowStyle, App, ModelHandle};
+use warpui::{platform::WindowStyle, App, ModelHandle, SingletonEntity};
 
 use crate::auth::AuthStateProvider;
 use crate::server::server_api::{team::MockTeamClient, workspace::MockWorkspaceClient};
+use crate::settings::CodeSettings;
 use crate::settings_view::keybindings::KeybindingChangedNotifier;
 use crate::test_util::settings::initialize_settings_for_tests;
 use crate::vim_registers::VimRegisters;
@@ -125,6 +127,13 @@ fn flattened_paths(
         .collect()
 }
 
+fn set_show_hidden_files(app: &mut App, show_hidden_files: bool) {
+    CodeSettings::handle(app).update(app, |settings, ctx| {
+        Setting::set_value(&mut settings.show_hidden_files, show_hidden_files, ctx)
+            .expect("show hidden files setting updates");
+    });
+}
+
 #[test]
 fn hidden_files_are_filtered_until_setting_is_enabled() {
     VirtualFS::test("file_tree_hidden_files_setting", |dirs, mut vfs| {
@@ -140,6 +149,7 @@ fn hidden_files_are_filtered_until_setting_is_enabled() {
 
         App::test((), |mut app| async move {
             let _ = initialize_app(&mut app);
+            set_show_hidden_files(&mut app, false);
             let (_, file_tree_view) = app.add_window(WindowStyle::NotStealFocus, FileTreeView::new);
 
             file_tree_view.update(&mut app, |view, ctx| {
@@ -155,13 +165,7 @@ fn hidden_files_are_filtered_until_setting_is_enabled() {
                 assert!(!paths.contains(&std_path(&hidden_dir)));
             });
 
-            <crate::settings::CodeSettings as warpui::SingletonEntity>::handle(&app).update(
-                &mut app,
-                |settings, ctx| {
-                    settings::Setting::set_value(&mut settings.show_hidden_files, true, ctx)
-                        .expect("show hidden files setting updates");
-                },
-            );
+            set_show_hidden_files(&mut app, true);
 
             file_tree_view.read(&app, |view, _ctx| {
                 let paths = flattened_paths(view, &tree);
@@ -185,6 +189,7 @@ fn hidden_root_directory_is_not_filtered() {
 
         App::test((), |mut app| async move {
             let _ = initialize_app(&mut app);
+            set_show_hidden_files(&mut app, false);
             let (_, file_tree_view) = app.add_window(WindowStyle::NotStealFocus, FileTreeView::new);
 
             file_tree_view.update(&mut app, |view, ctx| {
@@ -216,13 +221,7 @@ fn selected_hidden_file_is_cleared_when_filtered() {
 
             App::test((), |mut app| async move {
                 let _ = initialize_app(&mut app);
-                <crate::settings::CodeSettings as warpui::SingletonEntity>::handle(&app).update(
-                    &mut app,
-                    |settings, ctx| {
-                        settings::Setting::set_value(&mut settings.show_hidden_files, true, ctx)
-                            .expect("show hidden files setting updates");
-                    },
-                );
+                set_show_hidden_files(&mut app, true);
 
                 let (_, file_tree_view) =
                     app.add_window(WindowStyle::NotStealFocus, FileTreeView::new);
@@ -244,13 +243,7 @@ fn selected_hidden_file_is_cleared_when_filtered() {
                     view.select_id(&id, ctx);
                 });
 
-                <crate::settings::CodeSettings as warpui::SingletonEntity>::handle(&app).update(
-                    &mut app,
-                    |settings, ctx| {
-                        settings::Setting::set_value(&mut settings.show_hidden_files, false, ctx)
-                            .expect("show hidden files setting updates");
-                    },
-                );
+                set_show_hidden_files(&mut app, false);
 
                 file_tree_view.read(&app, |view, _ctx| {
                     let paths = flattened_paths(view, &tree);

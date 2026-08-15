@@ -155,9 +155,9 @@ use settings::Setting as _;
 use crate::code::active_file::ActiveFileModel;
 use crate::util::bindings::{is_binding_pty_compliant, CustomAction};
 use crate::workflows::{WorkflowSelectionSource, WorkflowSource, WorkflowType};
-
 use crate::palette::PaletteMode;
 use crate::terminal::model::terminal_model::ConversationTranscriptViewerStatus;
+use crate::workspace::tab_group::TabGroupId;
 use crate::workspace::{
     self, CommandSearchOptions, PaneViewLocator, TabBarLocation, WorkspaceAction,
 };
@@ -202,6 +202,10 @@ pub use tree::{Direction, PaneData, PaneFlex, PaneNode, SplitDirection};
 pub use working_directories::{WorkingDirectoriesEvent, WorkingDirectoriesModel};
 
 use self::pane::{DetachType, PaneViewEvent};
+
+/// Binding name for the action that toggles maximizing the active pane. Shared so
+/// the pane header menu item can surface the same shortcut the binding resolves to.
+pub const TOGGLE_MAXIMIZE_PANE_BINDING_NAME: &str = "pane_group:toggle_maximize_pane";
 
 lazy_static! {
     // The value to use as the initial window bounds if we are unable to
@@ -451,7 +455,7 @@ pub fn init(app: &mut AppContext) {
         .with_custom_action(CustomAction::SplitPaneRight)
         .with_enabled(|| ContextFlag::CreateNewSession.is_enabled()),
         EditableBinding::new(
-            "pane_group:toggle_maximize_pane",
+            TOGGLE_MAXIMIZE_PANE_BINDING_NAME,
             "Toggle Maximize Active Pane",
             PaneGroupAction::ToggleMaximizePane,
         )
@@ -597,6 +601,9 @@ pub enum Event {
     /// as a header is dragged
     UpdateHoveredTabIndex {
         tab_hover_index: TabBarHoverIndex,
+        /// Drag cursor rect. The workspace uses it to resolve which tab group a
+        /// `BeforeTab` insertion lands.
+        drag_position: RectF,
     },
     /// Clears the hovered tab index so it no longer appears as highlighted drop target
     ClearHoveredTabIndex,
@@ -736,8 +743,24 @@ pub enum Event {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TabBarHoverIndex {
-    BeforeTab(usize),
+    /// Insert the dragged pane as a new tab at `index`. `group` is the tab
+    /// group the insertion lands inside, so the new tab can inherit that
+    /// group's membership. `None` for an ungrouped insertion or a group
+    /// boundary (before/after a group). This is used to differentiate a drop
+    /// right before/after a group from a drop inside the group at its boundaries.
+    BeforeTab {
+        index: usize,
+        group: Option<TabGroupId>,
+    },
     OverTab(usize),
+}
+
+/// Axis of the tab bar a pane is being dragged over. Selects horizontal vs
+/// vertical-axis geometry when resolving the hovered insertion point.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TabBarAxis {
+    Horizontal,
+    Vertical,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1160,13 +1183,14 @@ impl PaneGroup {
                     origin,
                     tab_hover_index,
                     hidden_pane_preview_direction,
+                    drag_position,
                 } => {
                     if matches!(origin, ActionOrigin::Pane) {
                         // Clear hidden closed panes since dragging invalidates undo functionality
                         self.clear_hidden_closed_panes(ctx);
 
                         match tab_hover_index {
-                            TabBarHoverIndex::BeforeTab(_) => {
+                            TabBarHoverIndex::BeforeTab { .. } => {
                                 self.hide_pane_for_move(pane_id, ctx);
                             }
                             TabBarHoverIndex::OverTab(tab_idx) => {
@@ -1182,6 +1206,7 @@ impl PaneGroup {
 
                     ctx.emit(Event::UpdateHoveredTabIndex {
                         tab_hover_index: *tab_hover_index,
+                        drag_position: *drag_position,
                     })
                 }
 
@@ -2143,6 +2168,14 @@ impl PaneGroup {
         self.panes_of::<CodePane>()
             .map(move |pane| (pane.id(), pane.file_view(app)))
     }
+    /// Iterate over the file notebook panes in this pane group.
+    pub fn file_notebook_panes<'a>(
+        &'a self,
+        app: &'a AppContext,
+    ) -> impl Iterator<Item = (PaneId, ViewHandle<FileNotebookView>)> + 'a {
+        self.panes_of::<FilePane>()
+            .map(move |pane| (pane.id(), pane.file_view(app)))
+    }
 
     pub fn ai_document_panes(&self) -> impl Iterator<Item = PaneId> + '_ {
         self.panes_of::<AIDocumentPane>().map(|pane| pane.id())
@@ -2302,7 +2335,11 @@ impl PaneGroup {
         );
     }
 
-    pub fn has_active_code_pane_with_unsaved_changes(&self, ctx: &AppContext) -> bool {
+    /// Whether the focused pane is a code pane whose active tab should show
+    /// the unsaved-changes indicator. Auto-save-aware: changes auto-save can
+    /// persist are excluded, but unsaveable changes (untitled buffers,
+    /// disconnected remotes) still count.
+    pub fn has_active_code_pane_with_unsaved_indicator(&self, ctx: &AppContext) -> bool {
         self.focused_pane_id(ctx).is_code_pane()
             && self
                 .pane_contents
@@ -2311,7 +2348,7 @@ impl PaneGroup {
                 .map(|pane| {
                     pane.file_view(ctx)
                         .as_ref(ctx)
-                        .active_tab_has_unsaved_changes(ctx)
+                        .active_tab_shows_unsaved_indicator(ctx)
                 })
                 .unwrap_or(false)
     }
@@ -4292,7 +4329,9 @@ impl PaneGroup {
         }
 
         let summary = UnsavedStateSummary::for_pane(self, pane_id, ctx);
-        if summary.should_display_warning(ctx) && ChannelState::channel() != Channel::Integration {
+        if summary.save_unsaved_code_and_should_warn(ctx)
+            && ChannelState::channel() != Channel::Integration
+        {
             log::info!("Displaying unsaved changes warning for pane");
             let confirm_self = ctx.handle();
             let show_process_self = ctx.handle();
@@ -6884,6 +6923,24 @@ impl View for PaneGroup {
         };
 
         ctx
+    }
+
+    fn child_view_ids(&self, _app: &AppContext) -> Vec<EntityId> {
+        // Modals and banners owned directly by the pane group are only
+        // rendered while open, so they're usually absent from the render-time
+        // parent graph. Report them explicitly so they move with the pane
+        // group when it is transferred to another window; otherwise a later
+        // render of one of these handles in the new window would look the
+        // view up in a window that no longer holds it and panic with a
+        // "circular view reference". The per-pane views (and their backing
+        // terminal/editor views) are reached via the structural parent graph
+        // and `PaneView::child_view_ids`.
+        vec![
+            self.share_block_modal.id(),
+            self.share_session_modal.id(),
+            self.shared_session_role_change_modal.id(),
+            self.user_default_shell_changed_banner.id(),
+        ]
     }
 
     fn render(&self, app: &AppContext) -> Box<dyn Element> {

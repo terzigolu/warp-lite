@@ -1,4 +1,3 @@
-// Suppress warnings about rustdoc style.
 #![allow(clippy::doc_lazy_continuation)]
 
 mod ai;
@@ -802,7 +801,14 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
     // When the SettingsFile feature flag is enabled, public settings live in
     // the TOML-backed store. When disabled, they live in the platform-native
     // store (same backend as private). Use the correct one for pre-app reads.
-    #[cfg_attr(not(any(enable_crash_recovery, target_os = "linux")), expect(unused))]
+    #[cfg_attr(
+        not(any(
+            enable_crash_recovery,
+            target_os = "linux",
+            target_os = "macos"
+        )),
+        expect(unused)
+    )]
     let prefs_for_public_settings: &dyn warpui_extras::user_preferences::UserPreferences =
         if FeatureFlag::SettingsFile.is_enabled() {
             public_preferences.as_ref()
@@ -847,6 +853,11 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
         let dev_icon = ASSETS.get("bundled/png/local.png")?;
         app_builder.set_dev_icon(dev_icon);
 
+        let show_dock_icon = crate::settings::app_icon::ShowDockIconState::read_from_preferences(
+            prefs_for_public_settings,
+        )
+        .unwrap_or_else(crate::settings::app_icon::ShowDockIconState::default_value);
+        app_builder.set_show_dock_icon_on_launch(show_dock_icon);
         app_builder.set_menu_bar_builder(app_menus::menu_bar);
         app_builder.set_dock_menu_builder(|_| app_menus::dock_menu());
     }
@@ -1928,7 +1939,7 @@ fn app_callbacks(is_integration_test: bool) -> warpui::platform::AppCallbacks {
 
 
             // Don't show dialog on integration test. Machine can't press buttons.
-            if !is_integration_test && summary.should_display_warning(ctx) {
+            if !is_integration_test && summary.save_unsaved_code_and_should_warn(ctx) {
                 let shown = summary
                     .dialog()
                     .on_confirm(move |ctx| {
@@ -1967,7 +1978,7 @@ fn app_callbacks(is_integration_test: bool) -> warpui::platform::AppCallbacks {
 
             let summary = UnsavedStateSummary::for_app(ctx);
             // Don't show dialog on integration test. Machine can't press buttons.
-            if !is_integration_test && summary.should_display_warning(ctx) {
+            if !is_integration_test && summary.save_unsaved_code_and_should_warn(ctx) {
                 let shown = summary
                     .dialog()
                     .on_confirm(|ctx| ctx.terminate_app(TerminationMode::ForceTerminate, None))
@@ -2754,6 +2765,8 @@ pub fn enabled_features() -> HashSet<FeatureFlag> {
         FeatureFlag::CloudModeSetupV2,
         #[cfg(feature = "cloud_mode_input_v2")]
         FeatureFlag::CloudModeInputV2,
+        #[cfg(feature = "osc_hyperlinks")]
+        FeatureFlag::OscHyperlinks,
     ]);
 
     flags

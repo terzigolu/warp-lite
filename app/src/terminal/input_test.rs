@@ -102,6 +102,93 @@ use crate::terminal::view::inline_banner::ByoLlmAuthBannerSessionState;
 use crate::terminal::writeable_pty::command_history::update_command_history;
 use crate::{GlobalResourceHandles, GlobalResourceHandlesProvider, ReferralThemeStatus};
 
+#[test]
+fn renders_git_checkout_prompt_chip_command_as_single_shell_argument() {
+    let command = PromptChipShellCommand::GitCheckout {
+        branch_name: "poc;id>/tmp/proof $(whoami) `id` | cat 'tail'".to_string(),
+    };
+
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::Bash),
+        r#"git checkout 'poc;id>/tmp/proof $(whoami) `id` | cat '"'"'tail'"'"''"#
+    );
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::Zsh),
+        r#"git checkout 'poc;id>/tmp/proof $(whoami) `id` | cat '"'"'tail'"'"''"#
+    );
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::Fish),
+        r"git checkout 'poc;id>/tmp/proof $(whoami) `id` | cat \'tail\''"
+    );
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::PowerShell),
+        "git checkout 'poc;id>/tmp/proof $(whoami) `id` | cat ''tail'''"
+    );
+}
+
+#[test]
+fn renders_nvm_use_prompt_chip_command_as_single_shell_argument() {
+    let command = PromptChipShellCommand::NvmUse {
+        version: "v20.0.0;touch /tmp/pwn 'x'".to_string(),
+    };
+
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::Bash),
+        r#"nvm use 'v20.0.0;touch /tmp/pwn '"'"'x'"'"''"#
+    );
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::Fish),
+        r"nvm use 'v20.0.0;touch /tmp/pwn \'x\''"
+    );
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::PowerShell),
+        "nvm use 'v20.0.0;touch /tmp/pwn ''x'''"
+    );
+}
+
+#[test]
+fn renders_change_directory_prompt_chip_command_as_single_shell_argument() {
+    let command = PromptChipShellCommand::ChangeDirectory {
+        dir_name: "repo dir;rm -rf / 'x'".to_string(),
+    };
+
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::Bash),
+        r#"cd 'repo dir;rm -rf / '"'"'x'"'"''"#
+    );
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::PowerShell),
+        "cd 'repo dir;rm -rf / ''x'''"
+    );
+}
+
+#[test]
+fn renders_echo_prompt_chip_command_as_single_shell_argument() {
+    let command = PromptChipShellCommand::Echo {
+        message: "a message containing \"double\" and 'single' quotes",
+    };
+
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::Bash),
+        r#"echo 'a message containing "double" and '"'"'single'"'"' quotes'"#
+    );
+    assert_eq!(
+        render_prompt_chip_shell_command(&command, ShellType::PowerShell),
+        r#"echo 'a message containing "double" and ''single'' quotes'"#
+    );
+}
+
+#[test]
+fn renders_fixed_prompt_chip_command_without_interpolation() {
+    assert_eq!(
+        render_prompt_chip_shell_command(
+            &PromptChipShellCommand::NvmInstallLatestNode,
+            ShellType::Bash,
+        ),
+        "nvm install node"
+    );
+}
+
 pub fn initialize_app(app: &mut App) {
     initialize_settings_for_tests(app);
 
@@ -5147,6 +5234,126 @@ fn test_tab_completions_menu_for_classic_completions_with_files() {
                 input.suggestions_mode_model.as_ref(ctx).mode(),
                 InputSuggestionsMode::CompletionSuggestions { menu_position, .. } if menu_position == &TabCompletionsMenuPosition::AtStartOfReplacementSpan
             ))
+        });
+    })
+}
+
+#[test]
+fn test_classic_tab_completions_close_after_user_backspace() {
+    let _flag = FeatureFlag::ClassicCompletions.override_enabled(true);
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let terminal = add_window_with_bootstrapped_terminal(&mut app, None, None).await;
+        let input = terminal.read(&app, |terminal, _| terminal.input().clone());
+        let editor = input.read(&app, |input, _| input.editor().clone());
+
+        app.update(|ctx| {
+            InputSettings::handle(ctx).update(ctx, |setting, ctx| {
+                setting
+                    .classic_completions_mode
+                    .toggle_and_save_value(ctx)
+                    .expect("Able to turn on classic completions");
+            })
+        });
+
+        input.update(&mut app, |input, ctx| {
+            input.clear_buffer_and_reset_undo_stack(ctx);
+            input.user_insert("cd Do", ctx);
+        });
+
+        input.update(&mut app, |input, ctx| {
+            input.input_tab(ctx);
+            input.handle_completion_suggestions_results(
+                build_suggestion_results(
+                    vec![file_suggestion("Downloads"), file_suggestion("Documents")],
+                    (3, 5),
+                    MatchStrategy::CaseInsensitive,
+                ),
+                CompletionsTrigger::Keybinding,
+                editor_model_snapshot(input, ctx),
+                ctx,
+            );
+            // Cycle to apply a candidate into the buffer. This is a system-applied
+            // edit, which must keep the result set alive.
+            input.input_tab(ctx);
+        });
+
+        // The user now backspaces all the way past the original completion query
+        // (`cd Do`). Once the buffer no longer starts with the original query, the
+        // stale result set must be discarded and the menu closed.
+        while input.read(&app, |input, ctx| input.buffer_text(ctx).len()) > "cd ".len() {
+            editor.update(&mut app, |editor, ctx| editor.backspace(ctx));
+        }
+
+        input.read(&app, |input, ctx| {
+            assert_eq!(input.buffer_text(ctx), "cd ");
+            // A closed menu is represented by `InputSuggestionsMode::Closed`; a closed
+            // menu is never rendered, so its stale result set is no longer shown. This
+            // mirrors the existing (non-classic) backspace-past-boundary behavior.
+            assert!(
+                matches!(
+                    input.suggestions_mode_model.as_ref(ctx).mode(),
+                    InputSuggestionsMode::Closed
+                ),
+                "completion menu should close after the user backspaces past the query"
+            );
+        });
+    })
+}
+
+#[test]
+fn test_classic_tab_completions_keep_menu_open_while_cycling() {
+    let _flag = FeatureFlag::ClassicCompletions.override_enabled(true);
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let terminal = add_window_with_bootstrapped_terminal(&mut app, None, None).await;
+        let input = terminal.read(&app, |terminal, _| terminal.input().clone());
+
+        app.update(|ctx| {
+            InputSettings::handle(ctx).update(ctx, |setting, ctx| {
+                setting
+                    .classic_completions_mode
+                    .toggle_and_save_value(ctx)
+                    .expect("Able to turn on classic completions");
+            })
+        });
+
+        input.update(&mut app, |input, ctx| {
+            input.clear_buffer_and_reset_undo_stack(ctx);
+            input.user_insert("cd Do", ctx);
+        });
+
+        input.update(&mut app, |input, ctx| {
+            input.input_tab(ctx);
+            input.handle_completion_suggestions_results(
+                build_suggestion_results(
+                    vec![file_suggestion("Downloads"), file_suggestion("Documents")],
+                    (3, 5),
+                    MatchStrategy::CaseInsensitive,
+                ),
+                CompletionsTrigger::Keybinding,
+                editor_model_snapshot(input, ctx),
+                ctx,
+            );
+            // Cycling rewrites the buffer to each candidate in turn. These are
+            // system-applied edits and must keep the menu open even though the
+            // buffer no longer matches the original query.
+            input.input_tab(ctx);
+            input.input_tab(ctx);
+        });
+
+        input.read(&app, |input, ctx| {
+            assert!(
+                matches!(
+                    input.suggestions_mode_model.as_ref(ctx).mode(),
+                    InputSuggestionsMode::CompletionSuggestions { .. }
+                ),
+                "completion menu should stay open while cycling candidates"
+            );
+            assert!(
+                !input.input_suggestions.as_ref(ctx).items().is_empty(),
+                "result set should be preserved while cycling candidates"
+            );
         });
     })
 }

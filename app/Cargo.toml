@@ -51,6 +51,7 @@ test = false
 [dependencies]
 addr = "0.15.6"
 ai.workspace = true
+alphanumeric-sort = "1.5.7"
 anyhow.workspace = true
 arrayvec.workspace = true
 asset_cache.workspace = true
@@ -451,6 +452,7 @@ creating_shared_sessions = []
 cross_repo_context = []
 codebase_index_persistence = ["full_source_code_embedding"]
 default = [
+    "osc_hyperlinks",
     "render_continuous_block_selections_with_single_border",
     "settings_import",
     "remove_alt_screen_padding",
@@ -495,6 +497,8 @@ default = [
     "cli_agent_rich_input",
     "vertical_tabs",
     "tab_configs",
+    "grouped_tabs",
+    "pinned_tabs",
     "codex_notifications",
     "trim_trailing_blank_lines",
     "open_warp_new_settings_modes",
@@ -788,6 +792,8 @@ hoa_code_review = []
 vertical_tabs = []
 vertical_tabs_summary_mode = []
 tab_configs = []
+grouped_tabs = []
+pinned_tabs = []
 agent_harness = []
 oz_handoff = []
 hoa_notifications = []
@@ -803,6 +809,7 @@ hoa_remote_control = []
 codex_notifications = []
 cloud_mode_setup_v2 = ["cloud_mode"]
 cloud_mode_input_v2 = ["cloud_mode"]
+osc_hyperlinks = []
 
 [package.metadata.bundle.bin.warp-oss]
 category = "public.app-category.developer-tools"

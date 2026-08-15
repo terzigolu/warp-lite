@@ -1,9 +1,13 @@
 #![cfg_attr(not(feature = "local_fs"), allow(dead_code))]
 
 use ignore::gitignore::Gitignore;
+#[cfg(feature = "local_fs")]
+use notify_debouncer_full::notify::WatchFilter;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
+#[cfg(feature = "local_fs")]
+use std::sync::Arc;
 use thiserror::Error;
 use warp_util::standardized_path::StandardizedPath;
 
@@ -500,13 +504,129 @@ pub fn path_passes_filters(path: &Path, gitignores: &[Gitignore]) -> bool {
     } else {
         path.to_path_buf()
     };
-
     !matches_gitignores(
         &to_check_path,
         to_check_path.is_dir(),
         gitignores,
         true, /* check_ancestors */
     ) && !should_ignore_git_path(&to_check_path)
+}
+
+/// Returns `true` when `path` is, contains, or lies on the way to a force-included path.
+pub(crate) fn matches_force_included_path(path: &Path, force_included_paths: &[PathBuf]) -> bool {
+    let path_components: Vec<_> = path
+        .components()
+        .filter_map(|component| match component {
+            Component::Normal(name) => Some(name),
+            _ => None,
+        })
+        .collect();
+
+    force_included_paths.iter().any(|force_included| {
+        let force_included_components: Vec<_> = force_included
+            .components()
+            .filter_map(|component| match component {
+                Component::Normal(name) => Some(name),
+                _ => None,
+            })
+            .collect();
+
+        if force_included_components.is_empty() {
+            return false;
+        }
+        if path_components
+            .windows(force_included_components.len())
+            .any(|window| window == force_included_components.as_slice())
+        {
+            return true;
+        }
+        (1..force_included_components.len()).any(|prefix_len| {
+            path_components.len() >= prefix_len
+                && path_components[path_components.len() - prefix_len..]
+                    == force_included_components[..prefix_len]
+        })
+    })
+}
+
+/// Returns whether a directory inside `.git` lies on the path to an allowlisted file.
+pub fn should_watch_directory_in_git_path(path: &Path) -> bool {
+    if !is_git_internal_path(path) {
+        return true;
+    }
+
+    if let Some(worktree_dir) = extract_worktree_git_dir(path) {
+        if path == worktree_dir || worktree_dir.starts_with(path) {
+            return true;
+        }
+        let Some(suffix) = git_suffix_components(path) else {
+            return false;
+        };
+        return descend_allowlist_matches(&suffix);
+    }
+
+    let Some(suffix) = git_suffix_components(path) else {
+        return true;
+    };
+    descend_allowlist_matches(&suffix)
+}
+
+fn descend_allowlist_matches(suffix: &[Component<'_>]) -> bool {
+    let top_level_dir = suffix.first().and_then(|c| c.as_os_str().to_str());
+    let refs_subdir = suffix.get(1).and_then(|c| c.as_os_str().to_str());
+    match top_level_dir {
+        Some("refs") => matches!(refs_subdir, None | Some("heads")),
+        Some("worktrees") => true,
+        Some(_) => false,
+        None => true,
+    }
+}
+
+/// Returns whether a repository watcher should descend into `path`.
+pub fn should_watch_repo_directory(
+    path: &Path,
+    repo_root: &Path,
+    gitignores: &[Gitignore],
+    force_included_paths: &[PathBuf],
+) -> bool {
+    if matches_force_included_path(path, force_included_paths) {
+        return true;
+    }
+    if is_within_symlink(path, repo_root) {
+        return false;
+    }
+    if is_git_internal_path(path) {
+        return should_watch_directory_in_git_path(path);
+    }
+    !matches_gitignores(path, path.is_dir(), gitignores, true)
+}
+
+/// Returns whether `path` is a symlink or is below one inside `repo_root`.
+fn is_within_symlink(path: &Path, repo_root: &Path) -> bool {
+    path.ancestors()
+        .take_while(|ancestor| *ancestor != repo_root && ancestor.starts_with(repo_root))
+        .any(|ancestor| {
+            std::fs::symlink_metadata(ancestor)
+                .is_ok_and(|metadata| metadata.file_type().is_symlink())
+        })
+}
+
+/// Returns the filter used by recursive repository file watchers.
+#[cfg(feature = "local_fs")]
+pub fn repo_watch_filter(
+    repo_root: PathBuf,
+    gitignores: Vec<Gitignore>,
+    force_included_paths: Vec<PathBuf>,
+) -> WatchFilter {
+    let should_watch = move |path: &Path| {
+        if path.is_dir() {
+            should_watch_repo_directory(path, &repo_root, &gitignores, &force_included_paths)
+        } else if matches_force_included_path(path, &force_included_paths) {
+            true
+        } else {
+            !is_within_symlink(path, &repo_root) && !should_ignore_git_path(path)
+        }
+    };
+    WatchFilter::with_filter(Arc::new(should_watch))
 }
 
 /// Determines whether a file should be parsed by a treesitter query. For now the main criteria is it shouldn't

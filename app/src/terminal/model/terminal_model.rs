@@ -63,8 +63,6 @@ use crate::terminal::shell::{ShellName, ShellType};
 use crate::terminal::model::secrets::ObfuscateSecrets;
 use session_sharing_protocol::sharer::SessionSourceType;
 use warp_core::report_error;
-#[cfg(not(target_family = "wasm"))]
-use warpui::util::save_as_file;
 
 use async_channel::Sender;
 use base64::Engine;
@@ -1505,6 +1503,7 @@ impl TerminalModel {
         if self.handled_exit {
             return;
         }
+        log::debug!("Terminal model exiting: reason={reason:?}");
 
         self.handled_exit = true;
         // Forcibly exit the alt screen so that we can show the user the
@@ -1849,6 +1848,24 @@ impl TerminalModel {
                 .block_list
                 .url_at_point(inner_point)
                 .map(WithinModel::BlockList),
+        }
+    }
+
+    /// OSC 8 hyperlink span at `point`, paired with its URI. Routes to alt
+    /// screen or block list depending on which surface the point lives on.
+    pub fn hyperlink_at_point(
+        &self,
+        point: &WithinModel<Point>,
+    ) -> Option<(WithinModel<Link>, String)> {
+        match point {
+            WithinModel::AltScreen(inner_point) => {
+                let (link, uri) = self.alt_screen.hyperlink_at_point(inner_point)?;
+                Some((WithinModel::AltScreen(link), uri))
+            }
+            WithinModel::BlockList(inner_point) => {
+                let (link, uri) = self.block_list.hyperlink_at_point(inner_point)?;
+                Some((WithinModel::BlockList(link), uri))
+            }
         }
     }
 
@@ -2439,6 +2456,10 @@ impl ansi::Handler for TerminalModel {
 
     fn set_cursor_shape(&mut self, shape: ansi::CursorShape) {
         delegate!(self.set_cursor_shape(shape));
+    }
+
+    fn set_hyperlink(&mut self, hyperlink: Option<warp_terminal::model::ansi::Hyperlink>) {
+        delegate!(self.set_hyperlink(hyperlink));
     }
 
     fn input(&mut self, c: char) {
@@ -3330,16 +3351,9 @@ impl ansi::Handler for TerminalModel {
                 pending.data = decoded_bytes;
 
                 if !pending.metadata.inline {
-                    #[cfg(not(target_family = "wasm"))]
-                    if let Some(cwd) = self
-                        .active_block_metadata()
-                        .current_working_directory()
-                        .map(|cwd| cwd.to_string())
-                    {
-                        let mut path = PathBuf::from(cwd);
-                        path.push(pending.metadata.name);
-                        let _ = save_as_file(&pending.data[..], path);
-                    }
+                    log::warn!(
+                        "Ignoring non-inline iTerm file payload; automatic local file writes are disabled."
+                    );
                     return;
                 }
 
