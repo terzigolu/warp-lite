@@ -8104,7 +8104,7 @@ impl Workspace {
                 .file_notebook_panes(ctx)
                 .find(|(pane_id, file_view)| {
                     !pane_group.as_ref(ctx).is_pane_hidden_for_close(*pane_id)
-                        && file_view.as_ref(ctx).path() == Some(&path)
+                        && file_view.as_ref(ctx).local_path().as_deref() == Some(path.as_path())
                 })
                 .map(|(pane_id, _)| pane_id)
         };
