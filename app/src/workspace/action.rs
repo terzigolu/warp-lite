@@ -288,6 +288,12 @@ pub enum WorkspaceAction {
         tab_position: RectF,
     },
     DropTab,
+    StartGroupDrag(TabGroupId),
+    DragGroup {
+        group_id: TabGroupId,
+        position: RectF,
+    },
+    DropGroup,
     /// Toggles the left panel. In Code Mode V1 this toggles Warp Drive.
     /// In Code Mode V2 this toggles the left panel which contains both the project explorer and
     /// Warp Drive. This happens as explicit action from the user.
@@ -754,6 +760,7 @@ impl WorkspaceAction {
             | MoveTabLeft(_)
             | MoveTabRight(_)
             | DropTab
+            | DropGroup
             | RenameTab(_)
             | ResetTabName(_)
             | RenamePane(_)
@@ -877,6 +884,8 @@ impl WorkspaceAction {
             | OpenInExplorer { .. }
             | DragTab { .. }
             | StartTabDrag
+            | DragGroup { .. }
+            | StartGroupDrag(_)
             | ToggleLeftPanel
             | ToggleWarpDrive
             | OpenWarpDrive

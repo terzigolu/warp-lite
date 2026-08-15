@@ -1,6 +1,7 @@
 //! Tab group data model. Gated at runtime by `FeatureFlag::GroupedTabs`.
 
 use uuid::Uuid;
+use warpui::elements::DraggableState;
 
 /// Stable identity for a tab group.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -25,6 +26,7 @@ pub struct TabGroup {
     pub id: TabGroupId,
     pub name: Option<String>,
     pub collapsed: bool,
+    pub draggable_state: DraggableState,
 }
 
 impl TabGroup {
@@ -34,6 +36,7 @@ impl TabGroup {
             id: TabGroupId::new(),
             name: None,
             collapsed: false,
+            draggable_state: Default::default(),
         }
     }
 }

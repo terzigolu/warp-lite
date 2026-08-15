@@ -7079,6 +7079,43 @@ impl Workspace {
         }
     }
 
+    /// Flips `tab_index`'s group membership. Callers are responsible for
+    /// positioning the tab so groups remain contiguous; this method only
+    /// mutates `group_id` and prunes the old group when empty.
+    pub fn assign_tab_to_group(
+        &mut self,
+        tab_index: usize,
+        group_id: Option<TabGroupId>,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        if tab_index >= self.tabs.len() {
+            log::warn!(
+                "Tried to assign tab {tab_index} to a group but only {} tabs exist",
+                self.tabs.len()
+            );
+            return;
+        }
+        if let Some(gid) = group_id {
+            if !self.tab_groups.contains_key(&gid) {
+                log::warn!("Tried to assign tab {tab_index} to unknown group {gid:?}");
+                return;
+            }
+        }
+
+        if self.tabs[tab_index].group_id == group_id {
+            return;
+        }
+
+        let previous_group_id = self.tabs[tab_index].group_id;
+        self.tabs[tab_index].group_id = group_id;
+
+        if let Some(previous_group_id) = previous_group_id {
+            self.prune_empty_tab_group(previous_group_id, ctx);
+        }
+
+        ctx.notify();
+    }
+
     /// Moves the tab at `from` to position `to` (`Vec::insert` semantics).
     /// The active-tab tracker follows the moved tab.
     fn move_tab_to_index(&mut self, from: usize, to: usize, ctx: &mut ViewContext<Self>) {
@@ -21526,7 +21563,6 @@ impl TypedActionView for Workspace {
                 self.on_group_drag(*group_id, *position, ctx);
             }
             DropGroup => {
-                send_telemetry_from_ctx!(TelemetryEvent::DragAndDropTabGroup, ctx);
                 ctx.notify();
             }
             OpenWarpDrive => {
