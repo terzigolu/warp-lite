@@ -3,6 +3,8 @@ use std::borrow::Cow;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use memo_map::MemoMap;
+use rand::Rng;
+use warp_core::session_id::SessionId;
 use warpui::{AppContext, AssetProvider, SingletonEntity};
 
 use crate::{
