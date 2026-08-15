@@ -19,6 +19,7 @@ use crate::util::bindings::CustomAction;
 
 use pathfinder_color::ColorU;
 use ui_components::{button, Component as _, Options as _};
+use warp_core::safe_error;
 use warp_core::ui::theme::color::internal_colors;
 use warpui::elements::{
     Align, Border, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment, Dismiss, Fill,
@@ -198,7 +199,10 @@ impl PasteAuthTokenModalView {
                 });
             }
             Err(error) => {
-                log::error!("Failed to parse pasted auth URL: {error:#}");
+                safe_error!(
+                    safe: ("Failed to parse pasted auth URL"),
+                    full: ("Failed to parse pasted auth URL: {error:#}")
+                );
                 self.last_failure_reason =
                     Some(LoginFailureReason::InvalidRedirectUrl { was_pasted: true });
                 self.set_editor_enabled(true, ctx);

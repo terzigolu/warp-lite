@@ -93,6 +93,7 @@ use std::sync::Arc;
 use std::{collections::HashMap, path::PathBuf};
 use url::Url;
 use warp_core::context_flag::ContextFlag;
+use warp_core::safe_error;
 use warp_core::user_preferences::GetUserPreferences as _;
 use warpui::clipboard::ClipboardContent;
 use warpui::keymap::{EditableBinding, FixedBinding};
@@ -2473,7 +2474,10 @@ impl RootView {
                 });
             }
             Err(error) => {
-                log::error!("Unable to parse AuthResult from url: {error}");
+                safe_error!(
+                    safe: ("Unable to parse AuthResult from url"),
+                    full: ("Unable to parse AuthResult from url: {error}")
+                );
                 self.auth_view.update(ctx, |view, ctx| {
                     view.last_login_failure_reason =
                         Some(LoginFailureReason::InvalidRedirectUrl { was_pasted: false });
