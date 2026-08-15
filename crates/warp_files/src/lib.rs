@@ -424,33 +424,40 @@ impl FileModel {
                     .map_err(FileLoadError::from);
                 (file_id, contents)
             },
-            move |me, (file_id, load_result), ctx| match load_result {
-                Ok(content) => {
-                    let version = ContentVersion::new();
-                    me.set_version(file_id, version);
+            move |me, (file_id, load_result), ctx| {
+                // A completion may already be queued when its view cancels and unsubscribes.
+                // Do not resurrect watcher state or emit an event for an untracked file.
+                if me.file_state.get(file_id).is_none() {
+                    return;
+                }
+                match load_result {
+                    Ok(content) => {
+                        let version = ContentVersion::new();
+                        me.set_version(file_id, version);
 
-                    // Only register individual watcher if not using repo subscription
-                    if use_individual_watcher {
-                        me.watcher.update(ctx, |watcher, _ctx| {
-                            std::mem::drop(watcher.register_path(
-                                &file_path_clone,
-                                WatchFilter::accept_all(),
-                                RecursiveMode::Recursive,
-                            ));
+                        // Only register individual watcher if not using repo subscription
+                        if use_individual_watcher {
+                            me.watcher.update(ctx, |watcher, _ctx| {
+                                std::mem::drop(watcher.register_path(
+                                    &file_path_clone,
+                                    WatchFilter::accept_all(),
+                                    RecursiveMode::Recursive,
+                                ));
+                            });
+                        }
+
+                        ctx.emit(FileModelEvent::FileLoaded {
+                            content,
+                            id: file_id,
+                            version,
                         });
                     }
-
-                    ctx.emit(FileModelEvent::FileLoaded {
-                        content,
-                        id: file_id,
-                        version,
-                    });
-                }
-                Err(err) => {
-                    ctx.emit(FileModelEvent::FailedToLoad {
-                        id: file_id,
-                        error: Rc::new(err),
-                    });
+                    Err(err) => {
+                        ctx.emit(FileModelEvent::FailedToLoad {
+                            id: file_id,
+                            error: Rc::new(err),
+                        });
+                    }
                 }
             },
         );

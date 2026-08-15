@@ -398,13 +398,7 @@ impl FileNotebookView {
 
         #[cfg(feature = "local_fs")]
         {
-            // Cancel in-flight loads and unsubscribe from any previously opened file.
-            if let Some(prev_id) = self.file_id.take() {
-                FileModel::handle(ctx).update(ctx, |m, ctx| {
-                    m.cancel(prev_id);
-                    m.unsubscribe(prev_id, ctx)
-                });
-            }
+            self.release_file_model(ctx);
 
             let file_model = FileModel::handle(ctx);
             let file_id = file_model.update(ctx, |m, ctx| m.open(&local_path, true, ctx));
@@ -480,6 +474,19 @@ impl FileNotebookView {
         }
     }
 
+    /// Releases the in-flight read, watcher registration, and this view's model subscription.
+    #[cfg(feature = "local_fs")]
+    pub(crate) fn release_file_model(&mut self, ctx: &mut ViewContext<Self>) {
+        let file_model = FileModel::handle(ctx);
+        if let Some(file_id) = self.file_id.take() {
+            file_model.update(ctx, |model, ctx| {
+                model.cancel(file_id);
+                model.unsubscribe(file_id, ctx);
+            });
+        }
+        ctx.unsubscribe_to_model(&file_model);
+    }
+
     /// Open static Markdown as a file pane.
     pub fn open_static(
         &mut self,
@@ -488,12 +495,7 @@ impl FileNotebookView {
         ctx: &mut ViewContext<Self>,
     ) {
         #[cfg(feature = "local_fs")]
-        {
-            // Unsubscribe from any previously opened file.
-            if let Some(prev_id) = self.file_id.take() {
-                FileModel::handle(ctx).update(ctx, |m, ctx| m.unsubscribe(prev_id, ctx));
-            }
-        }
+        self.release_file_model(ctx);
         self.set_content(content, ctx);
         let title = title.into();
         self.pane_configuration.update(ctx, |pane_config, ctx| {
@@ -845,7 +847,7 @@ impl TypedActionView for FileNotebookView {
     fn handle_action(&mut self, action: &Self::Action, ctx: &mut ViewContext<Self>) {
         match action {
             FileNotebookAction::Focus => ctx.focus_self(),
-            FileNotebookAction::Close => ctx.emit(FileNotebookEvent::Pane(PaneEvent::Close)),
+            FileNotebookAction::Close => BackingView::close(self, ctx),
             FileNotebookAction::FocusTerminalInput => {
                 ctx.emit(FileNotebookEvent::Pane(PaneEvent::FocusActiveSession))
             }
@@ -975,13 +977,6 @@ impl BackingView for FileNotebookView {
     }
 
     fn close(&mut self, ctx: &mut ViewContext<Self>) {
-        #[cfg(feature = "local_fs")]
-        {
-            // Unsubscribe from the file watcher before closing.
-            if let Some(prev_id) = self.file_id.take() {
-                FileModel::handle(ctx).update(ctx, |m, ctx| m.unsubscribe(prev_id, ctx));
-            }
-        }
         ctx.emit(FileNotebookEvent::Pane(PaneEvent::Close));
     }
 
