@@ -3143,7 +3143,11 @@ impl AppContext {
         let mut order: Vec<EntityId> = Vec::new();
         let mut stack: Vec<EntityId> = vec![root_view_id];
 
-        stack.extend(self.view_descendants(window_id, root_view_id));
+        stack.extend(
+            self.presenter(window_id)
+                .map(|presenter| presenter.borrow().descendants(root_view_id))
+                .unwrap_or_default(),
+        );
 
         while let Some(view_id) = stack.pop() {
             if !seen.insert(view_id) {
