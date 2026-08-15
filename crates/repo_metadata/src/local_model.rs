@@ -595,11 +595,11 @@ impl LocalRepoMetadataModel {
             let is_ignored = Self::path_is_ignored(path_to_add, gitignores);
 
             if path_to_add.is_dir() {
-                if lazy_load {
+                if lazy_load || is_ignored {
                     // Lazy (non-git) roots are not materialized when a directory
-                    // is created; insert it as an unloaded placeholder and build
-                    // the subtree on demand when the user expands it (see
-                    // `load_directory`).
+                    // is created. Gitignored directories use the same placeholder
+                    // behavior so noisy watcher events cannot repeatedly rebuild
+                    // their entire subtree; both materialize on explicit expansion.
                     mutations.push(FileTreeMutation::AddUnloadedDirectory {
                         path: path_to_add.clone(),
                         is_ignored,
@@ -687,7 +687,9 @@ impl LocalRepoMetadataModel {
                     let Some(std_path) = StandardizedPath::try_from_local(path).ok() else {
                         continue;
                     };
-                    if lazy_load && !Self::is_parent_loaded_in_entry(root_entry, &std_path) {
+                    if (lazy_load || is_ignored)
+                        && !Self::is_parent_loaded_in_entry(root_entry, &std_path)
+                    {
                         continue;
                     }
                     let Some(parent) = std_path.parent() else {
@@ -764,7 +766,15 @@ impl LocalRepoMetadataModel {
                     let Some(std_path) = StandardizedPath::try_from_local(path).ok() else {
                         continue;
                     };
-                    if lazy_load && !Self::is_parent_loaded_in_entry(root_entry, &std_path) {
+                    if matches!(
+                        root_entry.get(&std_path),
+                        Some(FileTreeEntryState::Directory(directory)) if directory.loaded
+                    ) {
+                        continue;
+                    }
+                    if (lazy_load || is_ignored)
+                        && !Self::is_parent_loaded_in_entry(root_entry, &std_path)
+                    {
                         continue;
                     }
                     let Some(parent) = std_path.parent() else {
