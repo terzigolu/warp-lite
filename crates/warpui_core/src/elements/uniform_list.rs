@@ -206,10 +206,10 @@ where
                 start + (size.y() / item_size.y()).ceil() as usize + 1,
             );
 
-            if let Some(visible_items_notifier) = &self.visible_items_tx
-                && let Err(err) = visible_items_notifier.try_send(start..end)
-            {
-                log::error!("unable to send visible_items: {err}");
+            if let Some(visible_items_notifier) = &self.visible_items_tx {
+                if let Err(err) = visible_items_notifier.try_send(start..end) {
+                    log::error!("unable to send visible_items: {err}");
+                }
             }
 
             self.items.clear();
