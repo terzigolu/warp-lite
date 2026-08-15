@@ -58,7 +58,7 @@ use crate::{
         SaveOutcome, ShowFindReferencesCardProvider,
     },
     debounce::debounce,
-    settings::AISettings,
+    settings::{AISettings, CodeSettings},
     terminal::TerminalView,
     util::sync::Condition,
 };
