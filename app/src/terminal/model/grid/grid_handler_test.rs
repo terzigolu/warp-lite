@@ -2559,6 +2559,7 @@ fn test_hyperlink_at_point_short_circuits_when_flag_disabled() {
 }
 
 #[test]
+#[cfg(any())] // Warp Lite omits the CLI-agent-only FullGridClearBehavior surface.
 fn test_full_grid_clear_drops_active_hyperlink() {
     let _flag = crate::features::FeatureFlag::OscHyperlinks.override_enabled(true);
     let mut grid = GridHandler::new_for_test_with_scroll_limit(3, 20, MAX_SCROLL_LIMIT);

@@ -2918,25 +2918,16 @@ fn test_new_session_menu_is_capped_to_window_height() {
                 .size()
                 .y();
 
-            workspace.open_new_session_dropdown_menu(
-                crate::workspace::action::NewSessionMenuAnchor::AddTabButton(Vector2F::zero()),
-                ctx,
-            );
+            workspace.open_new_session_dropdown_menu(Vector2F::zero(), ctx);
 
             let expected_height =
                 (window_height - NEW_SESSION_MENU_WINDOW_MARGIN - NEW_SESSION_MENU_CHROME_HEIGHT)
                     .max(NEW_SESSION_MENU_MIN_HEIGHT);
-            let menu_height = workspace.new_session_menu_max_height(
-                crate::workspace::action::NewSessionMenuAnchor::AddTabButton(Vector2F::zero()),
-                ctx,
-            );
+            let menu_height = workspace.new_session_menu_max_height(Vector2F::zero(), ctx);
 
             assert!((menu_height - expected_height).abs() < f32::EPSILON);
 
-            workspace.open_new_session_dropdown_menu(
-                crate::workspace::action::NewSessionMenuAnchor::AddTabButton(Vector2F::zero()),
-                ctx,
-            );
+            workspace.open_new_session_dropdown_menu(Vector2F::zero(), ctx);
             assert!(workspace.show_new_session_dropdown_menu.is_some());
         });
     });

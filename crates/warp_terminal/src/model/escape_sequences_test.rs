@@ -1126,7 +1126,7 @@ fn test_kitty_protocol_cmd_and_option_editing_keys() {
 /// from the OS-provided `chars`.
 #[test]
 fn test_kitty_protocol_mac_option_space_composition_is_not_disambiguated() {
-    if !warpui_core::platform::OperatingSystem::get().is_mac() {
+    if !OperatingSystem::get().is_mac() {
         return;
     }
 

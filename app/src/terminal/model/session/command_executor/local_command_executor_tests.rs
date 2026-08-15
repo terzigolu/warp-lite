@@ -94,10 +94,10 @@ mod unix {
     async fn wait_for_descendant_pid(path: &Path) -> Pid {
         let deadline = Instant::now() + TIMEOUT;
         loop {
-            if let Ok(contents) = fs::read_to_string(path)
-                && let Ok(pid) = contents.parse()
-            {
-                return Pid::from_raw(pid);
+            if let Ok(contents) = fs::read_to_string(path) {
+                if let Ok(pid) = contents.parse() {
+                    return Pid::from_raw(pid);
+                }
             }
             assert!(
                 Instant::now() < deadline,

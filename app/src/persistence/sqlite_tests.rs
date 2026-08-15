@@ -13,7 +13,7 @@ use crate::{
     cloud_object::{CloudObjectPermissions, Owner},
     code::editor_management::CodeSource,
     notebooks::{CloudNotebook, CloudNotebookModel},
-    persistence::{model::ObjectPermissions, BlockCompleted, ModelEvent, PersistenceScope},
+    persistence::{model::ObjectPermissions, BlockCompleted, ModelEvent},
     server::ids::ClientId,
     tab::SelectedTabColor,
     terminal::model::block::SerializedBlock,
