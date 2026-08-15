@@ -162,10 +162,17 @@ impl DetectedRepositories {
         DirectoryWatcher::as_ref(ctx).get_watched_directory_for_path(&root)
     }
 
-    /// Given a path, return its corresponding repo root. Note that this does not run the check
-    /// against the actual file system. Instead it checks against our cached path to root mapping.
+    /// Given a path, return its corresponding repo root. This canonicalizes
+    /// the input before consulting the cached path-to-root mapping.
     pub fn get_root_for_path(&self, path: &Path) -> Option<PathBuf> {
         let std_path = StandardizedPath::from_local_canonicalized(path).ok()?;
+        let repo = self.find_repository_root(&std_path)?;
+        repo.to_local_path()
+    }
+
+    /// Looks up an already-canonical local path without filesystem I/O.
+    pub fn get_root_for_canonical_path(&self, path: &Path) -> Option<PathBuf> {
+        let std_path = StandardizedPath::try_from_local(path).ok()?;
         let repo = self.find_repository_root(&std_path)?;
         repo.to_local_path()
     }
