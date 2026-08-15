@@ -1032,7 +1032,10 @@ fn test_transfer_view_tree_reconciles_views_known_only_to_target_presenter() {
         let stranded_id = stranded.id();
 
         app.update(|ctx| {
-            ctx.record_view_parent(window_2_id, stranded_id, root_id);
+            ctx.presenter(window_2_id)
+                .expect("target window presenter should exist")
+                .borrow_mut()
+                .set_parent(stranded_id, root_id);
         });
 
         let transferred =
