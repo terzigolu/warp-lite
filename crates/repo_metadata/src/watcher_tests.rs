@@ -8,7 +8,10 @@ use std::time::Duration;
 use crate::repositories::stub_git_repository;
 use crate::repository::RepositorySubscriber;
 use crate::watcher::{DirectoryWatcher, TaskQueue};
-use crate::{CanonicalizedPath, RepoMetadataError, Repository, RepositoryUpdate};
+use crate::{
+    CanonicalizedPath, RepoMetadataError, Repository, RepositoryUpdate, RepositoryWatchMode,
+    TargetFile,
+};
 use futures::channel::mpsc;
 use futures::StreamExt as _;
 use virtual_fs::{Stub, VirtualFS};
@@ -41,6 +44,55 @@ fn test_add_repository_success() {
             // Verify it's in the watcher's registry
             watcher_handle.read(&app, |watcher, _ctx| {
                 assert!(watcher.is_directory_watched(&canonical_path));
+            });
+        });
+    });
+}
+
+#[test]
+fn filesystem_only_subscription_filters_git_metadata_updates() {
+    VirtualFS::test("filesystem_only_subscription", |dirs, mut vfs| {
+        stub_git_repository(&mut vfs, "repo");
+        vfs.with_files(vec![Stub::FileWithContent("repo/file.txt", "content")]);
+        let repo_path = dirs.tests().join("repo");
+
+        App::test((), |mut app| async move {
+            let watcher_handle = app.add_singleton_model(DirectoryWatcher::new);
+            let repo_handle = watcher_handle
+                .update(&mut app, |watcher, ctx| {
+                    watcher.add_directory(
+                        StandardizedPath::from_local_canonicalized(&repo_path).unwrap(),
+                        ctx,
+                    )
+                })
+                .unwrap();
+
+            let (scan_tx, _) = mpsc::unbounded();
+            let (update_tx, _) = mpsc::unbounded();
+            let subscriber = TestSubscriber::new(scan_tx, update_tx, Arc::new(AtomicUsize::new(0)));
+            let start = repo_handle.update(&mut app, |repo, ctx| {
+                repo.start_watching_with_mode(
+                    RepositoryWatchMode::FilesystemOnly,
+                    Box::new(subscriber),
+                    ctx,
+                )
+            });
+            std::mem::drop(start.registration_future);
+
+            let changed_file = TargetFile::new(repo_path.join("file.txt"), false);
+            let update = RepositoryUpdate {
+                modified: [changed_file.clone()].into(),
+                commit_updated: true,
+                index_lock_detected: true,
+                ..Default::default()
+            };
+            repo_handle.read(&app, |repo, _| {
+                assert!(!repo.has_git_repository_subscribers());
+                let updates = repo.subscriber_updates(&update);
+                assert_eq!(updates.len(), 1);
+                assert_eq!(updates[0].1.modified, [changed_file].into());
+                assert!(!updates[0].1.commit_updated);
+                assert!(!updates[0].1.index_lock_detected);
             });
         });
     });

@@ -368,6 +368,30 @@ impl DirectoryWatcher {
         }
     }
 
+    #[cfg(feature = "local_fs")]
+    pub(crate) fn stop_watching_unused_git_directories(
+        &mut self,
+        repository_root_to_stop: &StandardizedPath,
+        directory_paths: Vec<StandardizedPath>,
+        ctx: &mut ModelContext<Self>,
+    ) {
+        for path in directory_paths {
+            let is_still_used = self
+                .directories
+                .iter()
+                .any(|(root_dir, repository_handle)| {
+                    root_dir != repository_root_to_stop
+                        && repository_handle.read(ctx, |repository, _| {
+                            repository.has_git_repository_subscribers()
+                                && repository.git_watch_paths().contains(&path)
+                        })
+                });
+            if !is_still_used {
+                std::mem::drop(self.stop_watching_directory(&path, ctx));
+            }
+        }
+    }
+
     /// Handles events from the internal task queue.
     fn handle_queue_event(&mut self, event: &TaskQueueEvent, ctx: &mut ModelContext<Self>) {
         let &TaskQueueEvent::TaskEnqueued = event;
@@ -406,7 +430,12 @@ impl DirectoryWatcher {
             for path in paths {
                 // Check if this is a .git/ internal event (e.g. HEAD, index, refs update).
                 if is_git_internal_path(path) {
-                    let affected = self.find_repos_for_git_event(path, ctx);
+                    let mut affected = self.find_repos_for_git_event(path, ctx);
+                    affected.retain(|repository| {
+                        repository.read(ctx, |repository, _| {
+                            repository.has_git_repository_subscribers()
+                        })
+                    });
                     for repo_handle in &affected {
                         let repo_update = repo_updates.entry(repo_handle.clone()).or_default();
                         if is_commit_related_git_file(path) {
@@ -458,7 +487,12 @@ impl DirectoryWatcher {
         for path in &event.deleted {
             // Check if this is a .git/ internal event.
             if is_git_internal_path(path) {
-                let affected = self.find_repos_for_git_event(path, ctx);
+                let mut affected = self.find_repos_for_git_event(path, ctx);
+                affected.retain(|repository| {
+                    repository.read(ctx, |repository, _| {
+                        repository.has_git_repository_subscribers()
+                    })
+                });
                 for repo_handle in affected {
                     let repo_update = repo_updates.entry(repo_handle).or_default();
                     if is_commit_related_git_file(path) {
@@ -499,6 +533,11 @@ impl DirectoryWatcher {
                         affected.push(repo);
                     }
                 }
+                affected.retain(|repository| {
+                    repository.read(ctx, |repository, _| {
+                        repository.has_git_repository_subscribers()
+                    })
+                });
                 let paths = [to_path.as_path(), from_path.as_path()];
                 for repo_handle in affected {
                     let repo_update = repo_updates.entry(repo_handle).or_default();
@@ -529,12 +568,13 @@ impl DirectoryWatcher {
 
         self.processing_queue.update(ctx, |queue, ctx| {
             for (repo_handle, repo_update) in repo_updates {
-                let subscriber_ids = repo_handle.read(ctx, |repo, _| repo.get_subscriber_ids());
-                for subscriber_id in subscriber_ids {
+                let subscriber_updates =
+                    repo_handle.read(ctx, |repo, _| repo.subscriber_updates(&repo_update));
+                for (subscriber_id, subscriber_update) in subscriber_updates {
                     queue.enqueue_incremental_update(
                         repo_handle.downgrade(),
                         subscriber_id,
-                        repo_update.clone(),
+                        subscriber_update,
                         ctx,
                     );
                 }

@@ -50,6 +50,19 @@ pub trait RepositorySubscriber: Send + Sync {
 /// A unique identifier for repository subscribers.
 pub type SubscriberId = usize;
 
+/// Controls whether a subscriber needs Git metadata in addition to ordinary files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RepositoryWatchMode {
+    FilesystemOnly,
+    GitRepository,
+}
+
+struct RepositorySubscription {
+    #[cfg_attr(not(feature = "local_fs"), allow(dead_code))]
+    mode: RepositoryWatchMode,
+    subscriber: Box<dyn RepositorySubscriber>,
+}
+
 pub struct StartWatching {
     pub subscriber_id: SubscriberId,
     pub registration_future: BoxFuture<'static, Result<(), RepoMetadataError>>,
@@ -68,7 +81,7 @@ pub struct Repository {
     /// the `.git` component. `None` when the repo is not a linked worktree.
     common_git_directory: Option<StandardizedPath>,
     /// Collection of subscribers interested in file changes.
-    subscribers: HashMap<SubscriberId, Box<dyn RepositorySubscriber>>,
+    subscribers: HashMap<SubscriberId, RepositorySubscription>,
     /// Counter for generating unique subscriber IDs.
     next_subscriber_id: SubscriberId,
     /// Cached gitignore patterns for this repository.
@@ -164,6 +177,30 @@ impl Repository {
         self.subscribers.len()
     }
 
+    #[cfg(feature = "local_fs")]
+    pub(crate) fn git_watch_paths(&self) -> Vec<StandardizedPath> {
+        let mut paths = Vec::new();
+        if let Some(external_git_dir) = &self.external_git_directory {
+            paths.push(external_git_dir.clone());
+        }
+        if let Some(common_git_dir) = &self.common_git_directory {
+            if let Some(common_local) = common_git_dir.to_local_path() {
+                let refs_dir = common_local.join("refs").join("heads");
+                if let Ok(refs_std) = StandardizedPath::from_local_canonicalized(&refs_dir) {
+                    paths.push(refs_std);
+                }
+            }
+        }
+        paths
+    }
+
+    #[cfg(feature = "local_fs")]
+    pub(crate) fn has_git_repository_subscribers(&self) -> bool {
+        self.subscribers
+            .values()
+            .any(|subscription| subscription.mode == RepositoryWatchMode::GitRepository)
+    }
+
     /// Starts watching this repository with the given subscriber.
     ///
     /// If this is the first subscriber, the repository root will be added to the
@@ -174,46 +211,47 @@ impl Repository {
         subscriber: Box<dyn RepositorySubscriber>,
         ctx: &mut ModelContext<Self>,
     ) -> StartWatching {
+        self.start_watching_with_mode(RepositoryWatchMode::GitRepository, subscriber, ctx)
+    }
+
+    /// Starts watching with an explicit mode. Filesystem-only consumers avoid registering and
+    /// processing Git metadata paths, while legacy callers retain Git-aware behavior.
+    #[cfg_attr(not(feature = "local_fs"), allow(unused_variables))]
+    pub fn start_watching_with_mode(
+        &mut self,
+        mode: RepositoryWatchMode,
+        subscriber: Box<dyn RepositorySubscriber>,
+        ctx: &mut ModelContext<Self>,
+    ) -> StartWatching {
         let subscriber_id = self.next_subscriber_id;
         self.next_subscriber_id += 1;
 
-        // If this is the first subscriber, we need to start watching the repository
         #[cfg(feature = "local_fs")]
-        let should_start_watching = self.subscribers.is_empty();
+        let should_start_filesystem_watching = self.subscribers.is_empty();
+        #[cfg(feature = "local_fs")]
+        let should_start_git_watching =
+            mode == RepositoryWatchMode::GitRepository && !self.has_git_repository_subscribers();
 
-        self.subscribers.insert(subscriber_id, subscriber);
+        self.subscribers
+            .insert(subscriber_id, RepositorySubscription { mode, subscriber });
 
         #[cfg(feature = "local_fs")]
-        let registration_future: BoxFuture<'static, Result<(), RepoMetadataError>> =
-            if should_start_watching {
-                // Prepare list of directories to watch
-                let mut directories_to_watch = vec![self.root_dir.clone()];
-
-                // Watch the per-worktree gitdir for worktree-specific events
-                // (HEAD, index.lock under .git/worktrees/<name>/).
-                if let Some(external_git_dir) = &self.external_git_directory {
-                    directories_to_watch.push(external_git_dir.clone());
-                }
-
-                // For linked worktrees, also watch .git/refs so shared ref
-                // changes (refs/heads/*) are visible even when the main
-                // worktree isn't registered.
-                if let Some(common_git_dir) = &self.common_git_directory {
-                    if let Some(common_local) = common_git_dir.to_local_path() {
-                        let refs_dir = common_local.join("refs").join("heads");
-                        if let Ok(refs_std) = StandardizedPath::from_local_canonicalized(&refs_dir)
-                        {
-                            directories_to_watch.push(refs_std);
-                        }
-                    }
-                }
-
+        let registration_future: BoxFuture<'static, Result<(), RepoMetadataError>> = {
+            let mut directories_to_watch = Vec::new();
+            if should_start_filesystem_watching {
+                directories_to_watch.push(self.root_dir.clone());
+            }
+            if should_start_git_watching {
+                directories_to_watch.extend(self.git_watch_paths());
+            }
+            if directories_to_watch.is_empty() {
+                Box::pin(ready(Ok(())))
+            } else {
                 Box::pin(DirectoryWatcher::handle(ctx).update(ctx, |watcher, ctx| {
                     watcher.start_watching_directories(directories_to_watch, ctx)
                 }))
-            } else {
-                Box::pin(ready(Ok(())))
-            };
+            }
+        };
 
         #[cfg(not(feature = "local_fs"))]
         let registration_future: BoxFuture<'static, Result<(), RepoMetadataError>> =
@@ -236,40 +274,39 @@ impl Repository {
     /// RepositoryWatcher's set of watched paths.
     #[cfg_attr(not(feature = "local_fs"), allow(unused_variables))]
     pub fn stop_watching(&mut self, subscriber_id: SubscriberId, ctx: &mut ModelContext<Self>) {
-        let Some(mut subscriber) = self.subscribers.remove(&subscriber_id) else {
+        let Some(mut subscription) = self.subscribers.remove(&subscriber_id) else {
             return;
         };
 
-        subscriber.on_unsubscribe(ctx);
+        subscription.subscriber.on_unsubscribe(ctx);
 
-        if self.subscribers.is_empty() {
+        #[cfg(feature = "local_fs")]
+        let should_stop_git_watching = subscription.mode == RepositoryWatchMode::GitRepository
+            && !self.has_git_repository_subscribers();
+
+        let should_stop_filesystem_watching = self.subscribers.is_empty();
+        if should_stop_filesystem_watching {
             // If this was the last subscriber, notify the RepWatcher to stop watching.
             log::debug!(
                 "All subscribers removed for {}, stopping watcher",
                 self.root_dir
             );
+        }
 
-            #[cfg(feature = "local_fs")]
-            {
-                DirectoryWatcher::handle(ctx).update(ctx, |watcher, ctx| {
-                    // Stop watching the working tree directory
-                    std::mem::drop(watcher.stop_watching_directory(&self.root_dir, ctx));
-                    // Mirror start_watching: stop per-worktree gitdir + shared refs.
-                    if let Some(external_git_dir) = &self.external_git_directory {
-                        std::mem::drop(watcher.stop_watching_directory(external_git_dir, ctx));
-                    }
-                    if let Some(common_git_dir) = &self.common_git_directory {
-                        if let Some(common_local) = common_git_dir.to_local_path() {
-                            let refs_dir = common_local.join("refs").join("heads");
-                            if let Ok(refs_std) =
-                                StandardizedPath::from_local_canonicalized(&refs_dir)
-                            {
-                                std::mem::drop(watcher.stop_watching_directory(&refs_std, ctx));
-                            }
-                        }
-                    }
-                });
-            }
+        #[cfg(feature = "local_fs")]
+        if should_stop_filesystem_watching || should_stop_git_watching {
+            let root_dir = self.root_dir.clone();
+            let git_paths = if should_stop_git_watching {
+                self.git_watch_paths()
+            } else {
+                Vec::new()
+            };
+            DirectoryWatcher::handle(ctx).update(ctx, |watcher, ctx| {
+                if should_stop_filesystem_watching {
+                    std::mem::drop(watcher.stop_watching_directory(&root_dir, ctx));
+                }
+                watcher.stop_watching_unused_git_directories(&root_dir, git_paths, ctx);
+            });
         }
     }
 
@@ -279,9 +316,9 @@ impl Repository {
         subscriber_id: SubscriberId,
         ctx: &mut ModelContext<Self>,
     ) -> Option<Pin<Box<dyn Future<Output = ()> + Send + 'static>>> {
-        if let Some(mut subscriber) = self.subscribers.remove(&subscriber_id) {
-            let future = subscriber.on_scan(self, ctx);
-            self.subscribers.insert(subscriber_id, subscriber);
+        if let Some(mut subscription) = self.subscribers.remove(&subscriber_id) {
+            let future = subscription.subscriber.on_scan(self, ctx);
+            self.subscribers.insert(subscriber_id, subscription);
             Some(future)
         } else {
             None
@@ -296,19 +333,32 @@ impl Repository {
         update: &RepositoryUpdate,
         ctx: &mut ModelContext<Self>,
     ) -> Option<Pin<Box<dyn Future<Output = ()> + Send + 'static>>> {
-        if let Some(mut subscriber) = self.subscribers.remove(&subscriber_id) {
-            let future = subscriber.on_files_updated(self, update, ctx);
-            self.subscribers.insert(subscriber_id, subscriber);
+        if let Some(mut subscription) = self.subscribers.remove(&subscriber_id) {
+            let future = subscription.subscriber.on_files_updated(self, update, ctx);
+            self.subscribers.insert(subscriber_id, subscription);
             Some(future)
         } else {
             None
         }
     }
 
-    /// Returns the subscriber IDs for this repository.
+    /// Returns updates filtered for each subscriber's watch mode.
     #[cfg(feature = "local_fs")]
-    pub(crate) fn get_subscriber_ids(&self) -> Vec<SubscriberId> {
-        self.subscribers.keys().cloned().collect()
+    pub(crate) fn subscriber_updates(
+        &self,
+        update: &RepositoryUpdate,
+    ) -> Vec<(SubscriberId, RepositoryUpdate)> {
+        self.subscribers
+            .iter()
+            .filter_map(|(&subscriber_id, subscription)| {
+                let mut update = update.clone();
+                if subscription.mode == RepositoryWatchMode::FilesystemOnly {
+                    update.commit_updated = false;
+                    update.index_lock_detected = false;
+                }
+                (!update.is_empty()).then_some((subscriber_id, update))
+            })
+            .collect()
     }
 
     /// Checks if a path is gitignored within this repository.
