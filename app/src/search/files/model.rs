@@ -165,6 +165,28 @@ impl FileSearchModel {
         arc
     }
 
+    /// Gets repository files only for search surfaces that cannot open directories.
+    /// This is intentionally uncached because the shared cache includes folders.
+    #[cfg(feature = "local_fs")]
+    pub fn get_repo_file_contents(&self, app: &AppContext) -> Arc<Vec<FileSearchResult>> {
+        let Some(repo_root) = self.repo_root(app) else {
+            return Arc::new(Vec::new());
+        };
+        let repo_metadata = RepoMetadataModel::as_ref(app);
+        let Some(id) = repo_metadata::RepositoryIdentifier::try_local(&repo_root) else {
+            return Arc::new(Vec::new());
+        };
+        if !repo_metadata.has_repository(&id, app) {
+            return Arc::new(Vec::new());
+        }
+        Arc::new(self.get_contents_from_repo(
+            &repo_root,
+            repo_metadata,
+            GetContentsArgs::default().exclude_folders(),
+            app,
+        ))
+    }
+
     /// Gets repository contents with git status information for prioritization.
     /// Reuses the cached repo contents from `get_repo_contents`.
     #[cfg(feature = "local_fs")]
@@ -183,6 +205,11 @@ impl FileSearchModel {
     /// Gets repository contents from the LocalRepoMetadataModel for the current working directory (WASM stub)
     #[cfg(not(feature = "local_fs"))]
     pub fn get_repo_contents(&self, _app: &AppContext) -> Arc<Vec<FileSearchResult>> {
+        Arc::new(Vec::new())
+    }
+
+    #[cfg(not(feature = "local_fs"))]
+    pub fn get_repo_file_contents(&self, _app: &AppContext) -> Arc<Vec<FileSearchResult>> {
         Arc::new(Vec::new())
     }
 

@@ -111,7 +111,7 @@ impl FileDataSource {
         match &self.mode {
             FileDataSourceMode::Repo => {
                 let file_search_model = FileSearchModel::as_ref(app);
-                file_search_model.get_repo_contents(app)
+                file_search_model.get_repo_file_contents(app)
             }
             FileDataSourceMode::CurrentFolder { cached_contents } => {
                 Arc::new(cached_contents.clone())
