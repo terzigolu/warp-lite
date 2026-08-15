@@ -2309,6 +2309,7 @@ fn content_len_equals_len_when_no_trailing_blanks() {
 // ─── FullGridClearBehavior::Clear resize + scroll desync ─────────────
 
 #[test]
+#[cfg(any())] // Warp Lite omits the CLI-agent-only FullGridClearBehavior surface.
 fn test_full_grid_clear_resize_then_scroll_does_not_panic_on_row_iteration() {
     // Regression test for issue with `FullGridClearBehavior`: make sure that
     // when FullGridClearBehavior::Clear is active, resize_storage
@@ -2344,6 +2345,7 @@ fn test_full_grid_clear_resize_then_scroll_does_not_panic_on_row_iteration() {
 }
 
 #[test]
+#[cfg(any())] // Warp Lite omits the CLI-agent-only FullGridClearBehavior surface.
 fn test_full_grid_clear_resize_narrower_then_scroll_does_not_panic() {
     // Same scenario but resizing to a narrower width.
     let old_cols = 20;
@@ -2380,6 +2382,7 @@ fn test_full_grid_clear_resize_narrower_then_scroll_does_not_panic() {
 }
 
 #[test]
+#[cfg(any())] // Warp Lite omits the CLI-agent-only FullGridClearBehavior surface.
 fn test_full_grid_clear_shrink_cols_does_not_orphan_wide_char_at_boundary() {
     let old_cols = 6;
     let new_cols = 5;
@@ -2420,6 +2423,7 @@ fn test_full_grid_clear_shrink_cols_does_not_orphan_wide_char_at_boundary() {
 }
 
 #[test]
+#[cfg(any())] // Warp Lite omits the CLI-agent-only FullGridClearBehavior surface.
 fn test_full_grid_clear_resize_then_bounds_to_string_does_not_panic() {
     // End-to-end repro via the same code path as block_snapshot:
     // bounds_to_string → line_to_string → row() → RowIterator::next.
