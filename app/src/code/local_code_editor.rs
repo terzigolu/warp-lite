@@ -1647,14 +1647,11 @@ impl LocalCodeEditorView {
                         me.base_content_version = Some(*content_version);
                     }
                 }
-                GlobalBufferModelEvent::FileSaved {
-                    content_version, ..
-                } => {
+                GlobalBufferModelEvent::FileSaved { .. } => {
                     // Consume the auto-save marker: suppress the toast for
                     // auto-saves, show it for manual (cmd-s) saves.
                     let auto_saved = std::mem::take(&mut me.auto_save_in_flight);
-                    me.base_content_version = Some(*content_version);
-                    me.has_remote_conflict = false;
+                    me.base_content_version = GlobalBufferModel::as_ref(ctx).base_version(file_id);
                     ctx.emit(LocalCodeEditorEvent::FileSaved { auto_saved });
                 }
                 GlobalBufferModelEvent::FailedToSave { error, .. } => {
