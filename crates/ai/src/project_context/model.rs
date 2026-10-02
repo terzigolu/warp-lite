@@ -504,7 +504,7 @@ impl ProjectContextModel {
 
         // Use build_tree to collect all files, then filter for rule files
         let mut files = Vec::<FileMetadata>::new();
-        let mut gitignores = Vec::<Gitignore>::new();
+        let mut gitignores = Vec::<Arc<Gitignore>>::new();
 
         // Collect patterns that should not be ignored
         let override_ignore_patterns: Vec<String> =
