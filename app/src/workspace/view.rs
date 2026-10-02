@@ -2673,9 +2673,11 @@ impl Workspace {
     fn sync_settings_error_state_into_settings_pane(&mut self, ctx: &mut ViewContext<Self>) {
         let error = self.settings_file_error.clone();
         let dismissed = self.settings_error_banner_dismissed;
-        self.settings_pane.update(ctx, |view, ctx| {
-            view.set_settings_error_state(error, dismissed, ctx);
-        });
+        if let Some(pane) = ctx.view_with_id::<SettingsView>(ctx.window_id(), self.settings_pane.id()) {
+            pane.update(ctx, |view, ctx| {
+                view.set_settings_error_state(error, dismissed, ctx);
+            });
+        }
     }
 
     pub fn dismiss_older_toasts(&mut self, object_id: &str, ctx: &mut ViewContext<Self>) {
