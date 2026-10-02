@@ -9,13 +9,13 @@
 
 warp-lite is a lightweight, privacy-first AGPL fork of [Warp Terminal](https://github.com/warpdotdev/warp): a local-first, GPU-accelerated block terminal for macOS with no Warp account login, no bundled AI agents, no cloud onboarding, and no telemetry as a product requirement. If you want a Warp alternative that keeps the terminal and drops the AI platform, this is that fork.
 
-> Status: alpha, but usable on macOS. The current build is **v0.5.7-lite**, a privacy-vetted August upstream sync with 193 integration commits covering terminal security, reliability, editor/Vim, tabs, performance, and platform compatibility. It builds, launches, and ships as downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
+> Status: alpha, but usable on macOS. The current build is **v0.5.8-lite**, an October upstream sync covering native shell completions, fzf/atuin handoff, history ranking, tabs, editor/Vim, and bounded caches. It builds, launches, and ships as downloadable `WarpLite.dmg` and `WarpLite.app.zip` assets on GitHub Releases.
 
 Latest release:
 
 - Download the newest published build from [releases/latest](https://github.com/terzigolu/warp-lite/releases/latest).
-- Current build: `v0.5.7-lite`.
-- macOS artifacts: `WarpLite.dmg` (~120 MB), `WarpLite.app.zip`.
+- Current build: `v0.5.8-lite`.
+- macOS artifacts: `WarpLite.dmg`, `WarpLite.app.zip`.
 
 See [`FORK_NOTICE.md`](FORK_NOTICE.md) for the relationship with upstream Warp.
 
@@ -60,11 +60,11 @@ The packaged app uses:
 
 - Bundle identifier: `dev.warp-lite.WarpLite`
 - App name: `WarpLite`
-- Current bundle version: `0.5.7-lite`
+- Current bundle version: `0.5.8-lite`
 
 ## Current Shipped State
 
-The current build is `v0.5.7-lite`.
+The current build is `v0.5.8-lite`.
 
 | Area | State | Notes |
 |---|---|---|
@@ -80,6 +80,16 @@ The current build is `v0.5.7-lite`.
 | Agent mode | Not a target | Agent-mode product surfaces should stay out of the lite app. |
 
 ## What Changed Recently
+
+### v0.5.8-lite — October upstream sync (2026-10)
+
+- Reviewed 368 upstream commits; imported or adapted compatible changes from 73 of them, plus one earlier command-line-ending prerequisite. Superseded command-signature pins are included in that source count.
+- Added native shell completions, file fallback, POSIX `--` handling, fzf/atuin widget handoff, and improved local history ranking.
+- Improved tab/group focus, vertical group search, shortcut hints, saved launch configurations, Vim `il`/`al`, Markdown scroll preservation, settings layout, and wide-character handling.
+- Bounded shared gitignore and signature caches, reduced editor allocation/parallel work, and removed obsolete completion v2/plugin-host code.
+- Preserved the Lite product boundary and protected UI/core crates. Default build check and optimized release build passed; 2,170 selected tests passed, 9 were ignored, and one legacy disabled-AI-panel expectation remains failing.
+- Native macOS smoke checks passed for zsh startup, commands, Unicode output, Tab completion, and a second terminal tab. Distribution is macOS Apple Silicon, ad-hoc signed and not notarized.
+- Full provenance, exclusions, and validation limits: [`WARP_LITE_SYNC_2026-10.md`](WARP_LITE_SYNC_2026-10.md).
 
 ### v0.5.7-lite — August upstream sync (2026-08)
 
@@ -243,7 +253,7 @@ Known caveat: full `cargo fmt --check` can currently fail because the repository
 
 ```text
 origin/warp-lite/main         default branch; current shipped work
-origin/warp-lite/sync-2026-08  upstream-sync staging branch (v0.5.7-lite cherry-picks land here first)
+origin/warp-lite/sync-2026-10  upstream-sync staging branch (v0.5.8-lite backports land here first)
 origin/upstream-tracking      read-only mirror/cherry-pick source for upstream Warp changes
 upstream/master               upstream Warp source
 ```
@@ -256,6 +266,7 @@ Historical phase branches and tags may still exist, but the public state should 
 
 | Tag | Summary |
 |---|---|
+| `v0.5.8-lite` | October sync: native completions, shell widget handoff, history ranking, tab groups, editor/Vim, settings, and bounded caches. |
 | `v0.5.7-lite` | Privacy-vetted August upstream sync: 193 integration commits for security, terminal/shell reliability, editor/Vim, grouped/pinned tabs, performance, and platform compatibility. |
 | `v0.5.6-lite` | Added `warp_platform` compile boundaries, removed pricing/account and safe AI startup work from default Lite, and added measured release/runtime benchmark gates. |
 | `v0.5.5-lite` | Large privacy-safe upstream sync: 139 cherry-picked bug/perf/terminal improvements, incl. vertical tab grouping, with all telemetry/network/AI/cloud changes rejected. |

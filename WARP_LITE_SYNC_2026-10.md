@@ -1,86 +1,83 @@
 # Warp Lite upstream sync — 2026-10-02
 
-## Yerel kurulum ve native smoke testi — takip doğrulaması
+## Scope and provenance
 
-Kullanıcının sonraki build/Applications kurulum talebi üzerine `dff37b11025798b03f09dea6d6d9a3819144d4a2` kaynak noktasından `cargo build --release --bin warp-oss` başarılı oldu (son build komutu 5m45s). Paket `script/build-warp-lite-app.sh` ile üretildi ve `/Applications/WarpLite.app` içine kuruldu. Bu takip doğrulaması aşağıdaki ilk incelemede belirtilen yerel release build/kurulum/native smoke eksikliğini kapatır; diğer platform ve tüm özellikler için uçtan uca doğrulama değildir.
+This is the source audit for **v0.5.8-lite**, prepared on `warp-lite/sync-2026-10` for integration into `warp-lite/main`.
 
-- Eski paket: `/Applications/WarpLite.app.backup-before-sync-20261002-215335`.
-- Kurulu arm64 Mach-O UUID: `DB110357-F5F1-3972-8104-4FCE0671E575`.
-- İmzalı executable SHA256: `8688897747eb5e4b6979e57d44e467fc8e51d38b4518191e40fb773ba580d505`.
-- Ad-hoc imza strict doğrulaması, kaynak paket/kurulu executable hash eşitliği ve UUID karşılaştırması geçti. Notarization yapılmadı.
-- Sürüm etiketi `0.5.7-lite` olarak kaldı; `Info.plist` içindeki `WarpLiteSourceRevision`, `WarpLiteSourceBranch` ve `WarpLiteLocalBuildDate` yeni yerel build'i ayırt eder.
-- Native uygulama açıldı; zsh hazır geldi. `printf`, Türkçe çıktı, `U+754C` geniş karakter, Tab ile `installed-b` → `installed-build.json` tamamlaması, yeni sekme ve ikinci sekmede komut yürütme gözlendi.
-- Accessibility çıktısı ve gerçek pencere screenshot'ı kontrol edildi. Çalışan ana/yardımcı süreçlerin `/Applications/WarpLite.app/Contents/MacOS/warp-oss` yolundan geldiği doğrulandı (kontrol anında PID 58661 / 58669). Uygulama kullanıcı için açık bırakıldı.
-- Kurulum/smoke kanıtı: `/tmp/warp-lite-sync-20261002/installed-build.json`; build ve kurulum logları aynı geçici dizinde. Push veya public release yapılmadı.
+- Fork baseline: `878dd3ed3e140ac26e2a95f1120365f5383d7775`.
+- Previous upstream audit: `a9c0a1ebda0acfe5e57b6f6df7c6ef744a71f8eb` (2026-08-15).
+- Current upstream audit: `c157d411d988176506a4a7278890f626a22413dd` (2026-10-02).
+- **368 upstream commits** reviewed; compatible changes from **73 source commits** imported or adapted. This includes six intermediate command-signature pins superseded by the final pin, rather than 73 independent complete cherry-picks.
+- One earlier prerequisite, `dc21551936ce85b0cb3945cb83705a3aadd60b38`, was also imported after command-byte regression tests exposed missing POSIX/PowerShell line-ending normalization.
+- Last implementation commit: `b3b3adbeeb42070fd9bb9b481eb161d0743cbd94`. Subsequent release preparation changes documentation and package metadata.
 
-## Sonuç ve kapsam
+This is a selective backport, not an upstream merge. Git ancestry will therefore continue to show upstream-only commits. The [complete inventory](docs/upstream-sync/2026-10-02-commits.json) records every source commit, changed paths, selection decision, reason, and local commit mapping.
 
-Çalışma dalı: `warp-lite/sync-2026-10`. Kod son noktası: `b3b3adbeeb42070fd9bb9b481eb161d0743cbd94`.
+## Included changes
 
-- Yerel başlangıç / `origin/warp-lite/main`: `878dd3ed3e140ac26e2a95f1120365f5383d7775`.
-- Önceki upstream inceleme noktası: `a9c0a1ebda0acfe5e57b6f6df7c6ef744a71f8eb` (2026-08-15).
-- Bu incelemenin upstream noktası: `c157d411d988176506a4a7278890f626a22413dd` (2026-10-02).
-- Aralıktaki **368 commit** değerlendirildi. **73 committen uyumlu değişiklikler** alındı veya Lite'a uyarlandı. Bu sayı, son imza paketi pininde birleştirilen altı ara pin güncellemesini de içerir; 73 bağımsız tam cherry-pick anlamına gelmez.
-- Ek olarak aralıktan önceki `dc21551936ce85b0cb3945cb83705a3aadd60b38` POSIX/PowerShell satır sonu düzeltmesi alındı. Yeni regresyon testleri bu eksik ön koşulu ortaya çıkardı.
-- Seçici backport yapıldı; upstream ile merge yapılmadı. Dolayısıyla Git ancestry üzerinden “upstream ile sıfır commit geride” sonucu beklenmez.
+- Native completions for Bash, zsh, fish, and PowerShell; file fallback after empty results; cancellation and stale-result guards; POSIX `--` arguments and updated command signatures.
+- Handoff to installed fzf/atuin history/file widgets, fzf.fish, Alt-C, and zsh query forwarding. Selection is accepted only from the active shell session and must match a pending handoff.
+- Bash PS1 expansion and generator cancellation fixes; PowerShell vi-mode, 5.1 login commands, shell-specific line endings, and separate kill-buffer writes.
+- WSL symlink completion and fewer guest processes when updating directory chips.
+- Local history ranking using match quality, recency, session, and exit status; coalesced index rebuilds with preserved event order.
+- Shared bounded gitignore matchers, bounded completion-signature misses, lazy completed-block payloads, fewer editor copies, and bounded parallel layout work.
+- Tab/group rename and menu-dismiss focus fixes, vertical group search, shortcut hints, saved launch-configuration groups, undo-close guards, and an editable New Window shortcut.
+- End-of-line wide-character crash fix, finished-block cursor handling, Paste in block menus, and IME marked text.
+- Vim `il`/`al`, scroll preservation when toggling rendered Markdown, repeated-discard guards, and app-side animated background support.
+- Empty settings-category suppression, trailing controls, line-number settings in Editor and Code Review, and About/settings-pane lifecycle guards.
+- Settings-schema generation using an existing app binary while retaining the old channel-aware generator fallback; obsolete completion v2/plugin-host removal.
+- Windows/Linux startup-watcher duplicate-window guard, updated winit dependency, shell lint helpers, and build fixes.
 
-Tam envanter: [2026-10-02-commits.json](docs/upstream-sync/2026-10-02-commits.json). Her upstream commit için konu, dosyalar, karar ve gerekçe; alınanlar için yerel commit eşlemesi içerir.
+Lite remains a local terminal with AI/cloud/telemetry product behavior disabled and the existing tmux layout preserved. `crates/warpui` and `crates/warpui_core` are byte-for-byte unchanged from the baseline. Signature adaptations in dormant AI consumers do not enable those features.
 
-## Dahil edilen davranışlar
+## Validation
 
-- Bash, zsh, fish ve PowerShell için native tamamlama; boş sonuçlarda dosya yolu fallback'i; iptal ve eski sonuç kontrolleri; POSIX `--` argümanları ve güncel komut imzaları.
-- fzf/atuin geçmiş ve dosya seçicilerine devir; fzf.fish ve Alt-C; zsh sorgu aktarımı. Seçim yalnızca etkin shell oturumundan ve bekleyen devirle eşleşiyorsa kullanılır.
-- Bash PS1 çift genişletme, generator iptali, PowerShell vi-mode ve 5.1 giriş komutları; shell'e uygun satır sonları ve PowerShell kill-buffer yazımı.
-- WSL symlink tamamlaması ve dizin göstergelerinde gereksiz guest süreçlerinin azaltılması.
-- Yerel komut geçmişinde eşleşme kalitesi, yakınlık, oturum ve çıkış durumu sıralaması; arama indeksinin art arda yeniden oluşturulmasının birleştirilmesi.
-- Paylaşılan ve sınırlandırılmış gitignore önbelleği; sınırlı completion imza önbelleği; tembel tamamlanmış-blok verisi; editör kopyaları ve paralel iş yükünün azaltılması.
-- Sekme/grup yeniden adlandırmada ve menü kapatmada odak; dikey gruplarda arama; modifier tutulunca kısayol ipuçları; launch configuration içinde grupların saklanması; undo-close koruması; düzenlenebilir New Window kısayolu.
-- Geniş karakterlerin satır sınırındaki çökme düzeltmesi; tamamlanmış blok imleci; blok menüsünde Paste; IME marked text.
-- Vim `il` / `al`; Markdown görünümü değiştirilince scroll korunması; tekrarlanan discard için koruma; animasyonlu arka planın app tarafı.
-- Ayarlarda boş kategori başlıklarının gizlenmesi, başlık yanına kontroller, satır numarası ayarının Editor and Code Review sayfasına taşınması, About ve settings pane yaşam döngüsü korumaları.
-- Mevcut uygulama ikilisinden ayar şeması üretimi; eski channel-aware generator fallback'i korunur. Obsolete completion v2/plugin-host kodu kaldırıldı.
-- Windows/Linux başlangıç izleyicisinde çift pencere önleme; mevcut winit bağımlılığının güncellenmesi; shell/build yardımcı düzeltmeleri.
+Validation ran on Apple Silicon macOS with Rust 1.92.0. A verified official toolchain was installed under a temporary task directory to work around rustup metadata errors; global Rust settings were not changed. Xcode's MetalToolchain component was installed for native compilation.
 
-Lite'ın yerel terminal odağı, kapalı AI/cloud/telemetry davranışı ve tmux düzeni korundu. `crates/warpui` ve `crates/warpui_core` başlangıçla byte-for-byte aynı. Dormant AI tüketicilerindeki bazı imza değişiklikleri yalnızca derleme uyarlamasıdır.
-
-## Doğrulama
-
-macOS üzerinde Rust 1.92.0 ile doğrulandı. Oturumun başlangıcındaki rustup metadata sorununu aşmak için doğrulanmış resmi toolchain `/tmp/warp-lite-sync-20261002/toolchain` altına kuruldu; global Rust ayarları değiştirilmedi. MetalToolchain bileşeni Xcode üzerinden indirildi.
-
-| Kontrol | Sonuç |
+| Check | Result |
 | --- | --- |
-| `cargo check -p warp --bin warp-oss` | Geçti (kod son noktasında) |
-| `cargo test -p warp --lib --features agent_management_view --no-run` | Test ikilisi derlendi ve linklendi |
-| `cargo test -p repo_metadata -p settings -p warp_completer -p warp_terminal -p warp_editor -p vim -p warp_util --lib` | **1.023 geçti, 9 ignored** |
-| Seçili uygulama testleri, benzersiz test sayısı | **1.147 geçti, 1 başarısız**; aşağıdaki AI paneli beklentisi |
-| Bash / zsh / fish bootstrap sözdizimi | Geçti |
-| `script/lint_shellcheck`, `script/prepare_bundled_resources` Bash sözdizimi | Geçti |
-| `git diff --check` ve korunan UI dizinleri diff'i | Temiz |
+| `cargo check -p warp --bin warp-oss` | Passed at the final implementation commit |
+| `cargo test -p warp --lib --features agent_management_view --no-run` | Test binary compiled and linked |
+| `cargo test -p repo_metadata -p settings -p warp_completer -p warp_terminal -p warp_editor -p vim -p warp_util --lib` | **1,023 passed; 9 ignored** |
+| Selected application tests, unique count | **1,147 passed; 1 failed**, described below |
+| Bash/zsh/fish bootstrap syntax | Passed |
+| ShellCheck wrapper and bundled-resource script Bash syntax | Passed |
+| Diff hygiene and protected UI/core diff | Clean |
+| `cargo build --release --bin warp-oss` | Passed; clean release build completed in 5m45s |
+| Installed native macOS smoke test | Passed for startup, commands, Unicode, Tab completion, and a second tab |
 
-Uygulama test kapsamı: terminal modeli/ANSI/tmux (589), completer (22), native/fallback/handoff/input-tab (12), PTY command bytes (7), arama (28), sekmeler (10), workspace view (157 başarılı + 1 başarısız), launch config (16), ayarlar UI (59), şema (4), kod editörü (111), discard (1), terminal Vim (126), marked text (5). Aynı code-editor Vim testlerinin ikinci çalışması toplama dahil edilmedi.
+Application coverage: terminal model/ANSI/tmux (589), completer (22), native/fallback/handoff/input-tab (12), PTY command bytes (7), search (28), tabs (10), workspace view (157 passed plus one failed), launch configuration (16), settings UI (59), schema (4), code editor (111), discard (1), terminal Vim (126), and marked text (5). Repeated runs of the same 66 code-editor Vim tests are not counted twice.
 
-Tek kalan başarısızlık: `workspace::view::tests::test_switch_focus_panels`, kapalı AI paneline odaklanma beklentisinde (`Expected AI panel to be focused`). `workspace/view.rs` AI paneli render yolunu mevcut `false && is_ai_assistant_panel_open` koşuluyla kapatır. Test ve `focus_left_panel` gövdesi başlangıç commitinde aynıdır; başlangıç için ayrı test ikilisi derlenip çalıştırılmadı. Bu nedenle tüm uygulama suite'inin yeşil olduğu iddia edilmiyor; AI panelini etkinleştiren bir değişiklik yapılmadı. `agent_management_view`, mevcut test fixture'larının derlenmesi için kullanıldı; ürünün varsayılan feature listesine eklenmedi.
+The remaining failure is `workspace::view::tests::test_switch_focus_panels`: it expects the disabled AI panel to receive focus. Lite's existing render condition is `false && is_ai_assistant_panel_open`. The test and `focus_left_panel` body are unchanged from the baseline, but a separate baseline test executable was not run. This is not a claim that the whole application suite is green. `agent_management_view` was used only to compile existing test fixtures and was not added to product defaults.
 
-Regresyonlar gerçekten çalıştırıldı: boş gitignore kaynaklarının 512 giriş sınırı, aynı dosya snapshot'ından fingerprint/parse, arama event sırası, kayıtlı olmayan shell seçim mesajı ve POSIX LF testi önce başarısız olup düzeltmeden sonra geçti. Cache testleri ortak cache temizleme yarışını önlemek için test kilidiyle seri hale getirildi. Standalone completer fixture'ları feature flag başlangıcını açıkça yapıyor.
+Regressions were exercised before and after fixes: the 512-entry limit for empty gitignore sources, fingerprinting/parsing the same file snapshot, search-event ordering, unrecognized shell selections, and POSIX LF handling. Cache tests use a test-only lock to avoid races between shared-cache clearing. Standalone completer fixtures explicitly initialize feature flags.
 
-Derleme existing cfg/dead-code uyarıları üretir; `-D warnings`/tam clippy geçişi iddia edilmez. ShellCheck ve PowerShell/PSScriptAnalyzer kurulu olmadığından lint/runtime doğrulanmadı. Windows, Linux, WSL guest ve PowerShell gerçek ortam testleri yapılmadı. Model/UI testleri native uygulamada görsel kontrolün yerine geçmez; yeni paket açılıp manuel test edilmedi. Release build, imzalama, notarization, kurulum, push veya release yayınlama yapılmadı.
+The [command/result summary](docs/upstream-sync/2026-10-02-validation.json) records source-checkpoint results and their limits. Temporary local logs are not release artifacts. Existing cfg/dead-code warnings remain; full clippy or `-D warnings` success is not claimed. ShellCheck and PowerShell/PSScriptAnalyzer were unavailable. Windows, Linux, WSL guest, and PowerShell native-runtime validation was not performed.
 
-Komut/sonuç özeti: [validation.json](docs/upstream-sync/2026-10-02-validation.json). Ham oturum logları `/tmp/warp-lite-sync-20261002/` altında; bu geçici dizin dağıtım artefaktı değildir.
+## Installed native smoke evidence
 
-## Bilinçli olarak alınmayanlar
+Before the version bump, the release executable built from source `dff37b11025798b03f09dea6d6d9a3819144d4a2` was packaged and installed as `/Applications/WarpLite.app`. The prior app was preserved in a recoverable backup. Strict ad-hoc signature checks, matching package/installed executable hashes, arm64 architecture, and Mach-O UUID checks passed.
 
-- AI/Oz/cloud, teams, billing, sharing ve raporlama değişiklikleri Lite ürün kapsamı dışında.
-- Upstream release/CI/agent otomasyonları, silinmiş GraphQL/voice backend bağımlılıkları ve WASM-only değişiklikler aktarılmadı.
-- Korunan UI/core API gerektiren right-click Paste tercihi ve yardım metni, editor layout-cache bypass, headless platform refactor ve secret-redaction crate ayrıştırması tutuldu. TIFF clipboard, Windows RDP renderer, smart-select/glyph ve backdrop düzeltmeleri de bu sınır nedeniyle alınmadı.
-- `21f413b79` terminal grid dosyalarını taşıyan refactor uygulanmadı; davranış yamaları Lite'ın mevcut yollarına uyarlandı.
-- `114bacea6` rmcp 2.2 güncellemesi upstream 1.6 tabanını varsayıyor. Lite 0.10 git forkunu dormant tipler için tutuyor ve ilgili transport crate'leri silinmiş. Bu ayrı major bağımlılık geçişi yapılmadı; ilgili CVE'nin giderildiği veya Lite'ın etkilenmediği iddia edilmiyor.
-- `200153270` public commitinin diff'i boş; bu committen bir düzeltme alındığı söylenemez.
+- Smoke-tested Mach-O UUID: `DB110357-F5F1-3972-8104-4FCE0671E575`.
+- Smoke-tested signed executable SHA256: `8688897747eb5e4b6979e57d44e467fc8e51d38b4518191e40fb773ba580d505`.
+- zsh became ready; `printf` executed successfully; Turkish text and U+754C rendered; Tab completed a real file path; a new terminal tab bootstrapped and executed another command.
+- Accessibility output and a native window screenshot were checked, and running processes were verified to originate from the installed app path.
+- This test package retained its old `0.5.7-lite` display label with source revision metadata. The public release package is labeled `0.5.8-lite`. Packaging validation and download checksums are recorded in the GitHub release notes.
 
-## Alınan upstream kaynakları
+The tested application was left running for the user. Release publication does not replace that live installation. Distribution uses the project's existing ad-hoc signing process and is **not Apple-notarized**.
 
-Aşağıdaki yerel commitler yalnızca yerelde bulunur; uzak depoya gönderilmedi.
+## Deliberately excluded or held
 
-| Upstream | Değişiklik | Yerel commitler |
+- AI/Oz/cloud, teams, billing, sharing, and new reporting behavior remain outside Lite's product scope.
+- Upstream release/CI/agent automation, removed GraphQL/voice backend dependencies, and WASM-only changes were not imported.
+- Right-click Paste preference/help text, editor layout-cache bypass, headless platform refactoring, and secret-redaction crate extraction require protected UI/core API changes and were held. TIFF clipboard, Windows RDP rendering, smart-select/glyph, and backdrop changes share that boundary.
+- The structural terminal-grid relocation `21f413b79` was not applied; behavior patches were mapped to Lite's existing paths.
+- The rmcp 2.2 update `114bacea6` assumes upstream's 1.6 base. Lite retains a 0.10 git fork for dormant types and has removed the corresponding transport crates. This separate major dependency migration was held; neither remediation of the advisory nor non-applicability to Lite is claimed.
+- Public commit `200153270` has no patch, so no remediation can be claimed from it.
+
+## Imported upstream sources
+
+| Upstream | Change | Local commits |
 | --- | --- | --- |
 | [33bb01256](https://github.com/warpdotdev/warp/commit/33bb01256937b48cd1c116ae5727c25e1f547e12) | Bump warp-command-signatures pin: add mpv/ruff completions, refresh deno (#15248) | `9ebdfe29b` |
 | [c6609ef23](https://github.com/warpdotdev/warp/commit/c6609ef2364de6bf8e50ac907c352779ae9c6605) | APP-4828: share and cache gitignore matchers in repo_metadata file-tree traversal (#15240) | `c4edbd73d` |
@@ -156,4 +153,5 @@ Aşağıdaki yerel commitler yalnızca yerelde bulunur; uzak depoya gönderilmed
 | [3308af3ac](https://github.com/warpdotdev/warp/commit/3308af3ac71798197c9d6af838b43c62c03a569c) | [APP-4553] Skip undo-close cleanup for unavailable pane groups (#16251) | `32604792c` |
 | [71cbee776](https://github.com/warpdotdev/warp/commit/71cbee776ef55716b2993383aa83fd19234276e4) | [APP-6223] Skip settings-error sync for unavailable panes (#16249) | `b5c02465d` |
 
-Ek ön koşul: [dc2155193](https://github.com/warpdotdev/warp/commit/dc21551936ce85b0cb3945cb83705a3aadd60b38), yerel `b3b3adbee`.
+
+Earlier prerequisite: [dc2155193](https://github.com/warpdotdev/warp/commit/dc21551936ce85b0cb3945cb83705a3aadd60b38), local `b3b3adbee`.
