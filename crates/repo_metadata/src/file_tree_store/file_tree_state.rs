@@ -185,7 +185,7 @@ impl FileTreeMapStore {
     pub fn load_at_path(
         &mut self,
         path: &StandardizedPath,
-        gitignores: &mut Vec<Gitignore>,
+        gitignores: &mut Vec<Arc<Gitignore>>,
     ) -> Result<(), BuildTreeError> {
         let child_path: Arc<StandardizedPath> = Arc::new(path.clone());
         let mut entry = Entry::Directory(DirectoryEntry {

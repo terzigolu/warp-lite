@@ -86,7 +86,7 @@ pub struct Repository {
     next_subscriber_id: SubscriberId,
     /// Cached gitignore patterns for this repository.
     #[cfg(feature = "local_fs")]
-    gitignores: Vec<Gitignore>,
+    gitignores: Vec<Arc<Gitignore>>,
 
     task_queue: ModelHandle<TaskQueue>,
 }

@@ -6,8 +6,8 @@ use notify_debouncer_full::notify::WatchFilter;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-#[cfg(feature = "local_fs")]
 use std::sync::Arc;
+use crate::gitignore_cache;
 use thiserror::Error;
 use warp_util::standardized_path::StandardizedPath;
 
@@ -94,7 +94,7 @@ impl Entry {
     pub fn build_tree(
         path: impl Into<PathBuf>,
         files: &mut Vec<FileMetadata>,
-        gitignores: &mut Vec<Gitignore>,
+        gitignores: &mut Vec<Arc<Gitignore>>,
         remaining_file_quota: Option<&mut usize>,
         max_depth: usize,
         current_depth: usize,
@@ -116,7 +116,7 @@ impl Entry {
     pub(crate) fn build_tree_with_ignored_ancestor(
         path: impl Into<PathBuf>,
         files: &mut Vec<FileMetadata>,
-        gitignores: &mut Vec<Gitignore>,
+        gitignores: &mut Vec<Arc<Gitignore>>,
         mut remaining_file_quota: Option<&mut usize>,
         max_depth: usize,
         current_depth: usize,
@@ -133,8 +133,7 @@ impl Entry {
 
         let gitignore_path = curr_path.join(".gitignore");
         if gitignore_path.exists() {
-            let (gitignore, _) = Gitignore::new(gitignore_path);
-            gitignores.push(gitignore);
+            gitignores.push(gitignore_cache::get_or_parse(&gitignore_path));
         }
 
         let path_is_ignored = ancestor_is_ignored
@@ -284,7 +283,7 @@ impl Entry {
     }
 
     /// Loads an unloaded directory
-    pub fn load(&mut self, gitignores: &mut Vec<Gitignore>) -> Result<(), BuildTreeError> {
+    pub fn load(&mut self, gitignores: &mut Vec<Arc<Gitignore>>) -> Result<(), BuildTreeError> {
         // TODO: Consider a similar `unload` method if we run into performance issues.
         let Self::Directory(directory) = self else {
             return Ok(());
@@ -368,7 +367,7 @@ pub fn is_git_internal_path(path: &Path) -> bool {
 pub fn matches_gitignores(
     path: &Path,
     is_dir: bool,
-    gitignores: &[Gitignore],
+    gitignores: &[Arc<Gitignore>],
     check_ancestors: bool,
 ) -> bool {
     gitignores.iter().any(|gitignore| {
@@ -495,7 +494,7 @@ pub fn should_ignore_git_path(path: &Path) -> bool {
     !is_commit_related_git_file(path) && !is_index_lock_file(path)
 }
 
-pub fn path_passes_filters(path: &Path, gitignores: &[Gitignore]) -> bool {
+pub fn path_passes_filters(path: &Path, gitignores: &[Arc<Gitignore>]) -> bool {
     let to_check_path = if path.exists() {
         match dunce::canonicalize(path) {
             Ok(canonical_path) => canonical_path,
@@ -585,7 +584,7 @@ fn descend_allowlist_matches(suffix: &[Component<'_>]) -> bool {
 pub fn should_watch_repo_directory(
     path: &Path,
     repo_root: &Path,
-    gitignores: &[Gitignore],
+    gitignores: &[Arc<Gitignore>],
     force_included_paths: &[PathBuf],
 ) -> bool {
     if matches_force_included_path(path, force_included_paths) {
@@ -614,7 +613,7 @@ fn is_within_symlink(path: &Path, repo_root: &Path) -> bool {
 #[cfg(feature = "local_fs")]
 pub fn repo_watch_filter(
     repo_root: PathBuf,
-    gitignores: Vec<Gitignore>,
+    gitignores: Vec<Arc<Gitignore>>,
     force_included_paths: Vec<PathBuf>,
 ) -> WatchFilter {
     let should_watch = move |path: &Path| {
@@ -635,16 +634,15 @@ pub fn is_file_parsable(path: &Path) -> Result<bool, io::Error> {
     std::fs::metadata(path).map(|metadata| (metadata.len() as usize) < MAX_FILE_SIZE)
 }
 
-pub fn gitignores_for_directory(directory_path: &Path) -> Vec<Gitignore> {
+pub fn gitignores_for_directory(directory_path: &Path) -> Vec<Arc<Gitignore>> {
     let mut gitignores = Vec::new();
     let gitignore_path = directory_path.join(".gitignore");
     if gitignore_path.exists() {
-        let (gitignore, _) = Gitignore::new(&gitignore_path);
-        gitignores.push(gitignore);
+        gitignores.push(gitignore_cache::get_or_parse(&gitignore_path));
     }
     let (global_gitignore, _) = Gitignore::global();
     if !global_gitignore.is_empty() {
-        gitignores.push(global_gitignore);
+        gitignores.push(Arc::new(global_gitignore));
     }
     gitignores
 }
