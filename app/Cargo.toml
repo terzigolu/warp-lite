@@ -49,6 +49,7 @@ path = "src/bin/generate_settings_schema.rs"
 test = false
 
 [dependencies]
+rustc-hash.workspace = true
 addr = "0.15.6"
 ai.workspace = true
 alphanumeric-sort = "1.5.7"
