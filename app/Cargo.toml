@@ -294,7 +294,6 @@ rmcp = { workspace = true, features = [
     "transport-child-process",
 ] }
 notify-debouncer-full.workspace = true
-rquickjs = { workspace = true, optional = true }
 rustls.workspace = true
 syntect = "5.0"
 sysinfo.workspace = true
@@ -612,9 +611,6 @@ resize_fix = []
 pluggable_notifications = []
 # This enables `read_files` to support images.
 read_image_files = []
-# This feature enables plugin support in Warp. Note that its typically checked
-# directly, rather than via the `FeatureFlag` enum, because its value is
-# required early in the app lifecycle prior to `FeatureFlag` initialization.
 # Enable this feature to automatically perform CPU profiling via pprof.  The
 # generated profile will be written to profile.pb in the current directory.
 # NOTE: This may slow down program execution.

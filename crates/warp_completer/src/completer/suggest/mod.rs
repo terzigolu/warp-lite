@@ -1,7 +1,5 @@
 pub mod alias;
-#[cfg_attr(feature = "v2", path = "v2.rs")]
-#[cfg_attr(not(feature = "v2"), path = "legacy.rs")]
-mod imp;
+mod legacy;
 mod priority;
 use alias::{expand_command_aliases, AliasExpansionResult};
 pub use priority::Priority;
@@ -16,6 +14,8 @@ use std::hash::{Hash, Hasher};
 
 use async_recursion::async_recursion;
 use itertools::Itertools;
+use legacy::*;
+pub use priority::Priority;
 use smol_str::SmolStr;
 use warp_command_signatures::IconType;
 

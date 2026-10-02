@@ -34,7 +34,6 @@ pub fn test_expand_command_aliases() {
     let result = warpui::r#async::block_on(expand_command_aliases("aliasForTest ", false, &ctx));
     assert_eq!(result.expanded_command_line, "test ");
     assert_eq!(result.tokens_from_command, vec!["test"]);
-    #[cfg(not(feature = "v2"))]
     assert_eq!(
         result
             .signature_for_completions
@@ -44,7 +43,6 @@ pub fn test_expand_command_aliases() {
         "test"
     );
 
-    #[cfg(not(feature = "v2"))]
     {
         // The test signature has an alias function, which expands subcommand "twelve" to "one".
         let result = warpui::r#async::block_on(expand_command_aliases("test twelve ", false, &ctx));
@@ -105,7 +103,6 @@ pub fn test_expand_command_aliases_env_vars() {
             .env_vars,
         vec!["ENV1=VAL1", "ENV2=VAL2"]
     );
-    #[cfg(not(feature = "v2"))]
     assert_eq!(
         result
             .signature_for_completions
@@ -115,7 +112,6 @@ pub fn test_expand_command_aliases_env_vars() {
         "test"
     );
 
-    #[cfg(not(feature = "v2"))]
     {
         // The test signature has an alias function, which expands subcommand "twelve" to "one".
         let result = warpui::r#async::block_on(expand_command_aliases(
@@ -201,7 +197,6 @@ pub fn test_expand_command_aliases_should_not_expand_if_no_space_after_alias() {
     assert_eq!(result.expanded_command_line, "test twelve");
     assert_eq!(result.tokens_from_command, vec!["test", "twelve"]);
     // "twelve" isn't a valid subcommand, so we should use the "test" signature.
-    #[cfg(not(feature = "v2"))]
     assert_eq!(
         result
             .signature_for_completions
@@ -217,7 +212,6 @@ pub fn test_expand_command_aliases_should_not_expand_if_no_space_after_alias() {
     assert_eq!(result.expanded_command_line, "test twelve");
     assert_eq!(result.tokens_from_command, vec!["test", "twelve"]);
     // "twelve" isn't a valid subcommand, so we should use the "test" signature.
-    #[cfg(not(feature = "v2"))]
     assert_eq!(
         result
             .signature_for_completions
@@ -291,7 +285,6 @@ pub fn test_expand_command_aliases_multiple_commands() {
         "kubectl get pod && ENV1=VAL1 ENV2=VAL2 test "
     );
 
-    #[cfg(not(feature = "v2"))]
     {
         // The test signature has an alias function, which expands subcommand "twelve" to "one".
         let result = warpui::r#async::block_on(expand_command_aliases(

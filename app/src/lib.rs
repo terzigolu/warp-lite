@@ -54,8 +54,6 @@ mod notification;
 mod palette;
 mod persistence;
 mod platform;
-#[cfg(feature = "plugin_host")]
-mod plugin;
 mod prefix;
 #[cfg(target_os = "macos")]
 mod preview_config_migration;
@@ -188,8 +186,6 @@ pub use persistence::testing as sqlite_testing;
 use ::settings::{Setting, ToggleableSetting};
 pub use warp_core::errors::{report_error, report_if_error};
 
-#[cfg(feature = "plugin_host")]
-pub use plugin::{run_plugin_host, PLUGIN_HOST_FLAG};
 use warp_core::user_preferences::GetUserPreferences as _;
 use warpui::modals::{AlertDialogWithCallbacks, AppModalCallback};
 use warpui::platform::app::ApproveTerminateResult;
@@ -543,10 +539,6 @@ pub fn run() -> Result<()> {
                 crate::terminal::local_tty::server::run_terminal_server(args);
                 return Ok(());
             }
-            #[cfg(feature = "plugin_host")]
-            warp_cli::Command::Worker(warp_cli::WorkerCommand::PluginHost { .. }) => {
-                return crate::run_plugin_host();
-            }
             #[cfg(feature = "local_tty")]
             warp_cli::Command::Worker(warp_cli::WorkerCommand::MinidumpServer { socket_name }) => {
                 cfg_if::cfg_if! {
@@ -586,7 +578,6 @@ pub fn run() -> Result<()> {
             }
             #[cfg(not(any(
                 feature = "local_tty",
-                feature = "plugin_host",
                 not(target_family = "wasm")
             )))]
             warp_cli::Command::Worker(worker) => {
@@ -954,10 +945,6 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
         #[cfg(enable_crash_recovery)]
         ctx.add_singleton_model(move |_ctx| crash_recovery);
 
-        #[cfg(feature = "plugin_host")]
-        ctx.add_singleton_model(move |ctx| {
-            plugin::PluginHost::new(ctx).expect("Could not instantiate PluginHost")
-        });
         let app_state = initialize_app(
             &launch_mode,
             timer,

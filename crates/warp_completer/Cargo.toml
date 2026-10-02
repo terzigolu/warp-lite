@@ -11,8 +11,6 @@ license.workspace = true
 async-recursion.workspace = true
 async-trait.workspace = true
 anyhow.workspace = true
-bincode.workspace = true
-cfg-if.workspace = true
 clap.workspace = true
 derive-new = "0.5.8"
 dirs.workspace = true
@@ -42,7 +40,6 @@ warp-command-signatures = {workspace = true}
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 command = { path = "../command" }
-rquickjs = { workspace = true, optional = true }
 warp-command-signatures = {workspace = true, features = ["embed-signatures"]}
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
