@@ -1751,6 +1751,16 @@ impl Block {
         self.was_long_running = was_long_running;
     }
 
+    pub fn is_command_cursor_visible(&self) -> bool {
+        self.is_active_and_long_running()
+            && self.is_command_grid_active()
+            && self.is_mode_set(TermMode::SHOW_CURSOR)
+    }
+
+    pub fn is_output_cursor_visible(&self) -> bool {
+        self.is_active_and_long_running() && self.is_mode_set(TermMode::SHOW_CURSOR)
+    }
+
     pub fn command_with_secrets_obfuscated(&self, include_escape_sequences: bool) -> String {
         self.header_grid
             .command_with_secrets_obfuscated(include_escape_sequences)

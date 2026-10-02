@@ -70,6 +70,7 @@ use super::grid_renderer::CellGlyphCache;
 
 use super::meta_shortcuts::handle_keystroke_despite_composing;
 use super::model::block::BlockId;
+use super::model::ansi::CursorShape;
 use super::model::blocks::{RichContentItem, SelectionRange};
 use super::model::grid::grid_handler::{Link, TermMode};
 use super::model::image_map::StoredImageMetadata;
@@ -2599,7 +2600,7 @@ impl BlockListElement {
                 }),
             command_grid_properties,
             block_grid_params,
-            cursor_visible.then(|| block.prompt_and_command_grid().cursor_style().shape),
+            block.is_command_cursor_visible().then(|| block.prompt_and_command_grid().cursor_style().shape),
             image_metadata,
             ctx,
             app,
@@ -2608,10 +2609,7 @@ impl BlockListElement {
         // Only render the cursor in the command grid if the command grid is active and if it's
         // long running. This is to avoid jitter where a cursor just flickers while the pty is
         // initializing.
-        if block.is_active_and_long_running()
-            && block.is_command_grid_active()
-            // Check if the "hide cursor" escape sequence is present.
-            && block.is_mode_set(TermMode::SHOW_CURSOR)
+        if block.is_command_cursor_visible()
         {
             block.prompt_and_command_grid().draw_cursor(
                 command_origin,
@@ -2699,15 +2697,13 @@ impl BlockListElement {
                     }),
                 output_grid_properties,
                 block_grid_params,
-                cursor_visible.then(|| block.output_grid().cursor_style().shape),
+                block.is_output_cursor_visible().then(|| block.output_grid().cursor_style().shape),
                 image_metadata,
                 ctx,
                 app,
             );
 
-            if block.is_active_and_long_running()
-            // Check if the "hide cursor" escape sequence is present.
-            && block.is_mode_set(TermMode::SHOW_CURSOR)
+            if block.is_output_cursor_visible()
             // Don't draw the Warp cursor when rich input is hiding
             // the CLI agent's cursor cell — agents like OpenCode and Codex
             // rely on Warp's cursor, so we suppress it here too.
