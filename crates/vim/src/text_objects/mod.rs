@@ -3,6 +3,8 @@
 //! See https://vimdoc.sourceforge.net/htmldoc/motion.html#text-objects
 //! or enter ":help text-objects" in Vim.
 mod block;
+mod line;
+pub use line::*;
 mod paragraph;
 mod quote;
 mod word;

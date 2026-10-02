@@ -355,12 +355,28 @@ pub struct VimTextObject {
     pub inclusion: TextObjectInclusion,
     pub object_type: TextObjectType,
 }
+impl VimTextObject {
+    pub fn motion_type(&self) -> MotionType {
+        match (&self.object_type, self.inclusion) {
+            (TextObjectType::Paragraph, _)
+            | (TextObjectType::Line, TextObjectInclusion::Around) => MotionType::Linewise,
+            (
+                TextObjectType::Word(_)
+                | TextObjectType::Line
+                | TextObjectType::Quote(_)
+                | TextObjectType::Block(_),
+                _,
+            ) => MotionType::Charwise,
+        }
+    }
+}
 
 impl From<char> for TextObjectType {
     fn from(c: char) -> Self {
         match c {
             'w' | 'W' => TextObjectType::Word(WordType::from(c)),
             'p' => TextObjectType::Paragraph,
+            'l' => TextObjectType::Line,
             '\'' | '"' | '`' => TextObjectType::Quote(QuoteType::from(c)),
             'b' | 'B' | '(' | ')' | '[' | ']' | '{' | '}' => {
                 TextObjectType::Block(BracketType::from(c))
@@ -489,6 +505,8 @@ pub enum TextObjectType {
     Word(WordType),
     /// Enter ":help ap" in Vim.
     Paragraph,
+    /// Enter ":help v_al" or ":help v_il" in Neovim.
+    Line,
     /// Enter ":help aquote" in Vim.
     Quote(QuoteType),
     /// Enter ":help a{" in Vim.
@@ -1400,8 +1418,8 @@ impl VimFSA {
                 )
             }
             PendingOperand::TextObject(inclusion) => match c {
-                'w' | 'W' | 'p' | '\'' | '"' | '`' | 'b' | 'B' | '(' | ')' | '[' | ']' | '{'
-                | '}' => self.create_operation(
+                'w' | 'W' | 'p' | 'l' | '\'' | '"' | '`' | 'b' | 'B' | '(' | ')' | '[' | ']'
+                | '{' | '}' => self.create_operation(
                     operator,
                     VimOperand::TextObject(VimTextObject {
                         inclusion,
@@ -1442,11 +1460,17 @@ impl VimFSA {
             Some(pending_action) => self.handle_visual_pending_action(c, pending_action)?,
             None => match self.pending_visual_object {
                 Some(inclusion) => match c {
-                    'w' | 'W' | 'p' | '\'' | '"' | '`' | 'b' | 'B' | '(' | ')' | '[' | ']'
-                    | '{' | '}' => {
-                        if c == 'p' {
-                            self.mode = VimMode::Visual(MotionType::Linewise);
-                        }
+                    'w' | 'W' | 'p' | 'l' | '\'' | '"' | '`' | 'b' | 'B' | '(' | ')' | '['
+                    | ']' | '{' | '}' => {
+                        self.mode = match (c, inclusion) {
+                            ('p', _) | ('l', TextObjectInclusion::Around) => {
+                                VimMode::Visual(MotionType::Linewise)
+                            }
+                            ('l', TextObjectInclusion::Inner) => {
+                                VimMode::Visual(MotionType::Charwise)
+                            }
+                            _ => self.mode,
+                        };
                         VimEventType::VisualTextObject(VimTextObject {
                             inclusion,
                             object_type: TextObjectType::from(c),

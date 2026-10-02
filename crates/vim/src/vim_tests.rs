@@ -7,6 +7,49 @@ fn type_chars(fsa: &mut VimFSA, chars: &str) -> Vec<VimEvent> {
         .collect()
 }
 
+#[test]
+fn line_text_objects_dispatch_from_operator_pending_mode() {
+    let mut fsa = enter_normal_mode();
+    let events = type_chars(&mut fsa, "dilyal");
+
+    assert_eq!(events.len(), 2);
+    assert_operation_text_object(&events[0], VimOperator::Delete, TextObjectInclusion::Inner);
+    assert_operation_text_object(&events[1], VimOperator::Yank, TextObjectInclusion::Around);
+
+    let event = type_chars(&mut fsa, "dl").pop().unwrap();
+    assert_operation_motion(
+        &event,
+        VimOperator::Delete,
+        &VimMotion::Character(CharacterMotion::Right),
+        MotionType::Charwise,
+    );
+}
+
+#[test]
+fn line_text_objects_set_the_visual_motion_type() {
+    let mut fsa = enter_visual_mode(MotionType::Linewise);
+    let event = type_chars(&mut fsa, "il").pop().unwrap();
+
+    assert!(matches!(
+        event.event_type,
+        VimEventType::VisualTextObject(VimTextObject {
+            inclusion: TextObjectInclusion::Inner,
+            object_type: TextObjectType::Line,
+        })
+    ));
+    assert_eq!(fsa.mode, VimMode::Visual(MotionType::Charwise));
+
+    let event = type_chars(&mut fsa, "al").pop().unwrap();
+    assert!(matches!(
+        event.event_type,
+        VimEventType::VisualTextObject(VimTextObject {
+            inclusion: TextObjectInclusion::Around,
+            object_type: TextObjectType::Line,
+        })
+    ));
+    assert_eq!(fsa.mode, VimMode::Visual(MotionType::Linewise));
+}
+
 fn enter_normal_mode() -> VimFSA {
     let mut fsa = VimFSA::new();
     fsa.mode = VimMode::Normal;
@@ -112,6 +155,128 @@ fn assert_visual_operator(
     }
 }
 
+fn assert_operation_text_object(
+    event: &VimEvent,
+    expected_operator: VimOperator,
+    expected_inclusion: TextObjectInclusion,
+) {
+    match &event.event_type {
+        VimEventType::Operation {
+            operator,
+            operand:
+                VimOperand::TextObject(VimTextObject {
+                    inclusion,
+                    object_type: TextObjectType::Line,
+                }),
+            ..
+        } => {
+            assert_eq!(*operator, expected_operator);
+            assert!(matches!(
+                (inclusion, expected_inclusion),
+                (TextObjectInclusion::Inner, TextObjectInclusion::Inner)
+                    | (TextObjectInclusion::Around, TextObjectInclusion::Around)
+            ));
+        }
+        other => panic!("expected a line text-object operation, got {other:?}"),
+    }
+}
+fn assert_replace_char(event: &VimEvent, expected_character: char, expected_advance: bool) {
+    match &event.event_type {
+        VimEventType::ReplaceChar { character, advance } => {
+            assert_eq!(*character, Some(expected_character));
+            assert_eq!(*advance, expected_advance);
+        }
+        other => panic!("expected ReplaceChar, got {other:?}"),
+    }
+}
+
+#[test]
+fn test_normal_mode_r_replaces_once_and_returns_to_normal() {
+    let mut fsa = enter_normal_mode();
+    let mode_event = fsa
+        .typed_character('r')
+        .expect("r should enter Replace mode");
+    assert!(matches!(
+        mode_event.event_type,
+        VimEventType::ChangeMode {
+            new: ModeTransition {
+                mode: VimMode::Replace,
+                ..
+            },
+            old: VimMode::Normal,
+        }
+    ));
+    assert_eq!(fsa.mode, VimMode::Replace);
+
+    let replace_event = fsa
+        .typed_character('x')
+        .expect("the replacement character should emit an event");
+    assert_replace_char(&replace_event, 'x', false);
+    assert_eq!(fsa.mode, VimMode::Normal);
+}
+
+#[test]
+fn test_normal_mode_counted_uppercase_r_repeats_the_session() {
+    let mut fsa = enter_normal_mode();
+    assert!(fsa.typed_character('2').is_none());
+    fsa.typed_character('R')
+        .expect("2R should enter continuous Replace mode");
+    for character in ['x', 'y'] {
+        let replace_event = fsa
+            .typed_character(character)
+            .expect("each replacement character should emit an event");
+        assert_replace_char(&replace_event, character, true);
+        assert_eq!(replace_event.count, 1);
+    }
+
+    let escape_event = fsa
+        .keypress("escape")
+        .expect("Escape should finish the counted Replace session");
+    assert_replace_text(&escape_event, "xy", 2, true);
+
+    let dot_event = fsa
+        .typed_character('.')
+        .expect("dot should preserve the original Replace count");
+    assert_replace_text(&dot_event, "xy", 2, false);
+}
+
+#[test]
+fn test_normal_mode_uppercase_r_replaces_continuously_until_escape() {
+    let mut fsa = enter_normal_mode();
+    let mode_event = fsa
+        .typed_character('R')
+        .expect("R should enter continuous Replace mode");
+    assert!(matches!(
+        mode_event.event_type,
+        VimEventType::ChangeMode {
+            new: ModeTransition {
+                mode: VimMode::Replace,
+                ..
+            },
+            old: VimMode::Normal,
+        }
+    ));
+    assert_eq!(fsa.mode, VimMode::Replace);
+
+    for character in ['x', 'y'] {
+        let replace_event = fsa
+            .typed_character(character)
+            .expect("each replacement character should emit an event");
+        assert_replace_char(&replace_event, character, true);
+        assert_eq!(fsa.mode, VimMode::Replace);
+    }
+
+    let escape_event = fsa
+        .keypress("escape")
+        .expect("Escape should leave continuous Replace mode");
+    assert_replace_text(&escape_event, "xy", 1, true);
+    assert_eq!(fsa.mode, VimMode::Normal);
+
+    let dot_event = fsa
+        .typed_character('.')
+        .expect("dot should replay the full Replace session");
+    assert_replace_text(&dot_event, "xy", 1, false);
+}
 #[test]
 fn test_normal_mode_gg_jumps_to_first_line() {
     let mut fsa = enter_normal_mode();
