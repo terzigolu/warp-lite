@@ -153,7 +153,7 @@ fn register_setting_events_impl<G, V, C>(
         let storage_key = metadata.storage_key;
         let sync_to_cloud = metadata.sync_to_cloud;
         // Propagate per settings change events through the SettingsManager.
-        ctx.subscribe_to_model(&settings_group, move |_manager, _, _, ctx| {
+        ctx.subscribe_to_model(&settings_group, move |_manager, _, ctx| {
             ctx.emit(SettingsEvent::LocalPreferencesUpdated {
                 storage_key: storage_key.to_string(),
                 sync_to_cloud,
