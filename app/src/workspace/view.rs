@@ -1,3 +1,4 @@
+use instant::Instant;
 use warpui::event::KeyState;
 use crate::tab::TabShortcutModifierState;
 #[cfg(feature = "warp_platform")]
@@ -962,6 +963,7 @@ enum TabBarSlot {
 }
 
 pub struct Workspace {
+    background_image_animation_start_time: Instant,
     window_id: WindowId,
     pub(crate) tabs: Vec<TabData>,
     active_tab_index: usize,
@@ -3275,6 +3277,7 @@ impl Workspace {
             ctrl_tab_palette,
             mouse_states: Default::default(),
             previous_theme: None,
+            background_image_animation_start_time: Instant::now(),
             settings_pane,
             theme_chooser_view,
             #[cfg(feature = "warp_platform")]
@@ -25256,6 +25259,7 @@ impl View for Workspace {
                         .cover()
                         .with_opacity(opacity_ratio)
                         .with_corner_radius(window_corner_radius)
+                        .enable_animation_with_start_time(self.background_image_animation_start_time)
                         .finish(),
                 )
                 .finish(),
