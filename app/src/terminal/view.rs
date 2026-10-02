@@ -7451,7 +7451,7 @@ impl TerminalView {
             input.trigger_external_shell_widget_handoff(
                 EXTERNAL_CTRL_R_HELPER_COMMAND,
                 ShellWidgetApplyMode::Replace,
-                false, /* capture_cursor */
+                true, /* capture_cursor */
                 ctx,
             )
         })
