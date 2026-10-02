@@ -941,10 +941,10 @@ impl Buffer {
                     new_end_point,
                 }],
                 old_offset,
-                new_lines: self.styled_blocks_in_range(
+                new_lines: Arc::new(self.styled_blocks_in_range(
                     CharOffset::from(1)..self.max_charoffset(),
                     StyledBlockBoundaryBehavior::Exclusive,
-                ),
+                )),
             }),
             anchor_updates,
         }
@@ -2546,7 +2546,9 @@ impl Buffer {
                 new_end_point: full_points.end,
             }],
             old_offset: range.clone(),
-            new_lines: self.styled_blocks_in_range(range, StyledBlockBoundaryBehavior::Exclusive),
+            new_lines: Arc::new(
+                self.styled_blocks_in_range(range, StyledBlockBoundaryBehavior::Exclusive),
+            ),
         }
     }
 
@@ -4811,8 +4813,9 @@ impl Buffer {
                 // the offset we take as the parameter is right before the block item
                 // marker.
                 old_offset: old_range.clone(),
-                new_lines: self
-                    .styled_blocks_in_range(old_range, StyledBlockBoundaryBehavior::Exclusive),
+                new_lines: Arc::new(
+                    self.styled_blocks_in_range(old_range, StyledBlockBoundaryBehavior::Exclusive),
+                ),
             }),
             ..Default::default()
         }
@@ -4949,8 +4952,9 @@ impl Buffer {
                     new_end_point,
                 }],
                 old_offset: old_range.clone(),
-                new_lines: self
-                    .styled_blocks_in_range(old_range, StyledBlockBoundaryBehavior::Exclusive),
+                new_lines: Arc::new(
+                    self.styled_blocks_in_range(old_range, StyledBlockBoundaryBehavior::Exclusive),
+                ),
             }),
             anchor_updates: vec![],
         }
@@ -5031,8 +5035,9 @@ impl Buffer {
                     new_end_point,
                 }],
                 old_offset: old_range,
-                new_lines: self
-                    .styled_blocks_in_range(new_range, StyledBlockBoundaryBehavior::Exclusive),
+                new_lines: Arc::new(
+                    self.styled_blocks_in_range(new_range, StyledBlockBoundaryBehavior::Exclusive),
+                ),
             }),
             anchor_updates: vec![anchor_update],
         }
@@ -5150,10 +5155,10 @@ impl Buffer {
             delta: Some(EditDelta {
                 precise_deltas,
                 old_offset: undo_item.replacement_range.old_range,
-                new_lines: self.styled_blocks_in_range(
+                new_lines: Arc::new(self.styled_blocks_in_range(
                     undo_item.replacement_range.new_range,
                     StyledBlockBoundaryBehavior::Exclusive,
-                ),
+                )),
             }),
             anchor_updates,
         }
@@ -5199,10 +5204,10 @@ impl Buffer {
             delta: Some(EditDelta {
                 precise_deltas,
                 old_offset: undo_item.replacement_range.old_range,
-                new_lines: self.styled_blocks_in_range(
+                new_lines: Arc::new(self.styled_blocks_in_range(
                     undo_item.replacement_range.new_range,
                     StyledBlockBoundaryBehavior::Exclusive,
-                ),
+                )),
             }),
             anchor_updates,
         }

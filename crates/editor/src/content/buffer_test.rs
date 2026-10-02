@@ -1051,7 +1051,7 @@ fn test_edit_delta() {
                 }]
             );
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -1098,7 +1098,7 @@ fn test_edit_delta() {
                 }]
             );
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "tnst".to_string(),
@@ -1133,7 +1133,7 @@ fn test_edit_delta() {
                 }]
             );
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -1188,7 +1188,7 @@ fn test_edit_delta() {
                 }]
             );
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "ts\n".to_string(),
@@ -1223,7 +1223,7 @@ fn test_edit_delta() {
                 }]
             );
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "hi\n".to_string(),
@@ -1257,7 +1257,7 @@ fn test_edit_delta() {
                 }]
             );
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -1702,7 +1702,7 @@ fn test_block_style() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![
@@ -1764,7 +1764,7 @@ fn test_block_style() {
                 "<text><b_s>te<b_e><code:Shell>s<text>t<code:Shell>li<text>ne\\nsecond"
             );
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -1809,7 +1809,7 @@ fn test_block_style() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(4)..CharOffset::from(8));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -1852,7 +1852,7 @@ fn test_block_style() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(14)..CharOffset::from(20));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "second\n".to_string(),
@@ -1886,7 +1886,7 @@ fn test_block_style() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(11)..CharOffset::from(14));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -1999,7 +1999,7 @@ fn test_style_unstyle_block_overlapping() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -2054,7 +2054,7 @@ fn test_style_unstyle_block_overlapping() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(8));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "t\n".to_string(),
@@ -2087,7 +2087,7 @@ fn test_style_unstyle_block_overlapping() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(13)..CharOffset::from(20));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -2129,7 +2129,7 @@ fn test_style_unstyle_block_overlapping() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -2171,7 +2171,7 @@ fn test_style_unstyle_block_overlapping() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(8)..CharOffset::from(13));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -2362,7 +2362,7 @@ fn test_delete_unpaired_block_style_marker() {
                 .expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "tess\n".to_string(),
@@ -2399,7 +2399,7 @@ fn test_delete_unpaired_block_style_marker() {
                 .expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(4)..CharOffset::from(8));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "sss\n".to_string(),
@@ -2438,7 +2438,7 @@ fn test_delete_unpaired_block_style_marker() {
                 .expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(9));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -2579,7 +2579,7 @@ fn test_remove_prefix_and_style() {
             assert_eq!(buffer.content.debug(), "<code:Shell><text>");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(4));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "\n".to_string(),
@@ -2631,7 +2631,7 @@ fn test_remove_prefix_and_style() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(2)..CharOffset::from(9));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "abc\n".to_string(),
@@ -2715,7 +2715,7 @@ fn test_remove_prefix_and_insert_block_item() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(0)..CharOffset::from(9));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Item(BufferBlockItem::HorizontalRule),
                     StyledBufferBlock::Text(StyledTextBlock {
@@ -2759,7 +2759,7 @@ fn test_remove_prefix_and_insert_block_item() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(2)..CharOffset::from(16));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -3776,7 +3776,7 @@ fn test_unstyle_block_partial_left() {
 
             // The "Hel" runnable command and the "lo" and "World" paragraphs are re-rendered.
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -3864,7 +3864,7 @@ fn test_unstyle_block_partial_right() {
             assert_eq!(delta.old_offset, CharOffset::from(13)..CharOffset::from(19));
 
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![
@@ -3955,7 +3955,7 @@ fn test_unstyle_block_multi_line() {
 
             // Only the converted block needs to be re-rendered.
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -4041,7 +4041,7 @@ fn test_edit_to_unstyle_block_multi_line() {
 
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(20));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -4123,7 +4123,7 @@ fn test_unstyle_block_exact() {
 
             // Only the converted block needs to be re-rendered.
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "Text\n".to_string(),
@@ -4198,7 +4198,7 @@ fn test_unstyle_block_within() {
             // The new content to render is the 4 blocks created from the former 2 lines
             // of runnable commands.
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -4301,7 +4301,7 @@ fn test_unstyle_block_surrounded() {
             assert_eq!(delta.old_offset, CharOffset::from(8)..CharOffset::from(14));
             // This means we should return all blocks in the buffer.
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "Block\n".to_string(),
@@ -4354,7 +4354,7 @@ fn test_enter_at_block_start() {
             // The block after the cursor is re-rendered to splice in the new, empty list item.
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -4435,7 +4435,7 @@ fn test_enter_at_code_block_start() {
             // A new block is spliced in at the start of the buffer, but the code block doesn't change.
             assert_eq!(delta.old_offset, 0.into()..1.into());
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "\n".to_string(),
@@ -4516,7 +4516,7 @@ fn test_enter_at_starting_styled_block() {
             // In this case, there's no previous block to re-render. Instead, we just have the new one.
             assert_eq!(delta.old_offset, CharOffset::zero()..CharOffset::from(1));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "\n".to_string(),
@@ -4572,7 +4572,7 @@ fn test_enter_at_starting_plain_text() {
             let delta = result.delta.unwrap();
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(8));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -4733,7 +4733,7 @@ fn test_undo_enter_at_buffer_start() {
             let delta = edit_result.delta.unwrap();
             assert_eq!(delta.old_offset, CharOffset::zero()..CharOffset::from(1));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "\n".to_string(),
@@ -4751,7 +4751,7 @@ fn test_undo_enter_at_buffer_start() {
             let delta = edit_result.delta.unwrap();
             assert_eq!(delta.old_offset, CharOffset::zero()..CharOffset::from(2));
             // There should be no new lines, since they were deleted.
-            assert_eq!(delta.new_lines, vec![]);
+            assert_eq!((*delta.new_lines), vec![]);
         });
     });
 }
@@ -4951,7 +4951,7 @@ fn test_insert_formatted_text_empty_buffer() {
             assert_eq!(buffer.content.debug(), "<text><code:Shell>block<text>");
             assert_eq!(delta.old_offset, CharOffset::from(0)..CharOffset::from(1));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -5014,7 +5014,7 @@ fn test_insert_code_block_in_text_lines() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(8));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "Beblockfore\n".into(),
@@ -5043,7 +5043,7 @@ fn test_insert_code_block_in_text_lines() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(13)..CharOffset::from(18));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "block\n".into(),
@@ -5076,7 +5076,7 @@ fn test_insert_code_block_in_text_lines() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(32)..CharOffset::from(32));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "block\n".into(),
@@ -5124,7 +5124,7 @@ fn test_placeholder_insertion() {
             // Inserting a placeholder should re-render the line.
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(9));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -5187,7 +5187,7 @@ fn test_placeholder_inherits_styles() {
             );
 
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -5658,7 +5658,7 @@ fn test_undo_redo_plain_text() {
                 .expect("Edit delta should exist");
             assert_eq!(buffer.content.debug(), "<text>");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(11));
-            assert_eq!(delta.new_lines, vec![]);
+            assert_eq!((*delta.new_lines), vec![]);
 
             let delta = buffer
                 .redo(selection.clone(), ctx)
@@ -5667,7 +5667,7 @@ fn test_undo_redo_plain_text() {
             assert_eq!(buffer.content.debug(), "<text>test\\n\\nline");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(1));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -5723,7 +5723,7 @@ fn test_undo_redo_plain_text() {
             assert_eq!(buffer.content.debug(), "<text>test\\n\\nline");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(7));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -5818,7 +5818,7 @@ fn test_undo_redo_block() {
             assert_eq!(buffer.content.debug(), "<text>test\\n\\nblock");
             assert_eq!(delta.old_offset, CharOffset::from(7)..CharOffset::from(13));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "block".into(),
@@ -5840,7 +5840,7 @@ fn test_undo_redo_block() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(7)..CharOffset::from(12));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -5894,7 +5894,7 @@ fn test_undo_redo_block() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(9));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -6004,7 +6004,7 @@ fn test_undo_redo_multi_block_deletion() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(12));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -6093,7 +6093,7 @@ fn test_undo_redo_multi_block_deletion() {
             );
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(9));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -6190,7 +6190,7 @@ fn test_styling_mixed_block_types_exact() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(11)..CharOffset::from(17));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "second\n".to_string(),
@@ -6274,7 +6274,7 @@ fn test_styling_mixed_block_types_surrounded() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(17));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -6395,7 +6395,7 @@ fn test_styling_mixed_block_types_overlapping() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(17));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -6516,7 +6516,7 @@ fn test_styling_mixed_block_types_within() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(18));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -6631,7 +6631,7 @@ fn test_unstyle_unordered_list_partial() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(5));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -6719,7 +6719,7 @@ fn test_edit_in_header() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "limorene\n".to_string(),
@@ -6770,7 +6770,7 @@ fn test_edit_in_header() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(15));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -6888,7 +6888,7 @@ fn test_insert_block_after_block_with_offset() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(1));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -6942,7 +6942,7 @@ fn test_insert_block_after_block_with_offset() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(2)..CharOffset::from(3));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -7004,7 +7004,7 @@ fn test_insert_block_after_block_with_offset() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(3)..CharOffset::from(4));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -7094,7 +7094,7 @@ fn test_linebreak_in_unordered_list() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -7156,7 +7156,7 @@ fn test_linebreak_in_unordered_list() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -7236,7 +7236,7 @@ fn test_enter_in_list_at_buffer_end() {
             let delta = result.delta.expect("Edit delta should exist");
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -7424,7 +7424,7 @@ fn test_nonatomic_undo_insertion() {
 
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(10));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "test\n".to_string(),
@@ -7447,7 +7447,7 @@ fn test_nonatomic_undo_insertion() {
 
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -7536,7 +7536,7 @@ fn test_nonatomic_undo_deletion() {
 
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(8));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -7567,7 +7567,7 @@ fn test_nonatomic_undo_deletion() {
 
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "tesine\n".to_string(),
@@ -7751,7 +7751,7 @@ fn test_link_style_exact() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -7803,7 +7803,7 @@ fn test_link_style_exact() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![
@@ -7897,7 +7897,7 @@ fn test_link_style_different_tag() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -7949,7 +7949,7 @@ fn test_link_style_different_tag() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(10));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -8045,7 +8045,7 @@ fn test_link_style_overlapping() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![
@@ -8150,7 +8150,7 @@ fn test_link_style_surrounded() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -8241,7 +8241,7 @@ fn test_link_same_url() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -8389,7 +8389,7 @@ fn test_unstyle_link_exact() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "line\n".to_string(),
@@ -8474,7 +8474,7 @@ fn test_unstyle_link_overlapping() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![
@@ -9065,7 +9065,7 @@ fn test_list_tab_behavior() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(11)..CharOffset::from(12));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "\n".to_string(),
@@ -9114,7 +9114,7 @@ fn test_list_tab_behavior() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(11)..CharOffset::from(12));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "\n".to_string(),
@@ -9217,7 +9217,7 @@ fn test_ordered_list_tab_behavior() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(11)..CharOffset::from(12));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "\n".to_string(),
@@ -9319,7 +9319,7 @@ fn test_task_list_tab_behavior() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(11)..CharOffset::from(12));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "\n".to_string(),
@@ -9482,7 +9482,7 @@ fn test_code_block_text_styling() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(7));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -9541,7 +9541,7 @@ fn test_code_block_text_styling() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(13)..CharOffset::from(16));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "end".to_string(),
@@ -9623,7 +9623,7 @@ fn test_code_block_styling_over_styled_text() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![
@@ -9836,7 +9836,7 @@ fn test_invalidate_content() {
                 CharOffset::from(1)..CharOffset::from(5)
             );
             assert_eq!(
-                edit_delta.new_lines,
+                (*edit_delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -10270,7 +10270,7 @@ fn test_insert_block_item_in_plain_text() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(8));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -10323,7 +10323,7 @@ fn test_insert_block_item_in_plain_text() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(11)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -10424,7 +10424,7 @@ fn test_styling_over_block_item() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(11));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![
@@ -10701,7 +10701,7 @@ fn test_backspace_on_block_item() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(7));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "Test\n".to_string(),
@@ -10918,7 +10918,7 @@ fn test_enter_on_text_before_block_item() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(6));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -11161,7 +11161,7 @@ fn test_color_code_block() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(12));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -11206,7 +11206,7 @@ fn test_color_code_block() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(17)..CharOffset::from(23));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![
                         StyledBufferRun {
@@ -11241,7 +11241,7 @@ fn test_color_code_block() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(6)..CharOffset::from(12));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "Block\n".to_string(),
@@ -11659,7 +11659,7 @@ fn test_insert_embedding() {
             let delta = edit_result.delta.expect("Should exist");
             assert_eq!(delta.old_offset, CharOffset::from(1)..CharOffset::from(8));
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -12202,7 +12202,7 @@ fn test_deleting_range_with_trailing_block_marker() {
             let delta = edit_result.delta.unwrap();
             assert_eq!(delta.old_offset, 1.into()..6.into());
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Text(StyledTextBlock {
                     block: vec![StyledBufferRun {
                         run: "C".to_string(),
@@ -12259,7 +12259,7 @@ fn test_insert_block_at_buffer_start() {
             let delta = edit_result.delta.unwrap();
             assert_eq!(delta.old_offset, 0.into()..2.into());
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![StyledBufferBlock::Item(BufferBlockItem::HorizontalRule)]
             );
 
@@ -12306,7 +12306,7 @@ fn test_insert_block_in_middle() {
             let delta = edit_result.delta.unwrap();
             assert_eq!(delta.old_offset, 1.into()..10.into());
             assert_eq!(
-                delta.new_lines,
+                (*delta.new_lines),
                 vec![
                     StyledBufferBlock::Text(StyledTextBlock {
                         block: vec![StyledBufferRun {
@@ -12375,7 +12375,7 @@ fn test_backspace_on_block_item_at_buffer_start() {
 
             let delta = edit_result.delta.unwrap();
             assert_eq!(delta.old_offset, 0.into()..2.into());
-            assert_eq!(delta.new_lines, vec![]);
+            assert_eq!((*delta.new_lines), vec![]);
 
             let undo_item = edit_result.undo_item.expect("Should exist");
             let curr_selection = buffer.to_rendered_selection_set(selection.clone(), ctx);
