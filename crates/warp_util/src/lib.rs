@@ -8,6 +8,7 @@ pub mod content_version;
 pub mod file;
 pub mod file_type;
 pub mod on_cancel;
+pub mod lazy;
 pub mod path;
 pub mod standardized_path;
 pub mod user_input;

@@ -1,3 +1,5 @@
+use warp_core::command::ExitCode;
+use crate::terminal::ShellHost;
 use crate::ai::block_context::BlockContext;
 use crate::ai_assistant::execution_context::WarpAiExecutionContext;
 use crate::completer::SessionContext;
@@ -176,22 +178,33 @@ impl NextCommandModel {
         }
     }
 
-    /// Returns snippets of command history (HistoryContext) that are similar to the completed_block.
-    /// Each HistoryContext contains some sequential commands run in the same session,
-    /// where the last element of HistoryContext.previous_commands is the same as completed_block.
+    /// Returns snippets of command history (HistoryContext) that are similar to a completed
+    /// block's `command`/`pwd`/`exit_code`/`shell_host`. Each HistoryContext contains some
+    /// sequential commands run in the same session, where the last element of
+    /// HistoryContext.previous_commands is the same as `command`.
     /// Returns None if there was a connection issue, and Some(empty vec)
     /// if there is no similar historical context.
+    ///
+    /// Callers resolve these fields ahead of time (rather than taking `&UserBlockCompleted` and a
+    /// `&BlockList` directly) so this can be used from contexts, such as spawned futures, that
+    /// don't have synchronous access to the terminal model.
     #[cfg(feature = "local_fs")]
     pub fn get_similar_history_context(
         conn: &mut SqliteConnection,
-        completed_block: &UserBlockCompleted,
+        command: &str,
+        pwd: &Option<String>,
+        exit_code: ExitCode,
+        shell_host: Option<&ShellHost>,
         num_additional_preceding_commands: usize,
     ) -> Vec<crate::ai::predict::generate_ai_input_suggestions::HistoryContext> {
         // The number of commands from history affects how quickly we "learn" new patterns, the lower the faster.
         let Ok(same_commands_from_history) =
             crate::persistence::commands::get_same_commands_from_history(
                 conn,
-                completed_block,
+                command,
+                pwd,
+                exit_code,
+                shell_host,
                 MAX_NUM_SIMILAR_HISTORY_CONTEXT,
             )
         else {
@@ -269,9 +282,20 @@ impl NextCommandModel {
         #[cfg(feature = "local_fs")]
         if let Some(conn) = conn {
             let mut conn = conn.lock();
+            let serialized_block = block_completed.serialized_block.get_with(|compute| {
+                let model = terminal_model.lock();
+                compute(model.block_list())
+            });
+            let command = block_completed.command.get_with(|compute| {
+                let model = terminal_model.lock();
+                compute(model.block_list())
+            });
             history_contexts = Self::get_similar_history_context(
                 &mut conn,
-                block_completed,
+                command,
+                &serialized_block.pwd,
+                serialized_block.exit_code,
+                serialized_block.shell_host.as_ref(),
                 NUM_ADDITIONAL_PREV_COMMAND_CONTEXT_LLM,
             );
         }
