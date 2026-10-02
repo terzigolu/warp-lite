@@ -408,6 +408,7 @@ pub fn get_input_box_top_border_width() -> f32 {
 
 pub const COMPLETIONS_MENU_WIDTH: f32 = 330.;
 pub const OPEN_COMPLETIONS_KEYBINDING_NAME: &str = "input:open_completion_suggestions";
+pub(crate) const EXTERNAL_ALT_C_BINDING_CONTEXT: &str = "ExternalAltCDirectorySearch";
 pub const INPUT_A11Y_LABEL: &str = "Command Input.";
 pub const INPUT_A11Y_HELPER: &str = "Input your shell command, press enter to execute. Press cmd-up to navigate to output of previously executed commands. Press cmd-l to re-focus command input.";
 pub const AI_COMMAND_SEARCH_HINT_TEXT: &str = "Type '#' for AI command suggestions";
@@ -2037,6 +2038,14 @@ pub fn init(app: &mut AppContext) {
         .with_enabled(|| FeatureFlag::ShellWidgetHandoff.is_enabled())
         .with_context_predicate(id!("Input") & !id!("VoltronActive") & !id!("LongRunningCommand"))
         .with_key_binding("ctrl-t"),
+        EditableBinding::new(
+            "workspace:trigger_external_alt_c_directory_search",
+            "External Directory Search",
+            WorkspaceAction::TriggerExternalAltCDirectorySearch,
+        )
+        .with_enabled(|| FeatureFlag::ShellWidgetHandoff.is_enabled())
+        .with_context_predicate(id!(EXTERNAL_ALT_C_BINDING_CONTEXT))
+        .with_key_binding("alt-c"),
     ]);
 
     if let Some(custom_action) = workflows::CategoriesView::custom_action() {
@@ -14043,6 +14052,10 @@ impl Input {
 
     pub fn should_show_universal_developer_input(&self, app: &AppContext) -> bool {
         InputSettings::as_ref(app).is_universal_developer_input_enabled(app)
+    }
+
+    pub(crate) fn is_voltron_open(&self) -> bool {
+        self.is_voltron_open
     }
 
     fn handle_prompt_suggestions_event(
