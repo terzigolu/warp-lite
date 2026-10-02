@@ -1,3 +1,7 @@
+use crate::settings::{AppEditorSettings, CodeEditorLineNumberMode};
+use crate::view_components::{Dropdown, DropdownItem};
+use super::settings_page::render_dropdown_item;
+use settings::Setting as _;
 #[cfg(feature = "local_fs")]
 use super::features::external_editor::ExternalEditorView;
 use super::{
@@ -135,6 +139,7 @@ struct InitializedFoldersMouseStates {
 }
 
 pub struct CodeSettingsPageView {
+    code_editor_line_number_mode_dropdown: ViewHandle<Dropdown<CodeSettingsPageAction>>,
     page: PageType<Self>,
     active_subpage: Option<CodeSubpage>,
     codebase_manual_resync_mouse_states: Vec<MouseStateHandle>,
@@ -155,7 +160,47 @@ pub struct CodeSettingsPageView {
 }
 
 impl CodeSettingsPageView {
+    fn update_code_editor_line_number_mode_dropdown(
+        dropdown: ViewHandle<Dropdown<CodeSettingsPageAction>>,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        dropdown.update(ctx, |dropdown, ctx| {
+            let values = [
+                CodeEditorLineNumberMode::Absolute,
+                CodeEditorLineNumberMode::Relative,
+            ];
+
+            let current_value = *AppEditorSettings::as_ref(ctx)
+                .code_editor_line_number_mode
+                .value();
+
+            let selected_index = values
+                .iter()
+                .position(|val| *val == current_value)
+                .unwrap_or(0);
+
+            dropdown.set_items(
+                values
+                    .into_iter()
+                    .map(|val| {
+                        DropdownItem::new(
+                            val.dropdown_item_label(),
+                            CodeSettingsPageAction::SetCodeEditorLineNumberMode(val),
+                        )
+                    })
+                    .collect(),
+                ctx,
+            );
+            dropdown.set_selected_by_index(selected_index, ctx);
+        });
+    }
     pub fn new(ctx: &mut ViewContext<CodeSettingsPageView>) -> Self {
+        let code_editor_line_number_mode_dropdown = ctx.add_typed_action_view(Dropdown::new);
+        Self::update_code_editor_line_number_mode_dropdown(code_editor_line_number_mode_dropdown.clone(), ctx);
+        ctx.subscribe_to_model(&AppEditorSettings::handle(ctx), |me, _, _, ctx| {
+            Self::update_code_editor_line_number_mode_dropdown(me.code_editor_line_number_mode_dropdown.clone(), ctx);
+            ctx.notify();
+        });
         let index_manager = CodebaseIndexManager::handle(ctx);
         let codebase_count = index_manager
             .as_ref(ctx)
@@ -301,6 +346,7 @@ impl CodeSettingsPageView {
                 Box<dyn SettingsWidget<View = Self>>,
             > = vec![];
             code_editor_review_widgets.extend([
+                Box::new(CodeEditorLineNumberModeWidget::default()) as Box<dyn SettingsWidget<View = Self>>,
                 Box::new(AutoOpenCodeReviewPaneCodeWidget::default())
                     as Box<dyn SettingsWidget<View = Self>>,
                 Box::new(CodeReviewPanelToggleWidget::default()),
@@ -326,6 +372,7 @@ impl CodeSettingsPageView {
         };
 
         Self {
+            code_editor_line_number_mode_dropdown,
             page,
             active_subpage: None,
             codebase_manual_resync_mouse_states: (0..codebase_count)
@@ -378,7 +425,8 @@ impl CodeSettingsPageView {
                         #[cfg(feature = "local_fs")]
                         widgets.push(Box::new(ExternalEditorCodeWidget));
                         widgets.extend([
-                            Box::new(AutoOpenCodeReviewPaneCodeWidget::default())
+                            Box::new(CodeEditorLineNumberModeWidget::default()) as Box<dyn SettingsWidget<View = Self>>,
+                Box::new(AutoOpenCodeReviewPaneCodeWidget::default())
                                 as Box<dyn SettingsWidget<View = Self>>,
                             Box::new(CodeReviewPanelToggleWidget::default()),
                             Box::new(CodeReviewDiffStatsToggleWidget::default()),
@@ -429,6 +477,7 @@ impl CodeSettingsPageView {
                 Box<dyn SettingsWidget<View = Self>>,
             > = vec![];
             code_editor_review_widgets.extend([
+                Box::new(CodeEditorLineNumberModeWidget::default()) as Box<dyn SettingsWidget<View = Self>>,
                 Box::new(AutoOpenCodeReviewPaneCodeWidget::default())
                     as Box<dyn SettingsWidget<View = Self>>,
                 Box::new(CodeReviewPanelToggleWidget::default()),
@@ -524,6 +573,7 @@ pub enum CodeSettingsPageEvent {
 // Define the code page actions.
 #[derive(Debug, Clone)]
 pub enum CodeSettingsPageAction {
+    SetCodeEditorLineNumberMode(CodeEditorLineNumberMode),
     ToggleCodebaseContext,
     ToggleAutoIndexing,
     ManualResync(PathBuf),
@@ -569,6 +619,11 @@ impl TypedActionView for CodeSettingsPageView {
 
     fn handle_action(&mut self, action: &Self::Action, ctx: &mut ViewContext<Self>) {
         match action {
+            CodeSettingsPageAction::SetCodeEditorLineNumberMode(mode) => {
+                AppEditorSettings::handle(ctx).update(ctx, |settings, ctx| {
+                    report_if_error!(settings.code_editor_line_number_mode.set_value(*mode, ctx));
+                });
+            }
             CodeSettingsPageAction::ToggleCodebaseContext => {
                 // If the organization has an explicit setting (on or off), ignore user toggles.
                 let setting = UserWorkspaces::as_ref(ctx).team_allows_codebase_context();
@@ -2492,6 +2547,38 @@ impl SettingsWidget for AutoSaveToggleWidget {
                 "Automatically saves changes in the Warp text editor as you type and when the editor loses focus."
                     .into(),
             ),
+        )
+    }
+}
+
+#[derive(Default)]
+struct CodeEditorLineNumberModeWidget {}
+
+impl SettingsWidget for CodeEditorLineNumberModeWidget {
+    type View = CodeSettingsPageView;
+
+    fn search_terms(&self) -> &str {
+        "line number numbers relative line vim gutter code editor"
+    }
+
+    fn should_render(&self, app: &AppContext) -> bool {
+        AppEditorSettings::as_ref(app).code_editor_line_number_mode.is_supported_on_current_platform()
+    }
+
+    fn render(
+        &self,
+        view: &Self::View,
+        appearance: &Appearance,
+        _app: &AppContext,
+    ) -> Box<dyn Element> {
+        render_dropdown_item(
+            appearance,
+            "Code editor line numbers:",
+            None,
+            None,
+            LocalOnlyIconState::Hidden,
+            None,
+            &view.code_editor_line_number_mode_dropdown,
         )
     }
 }
