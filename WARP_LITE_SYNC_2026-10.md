@@ -1,5 +1,18 @@
 # Warp Lite upstream sync — 2026-10-02
 
+## Yerel kurulum ve native smoke testi — takip doğrulaması
+
+Kullanıcının sonraki build/Applications kurulum talebi üzerine `dff37b11025798b03f09dea6d6d9a3819144d4a2` kaynak noktasından `cargo build --release --bin warp-oss` başarılı oldu (son build komutu 5m45s). Paket `script/build-warp-lite-app.sh` ile üretildi ve `/Applications/WarpLite.app` içine kuruldu. Bu takip doğrulaması aşağıdaki ilk incelemede belirtilen yerel release build/kurulum/native smoke eksikliğini kapatır; diğer platform ve tüm özellikler için uçtan uca doğrulama değildir.
+
+- Eski paket: `/Applications/WarpLite.app.backup-before-sync-20261002-215335`.
+- Kurulu arm64 Mach-O UUID: `DB110357-F5F1-3972-8104-4FCE0671E575`.
+- İmzalı executable SHA256: `8688897747eb5e4b6979e57d44e467fc8e51d38b4518191e40fb773ba580d505`.
+- Ad-hoc imza strict doğrulaması, kaynak paket/kurulu executable hash eşitliği ve UUID karşılaştırması geçti. Notarization yapılmadı.
+- Sürüm etiketi `0.5.7-lite` olarak kaldı; `Info.plist` içindeki `WarpLiteSourceRevision`, `WarpLiteSourceBranch` ve `WarpLiteLocalBuildDate` yeni yerel build'i ayırt eder.
+- Native uygulama açıldı; zsh hazır geldi. `printf`, Türkçe çıktı, `U+754C` geniş karakter, Tab ile `installed-b` → `installed-build.json` tamamlaması, yeni sekme ve ikinci sekmede komut yürütme gözlendi.
+- Accessibility çıktısı ve gerçek pencere screenshot'ı kontrol edildi. Çalışan ana/yardımcı süreçlerin `/Applications/WarpLite.app/Contents/MacOS/warp-oss` yolundan geldiği doğrulandı (kontrol anında PID 58661 / 58669). Uygulama kullanıcı için açık bırakıldı.
+- Kurulum/smoke kanıtı: `/tmp/warp-lite-sync-20261002/installed-build.json`; build ve kurulum logları aynı geçici dizinde. Push veya public release yapılmadı.
+
 ## Sonuç ve kapsam
 
 Çalışma dalı: `warp-lite/sync-2026-10`. Kod son noktası: `b3b3adbeeb42070fd9bb9b481eb161d0743cbd94`.
