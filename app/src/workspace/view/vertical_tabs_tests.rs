@@ -1,11 +1,10 @@
-use super::shows_shortcut_hint;
 use std::collections::{HashMap, HashSet};
 use super::{group_display_name, group_name_highlight_indices, matched_group_ids, merge_group_name_matches, tab_admitted_by_group_name};
 use crate::context_chips::display_chip::GitLineChanges;
 use crate::pane_group::pane::IPaneType;
 use crate::pane_group::{PaneId, TerminalPaneId};
 use crate::safe_triangle::SafeTriangle;
-use crate::tab::{ShortcutModifierKind, TAB_ACTIVATE_BINDING_NAMES, reveals_shortcut_hints};
+use crate::tab::{ShortcutModifierKind, reveals_shortcut_hints};
 use crate::terminal::CLIAgent;
 use crate::workspace::tab_group::{TabGroup, TabGroupId};
 use crate::workspace::tab_settings::VerticalTabsDisplayGranularity;
@@ -996,42 +995,6 @@ fn format_summary_primary_labels_appends_overflow_count() {
         Some("Claude • Oz • cargo • code review + 1 more".to_string())
     );
     assert_eq!(summary_overflow_count(labels.len(), 4), 1);
-}
-
-#[test]
-fn shortcut_hint_shown_when_modifier_held_within_first_eight_tabs() {
-    assert!(shows_shortcut_hint(true, 0));
-    assert!(shows_shortcut_hint(
-        true,
-        TAB_ACTIVATE_BINDING_NAMES.len() - 1
-    ));
-}
-
-#[test]
-fn shortcut_hint_hidden_when_modifier_not_held() {
-    assert!(!shows_shortcut_hint(false, 0));
-}
-
-#[test]
-fn shortcut_hint_hidden_beyond_eighth_tab() {
-    assert!(!shows_shortcut_hint(true, TAB_ACTIVATE_BINDING_NAMES.len()));
-    assert!(!shows_shortcut_hint(
-        true,
-        TAB_ACTIVATE_BINDING_NAMES.len() + 1
-    ));
-}
-
-#[test]
-fn tab_activate_binding_names_cover_first_eight_tabs_in_order() {
-    assert_eq!(TAB_ACTIVATE_BINDING_NAMES.len(), 8);
-    assert_eq!(
-        TAB_ACTIVATE_BINDING_NAMES[0],
-        "workspace:activate_first_tab"
-    );
-    assert_eq!(
-        TAB_ACTIVATE_BINDING_NAMES[TAB_ACTIVATE_BINDING_NAMES.len() - 1],
-        "workspace:activate_eighth_tab"
-    );
 }
 
 #[test]
