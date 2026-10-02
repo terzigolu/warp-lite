@@ -623,7 +623,8 @@ fn render_grid_without_ligatures<'a>(
 
         let Some(row) = grid.row(row_idx) else {
             #[cfg(debug_assertions)]
-            log::error!("grid_renderer should not try to render an out-of-bounds row");
+            static REPORTED: std::sync::Once = std::sync::Once::new();
+            REPORTED.call_once(|| log::error!("grid_renderer should not try to render an out-of-bounds row"));
             continue;
         };
 
@@ -1123,7 +1124,8 @@ fn render_grid_with_ligatures<'a>(
             AttributedStringBuilder::new(font_family, font_family, grid.columns());
 
         let Some(row) = grid.row(row_idx) else {
-            log::error!("grid_renderer should not try to render an out-of-bounds row");
+            static REPORTED: std::sync::Once = std::sync::Once::new();
+            REPORTED.call_once(|| log::error!("grid_renderer should not try to render an out-of-bounds row"));
             continue;
         };
 

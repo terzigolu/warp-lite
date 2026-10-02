@@ -453,6 +453,7 @@ creating_shared_sessions = []
 cross_repo_context = []
 codebase_index_persistence = ["full_source_code_embedding"]
 default = [
+    "ime_marked_text",
     "history_search_ranking_v2",
     "native_shell_completions",
     "shell_widget_handoff",
