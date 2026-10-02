@@ -3,6 +3,7 @@
 #[cfg(test)]
 #[allow(clippy::module_inception)]
 mod tests {
+    use std::sync::Arc;
     use crate::entry::{DirectoryEntry, Entry, FileMetadata};
     use crate::file_tree_store::{FileTreeEntry, FileTreeEntryState, FileTreeState};
     use crate::local_model::{
@@ -787,7 +788,7 @@ Thumbs.db
 
             let (root_gitignore, _) = Gitignore::new(&root_gitignore_path);
             let (frontend_gitignore, _) = Gitignore::new(&frontend_gitignore_path);
-            let gitignores = vec![root_gitignore, frontend_gitignore];
+            let gitignores = vec![Arc::new(root_gitignore), Arc::new(frontend_gitignore)];
 
             // Test that nested gitignore rules are respected
             assert!(LocalRepoMetadataModel::path_is_ignored(

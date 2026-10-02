@@ -4,8 +4,8 @@
 //! assertable here: the test platform's `layout_text` ignores its input and returns an empty
 //! frame, so any end-to-end assertion about shaped length would pass with the cap removed.
 
-use warpui_core::fonts::{FamilyId, Properties};
-use warpui_core::text_layout::{StyleAndFont, TextStyle};
+use warpui::fonts::{FamilyId, Properties};
+use warpui::text_layout::{StyleAndFont, TextStyle};
 
 use super::{MAX_LAYOUT_LINE_CHARS, clamp_style_runs_for_layout, truncate_text_for_layout};
 

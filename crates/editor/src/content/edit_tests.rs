@@ -1,3 +1,4 @@
+use rangemap::RangeSet;
 #[cfg(not(target_arch = "wasm32"))]
 use std::path::PathBuf;
 use std::sync::Arc;
