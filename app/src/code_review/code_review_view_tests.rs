@@ -837,7 +837,7 @@ fn test_setup_dropdown_without_branches_only_has_uncommitted_changes() {
 #[test]
 fn test_duplicate_single_file_discard_confirmation_is_ignored() {
     App::test((), |mut app| async move {
-        let ctx = TestContext::new(&mut app, "test.txt", "line 1\nline 2\nline 3");
+        let ctx = TestContext::new(&mut app, "test.txt".into(), "line 1\nline 2\nline 3");
 
         ctx.code_review_view.update(&mut app, |view, view_ctx| {
             view.discard_dialog_state.operation_type = DiscardOperationType::FileUncommittedChanges;

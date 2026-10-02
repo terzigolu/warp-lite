@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use crate::test_util::assert_eventually;
 use crate::terminal::view::Event as TerminalViewEvent;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -2739,16 +2741,9 @@ fn input_tab_does_not_ask_the_shell_when_bundled_specs_are_non_empty() {
             input.input_tab(ctx);
         });
 
-        poll_until(
-            &mut app,
-            "the bundled-spec completions menu to open",
-            |app| {
-                input.read(app, |input, ctx| {
-                    input.suggestions_mode_model.as_ref(ctx).is_visible()
-                })
-            },
-        )
-        .await;
+        assert_eventually!(600 => input.read(&app, |input, ctx| {
+            input.suggestions_mode_model.as_ref(ctx).is_visible()
+        }), "waiting for bundled-spec completions");
 
         assert_eq!(
             *dispatch_count.borrow(),
@@ -2782,11 +2777,7 @@ fn input_tab_asks_the_shell_once_when_bundled_specs_are_empty() {
             input.input_tab(ctx);
         });
 
-        let dispatched = dispatch_count.clone();
-        poll_until(&mut app, "the shell to be asked", move |_| {
-            *dispatched.borrow() == 1
-        })
-        .await;
+        assert_eventually!(600 => *dispatch_count.borrow() == 1, "waiting for shell completions");
 
         assert_eq!(
             *dispatch_count.borrow(),

@@ -1,3 +1,4 @@
+use std::iter::once;
 use std::collections::{HashMap, HashSet};
 use super::{group_display_name, group_name_highlight_indices, matched_group_ids, merge_group_name_matches, tab_admitted_by_group_name};
 use crate::context_chips::display_chip::GitLineChanges;

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use tantivy::tokenizer::{TextAnalyzer, Token};
 use warpui::r#async::executor::Background;
-use warpui_core::r#async::executor::Background;
+use warpui::r#async::executor::Background;
 
 
 use crate::search::searcher::{

@@ -182,7 +182,7 @@ fn every_hook_tag_dispatches_to_the_matching_variant() {
         ("ExitShell", serde_json::json!({"session_id": 1})),
         ("ExternalShellWidgetSelection", serde_json::json!({"buffer": "echo chosen", "session_id": 1})),
         ("InitSsh", serde_json::json!({"shell": "zsh"})),
-        ("RemoteWarpificationIsUnavailable", serde_json::json!({"reason": "TmuxFailed"})),
+        ("RemoteWarpificationIsUnavailable", serde_json::json!("TmuxFailed")),
         ("SshTmuxInstaller", serde_json::json!("installer")),
         ("TmuxInstallFailed", serde_json::json!({"line": "1", "command": "false"})),
     ];

@@ -2207,10 +2207,10 @@ fn deferred_fields_resolve_by_block_id_after_reindex() {
 
     let mut first_completed = None;
     while let Ok(event) = events_rx.try_recv() {
-        if let Event::AfterBlockCompleted(event_content) = event
-            && let BlockType::User(user_block) = event_content.block_type
-        {
-            first_completed = Some(user_block);
+        if let Event::AfterBlockCompleted(event_content) = event {
+            if let BlockType::User(user_block) = event_content.block_type {
+                first_completed = Some(user_block);
+            }
         }
     }
     let first_completed =
@@ -2228,7 +2228,7 @@ fn deferred_fields_resolve_by_block_id_after_reindex() {
     model
         .lock()
         .block_list_mut()
-        .remove_command_blocks_at_indices(vec![throwaway_index]);
+        .remove_block_at_index(throwaway_index);
 
     // Confirm the collision: a genuinely different, still-existing block now sits at
     // `first_index`.

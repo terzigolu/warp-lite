@@ -40,7 +40,7 @@ fn mock_model_with_buffer(
     app.add_model(|ctx| {
         let styles = code_text_styles(Appearance::as_ref(ctx), FontSettings::as_ref(ctx), None);
         let mut model = CodeEditorModel::new(styles, None, false, Some(buffer), ctx);
-        model.set_language_with_local_path(Path::new("/test.rs"), ctx);
+        model.set_language_with_path(Path::new("/test.rs"), ctx);
         model
     })
 }
@@ -1041,23 +1041,6 @@ fn test_line_at_vertical_offset_returns_none_for_invalid() {
             beyond.is_none(),
             "Expected None for offset beyond content height"
         );
-    })
-}
-
-#[test]
-/// Builds a `CodeEditorModel` that shares an existing `Buffer` rather than creating its own.
-/// Used to reproduce configurations where multiple editors point at the same underlying content
-/// (e.g. two views of the same open file), such as via `CodeEditorView::new`'s optional shared
-/// `Buffer` parameter.
-fn mock_model_with_buffer(
-    app: &mut App,
-    buffer: ModelHandle<Buffer>,
-) -> ModelHandle<CodeEditorModel> {
-    app.add_model(|ctx| {
-        let styles = code_text_styles(Appearance::as_ref(ctx), FontSettings::as_ref(ctx), None);
-        let mut model = CodeEditorModel::new(styles, None, false, Some(buffer), ctx);
-        model.set_language_with_local_path(Path::new("/test.rs"), ctx);
-        model
     })
 }
 
