@@ -88,11 +88,10 @@ impl SessionContext {
                 // up a host listing afterwards. A slow or failing guest falls back to the plain
                 // host listing below rather than emptying the completion list.
                 #[cfg(windows)]
-                if allow_network_reads
-                    && self.session.is_wsl()
-                    && let Some(entries) = wsl_guest_listing::list_entries(self, directory).await
-                {
-                    return entries;
+                if allow_network_reads && self.session.is_wsl() {
+                    if let Some(entries) = wsl_guest_listing::list_entries(self, directory).await {
+                        return entries;
+                    }
                 }
 
                 let dir = match self.session.maybe_convert_to_native_path(directory) {

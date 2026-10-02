@@ -4740,7 +4740,7 @@ impl PaneGroup {
         let file_pane = FilePane::new(None, None, source, ctx);
         file_pane.file_view(ctx).update(ctx, |view, ctx| {
             view.set_pending_scroll_fraction(scroll_fraction);
-            view.open(path, session, ctx);
+            view.open_local(path, session, ctx);
         });
         let success = self.replace_pane(code_pane_id, file_pane, false, ctx);
 
