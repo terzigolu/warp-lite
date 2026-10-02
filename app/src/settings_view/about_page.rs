@@ -16,7 +16,7 @@ use warpui::{
         MainAxisAlignment, MouseStateHandle, ParentElement, Wrap,
     },
     ui_components::components::UiComponent,
-    AppContext, Entity, View, ViewContext, ViewHandle,
+    AppContext, Entity, TypedActionView, View, ViewContext, ViewHandle,
 };
 
 pub struct AboutPageView {
@@ -33,6 +33,9 @@ impl AboutPageView {
 
 impl Entity for AboutPageView {
     type Event = SettingsPageEvent;
+}
+impl TypedActionView for AboutPageView {
+    type Action = ();
 }
 
 impl View for AboutPageView {
