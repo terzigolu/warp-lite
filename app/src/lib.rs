@@ -2663,6 +2663,8 @@ pub fn enabled_features() -> HashSet<FeatureFlag> {
         FeatureFlag::ForceClassicCompletions,
         #[cfg(feature = "native_shell_completions")]
         FeatureFlag::NativeShellCompletions,
+        #[cfg(feature = "shell_widget_handoff")]
+        FeatureFlag::ShellWidgetHandoff,
         #[cfg(feature = "agent_view_conversation_list_view")]
         FeatureFlag::AgentViewConversationListView,
         #[cfg(feature = "inline_history_menu")]

@@ -1164,6 +1164,41 @@ fn test_workspace_sessions_retrieves_tabs() {
 }
 
 #[test]
+fn ctrl_t_action_forwards_to_pty_when_no_external_widget_detected() {
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let _flag = FeatureFlag::ShellWidgetHandoff.override_enabled(true);
+        let workspace = mock_workspace(&mut app);
+
+        let terminal_view = workspace.update(&mut app, |workspace, ctx| {
+            workspace
+                .active_session_view(ctx)
+                .expect("mock_workspace should have an active session")
+        });
+
+        let pty_writes: std::rc::Rc<std::cell::RefCell<Vec<Vec<u8>>>> = Default::default();
+        let writes = pty_writes.clone();
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal_view, move |_, event, _| {
+                if let crate::terminal::view::Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        workspace.update(&mut app, |workspace, ctx| {
+            workspace.handle_action(&WorkspaceAction::TriggerExternalCtrlTFileSearch, ctx);
+        });
+
+        assert_eq!(
+            *pty_writes.borrow(),
+            vec![vec![0x14]],
+            "ctrl-t must be forwarded to the pty as a plain keystroke when no external widget is detected"
+        );
+    });
+}
+
+#[test]
 fn test_workspace_sessions_retrieves_panes() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);

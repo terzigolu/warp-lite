@@ -1,3 +1,4 @@
+use super::ansi::ExternalShellWidgetSelectionValue;
 use warp_completer::meta::Span;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 use crate::ai::blocklist::SerializedBlockListItem;
@@ -2991,6 +2992,11 @@ impl ansi::Handler for TerminalModel {
 
     fn input_buffer(&mut self, data: InputBufferValue) {
         delegate!(self.input_buffer(data));
+    }
+
+    fn external_shell_widget_selection(&mut self, data: ExternalShellWidgetSelectionValue) {
+        self.event_proxy
+            .send_terminal_event(Event::ExternalShellWidgetSelection(data));
     }
 
     fn init_subshell(&mut self, data: InitSubshellValue) {

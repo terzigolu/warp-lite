@@ -1,3 +1,4 @@
+use super::model::ansi::ExternalShellWidgetSelectionValue;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::num::ParseIntError;
@@ -137,6 +138,7 @@ pub enum Event {
     /// Emitted when the assisted auto-update has completed and we're ready to
     /// relaunch the app.
     FinishUpdate(FinishUpdateValue),
+    ExternalShellWidgetSelection(ExternalShellWidgetSelectionValue),
     TextSelectionChanged,
     ShellSpawned(ShellType),
     ImageReceived {
@@ -506,6 +508,13 @@ impl Debug for Event {
                 )
             }
             Event::FinishUpdate(data) => write!(f, "FinishUpdate({})", data.update_id),
+            Event::ExternalShellWidgetSelection(data) => {
+                write!(
+                    f,
+                    "ExternalShellWidgetSelection(buffer_len: {})",
+                    data.buffer.len()
+                )
+            }
             Event::TextSelectionChanged => write!(f, "TextSelectionChanged"),
             Event::ShellSpawned(shell_type) => write!(f, "ShellSpawned({shell_type:?})"),
             Event::ImageReceived { image_id, .. } => {

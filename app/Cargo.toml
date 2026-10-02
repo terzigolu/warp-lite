@@ -811,6 +811,7 @@ codex_notifications = []
 cloud_mode_setup_v2 = ["cloud_mode"]
 cloud_mode_input_v2 = ["cloud_mode"]
 osc_hyperlinks = []
+shell_widget_handoff = []
 
 [package.metadata.bundle.bin.warp-oss]
 category = "public.app-category.developer-tools"

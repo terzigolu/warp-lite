@@ -1806,6 +1806,46 @@ pub struct Input {
     /// we snapshot the current input contents here so we can restore them after the command
     /// completes and the buffer would normally be cleared.
     input_contents_before_prompt_chip_command: Option<String>,
+
+    pending_shell_widget_handoff: Option<PendingShellWidgetHandoff>,
+}
+
+/// How a completed shell-widget handoff lands its selection. Fish's ctrl-t widget already performs
+/// token-aware replacement and reports the whole line; bash/zsh ctrl-t report a path fragment to
+/// splice at the cursor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShellWidgetApplyMode {
+    Splice,
+    Replace,
+}
+
+struct PendingShellWidgetHandoff {
+    session_id: SessionId,
+    original_buffer: String,
+    selection: Option<String>,
+    block_id: BlockId,
+    apply_mode: ShellWidgetApplyMode,
+    cursor_offset: Option<ByteOffset>,
+}
+
+impl PendingShellWidgetHandoff {
+    fn maybe_apply_selection(&mut self, session_id: SessionId, selection: &str) {
+        if self.session_id != session_id {
+            return;
+        }
+        if !selection.is_empty() {
+            self.selection = Some(selection.to_string());
+        }
+    }
+
+    fn restore_text(&self) -> &str {
+        match (self.apply_mode, &self.selection) {
+            (ShellWidgetApplyMode::Replace, Some(selection)) => selection,
+            (ShellWidgetApplyMode::Replace, None) | (ShellWidgetApplyMode::Splice, _) => {
+                &self.original_buffer
+            }
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -1989,6 +2029,14 @@ pub fn init(app: &mut AppContext) {
         )
         .with_context_predicate(id!("Input"))
         .with_key_binding("tab"),
+        EditableBinding::new(
+            "workspace:trigger_external_ctrl_t_file_search",
+            "External File Search",
+            WorkspaceAction::TriggerExternalCtrlTFileSearch,
+        )
+        .with_enabled(|| FeatureFlag::ShellWidgetHandoff.is_enabled())
+        .with_context_predicate(id!("Input") & !id!("VoltronActive") & !id!("LongRunningCommand"))
+        .with_key_binding("ctrl-t"),
     ]);
 
     if let Some(custom_action) = workflows::CategoriesView::custom_action() {
@@ -3430,6 +3478,7 @@ impl Input {
             slash_command_data_source,
             ephemeral_message_model,
             input_contents_before_prompt_chip_command: None,
+            pending_shell_widget_handoff: None,
         };
 
         #[cfg(feature = "local_fs")]
@@ -5037,8 +5086,12 @@ impl Input {
                 let command = render_prompt_chip_shell_command(command, shell_type);
                 // Snapshot the current input so we can restore it after the command completes.
                 let current_input = self.buffer_text(ctx);
-                if self.try_execute_command_from_source(&command, CommandExecutionSource::User, ctx)
-                {
+                if self.try_execute_command_from_source(
+                    &command,
+                    CommandExecutionSource::User,
+                    true,
+                    ctx,
+                ) {
                     self.cancel_active_conversation(ctx, CancellationReason::UserCommandExecuted);
                     if !current_input.is_empty() {
                         self.input_contents_before_prompt_chip_command = Some(current_input);
@@ -5978,6 +6031,7 @@ impl Input {
                 block_id,
                 ai_metadata: None,
             },
+            true,
             ctx,
         )
     }
@@ -6001,6 +6055,61 @@ impl Input {
 
             buffer_text
         })
+    }
+
+    /// Applies `selection` only if `session_id` matches the in-flight handoff.
+    pub fn set_external_shell_widget_selection(&mut self, session_id: SessionId, selection: &str) {
+        let Some(handoff) = self.pending_shell_widget_handoff.as_mut() else {
+            return;
+        };
+        handoff.maybe_apply_selection(session_id, selection);
+    }
+
+    /// Runs `helper_command` (a bootstrap-installed shell function), snapshotting the current
+    /// buffer so it can be restored once the command's block completes. Returns `true` if the
+    /// command was started.
+    pub fn trigger_external_shell_widget_handoff(
+        &mut self,
+        helper_command: &str,
+        apply_mode: ShellWidgetApplyMode,
+        capture_cursor: bool,
+        ctx: &mut ViewContext<Self>,
+    ) -> bool {
+        let Some(session_id) = self.active_block_session_id() else {
+            return false;
+        };
+        let original_buffer = self.buffer_text(ctx);
+        let cursor_offset = capture_cursor.then(|| {
+            self.editor
+                .as_ref(ctx)
+                .end_byte_index_of_last_selection(ctx)
+        });
+        let block_id = self.model.lock().block_list().active_block_id().clone();
+        // Prefixed with a leading space, the "ignorespace" convention.
+        let mut command = format!(" {helper_command}");
+        if let Some(cursor_offset) = cursor_offset
+            && apply_mode == ShellWidgetApplyMode::Replace
+        {
+            let char_cursor = original_buffer[..cursor_offset.as_usize()].chars().count();
+            command.push_str(&format!(" {char_cursor}:{}", hex::encode(&original_buffer)));
+        }
+        let started = self.try_execute_command_from_source(
+            &command,
+            CommandExecutionSource::User,
+            false, /* should_add_command_to_history */
+            ctx,
+        );
+        if started {
+            self.pending_shell_widget_handoff = Some(PendingShellWidgetHandoff {
+                session_id,
+                original_buffer,
+                selection: None,
+                block_id,
+                apply_mode,
+                cursor_offset,
+            });
+        }
+        started
     }
 
     pub fn try_execute_command(&mut self, command: &str, ctx: &mut ViewContext<Self>) -> bool {
@@ -6037,7 +6146,7 @@ impl Input {
                 ctx,
             )
         } else {
-            self.try_execute_command_from_source(command, CommandExecutionSource::User, ctx)
+            self.try_execute_command_from_source(command, CommandExecutionSource::User, true, ctx)
         }
     }
 
@@ -6055,6 +6164,7 @@ impl Input {
         &mut self,
         command: &str,
         source: CommandExecutionSource,
+        should_add_command_to_history: bool,
         ctx: &mut ViewContext<Self>,
     ) -> bool {
         if let CanExecuteCommand::No(reason) = self.can_execute_command(ctx) {
@@ -6191,7 +6301,12 @@ impl Input {
                 });
             }
 
-            self.start_block_and_write_command_to_pty(command, source, ctx);
+            self.start_block_and_write_command_to_pty(
+                command,
+                source,
+                should_add_command_to_history,
+                ctx,
+            );
             did_execute = true;
         } else {
             // We don't want to submit the command if precmd has not
@@ -13135,8 +13250,24 @@ impl Input {
             // Only clear the input buffer for user-executed commands, not agent-executed ones.
             let should_clear_buffer = !user_block.was_part_of_agent_interaction;
             let latest_block_id = self.model.lock().block_list().active_block_id().clone();
-            let input_contents_before_prompt_chip_command =
-                self.input_contents_before_prompt_chip_command.take();
+            // Prefer a prompt-chip restore (e.g. `cd`) over a shell-widget handoff restore.
+            let completed_handoff = self
+                .pending_shell_widget_handoff
+                .take_if(|handoff| handoff.block_id == block_completed_event.block_id);
+            if let Some(handoff) = &completed_handoff {
+                self.model
+                    .lock()
+                    .block_list_mut()
+                    .hide_block(&handoff.block_id);
+            }
+            let pending_input_restore = self
+                .input_contents_before_prompt_chip_command
+                .take()
+                .or_else(|| {
+                    completed_handoff
+                        .as_ref()
+                        .map(|handoff| handoff.restore_text().to_string())
+                });
 
             if should_clear_buffer {
                 // We want to reinitialize the buffer whenever a command is completed so that
@@ -13147,11 +13278,38 @@ impl Input {
                         .update(ctx, |editor, ctx| editor.reinitialize_buffer(None, ctx));
                     self.latest_buffer_operations = Vec::new();
 
-                    // If we have a pending input restore (from a prompt chip command like cd),
-                    // restore the input contents instead of leaving the buffer empty.
-                    if let Some(restore_text) = input_contents_before_prompt_chip_command {
+                    // If we have a pending input restore (from a prompt chip command like cd, or
+                    // a ctrl-r/ctrl-t external handoff), restore the input contents instead of
+                    // leaving the buffer empty.
+                    if let Some(restore_text) = pending_input_restore {
                         self.editor.update(ctx, |editor, ctx| {
                             editor.set_buffer_text(&restore_text, ctx);
+                            if let Some(handoff) = &completed_handoff {
+                                match (
+                                    handoff.apply_mode,
+                                    &handoff.selection,
+                                    handoff.cursor_offset,
+                                ) {
+                                    (
+                                        ShellWidgetApplyMode::Splice,
+                                        Some(insertion),
+                                        Some(cursor_offset),
+                                    ) => editor.select_and_replace(
+                                        insertion,
+                                        [cursor_offset..cursor_offset],
+                                        PlainTextEditorViewAction::InsertSelectedText,
+                                        ctx,
+                                    ),
+                                    (_, None, Some(cursor_offset)) => editor
+                                        .select_ranges_by_byte_offset(
+                                            [cursor_offset..cursor_offset],
+                                            ctx,
+                                        ),
+                                    (ShellWidgetApplyMode::Replace, Some(_), _)
+                                    | (ShellWidgetApplyMode::Splice, Some(_), None)
+                                    | (_, None, None) => {}
+                                }
+                            }
                         });
                         self.is_editor_empty_on_last_edit = false;
                     } else {
@@ -13297,6 +13455,7 @@ impl Input {
         &mut self,
         command: &str,
         source: CommandExecutionSource,
+        should_add_command_to_history: bool,
         ctx: &mut ViewContext<Self>,
     ) {
         start_trace!("command_execution:start");
@@ -13347,7 +13506,7 @@ impl Input {
             workflow_id,
             session_id,
             workflow_command,
-            should_add_command_to_history: true,
+            should_add_command_to_history,
             source,
         })));
         end_trace!();

@@ -103,6 +103,57 @@ use crate::terminal::view::inline_banner::ByoLlmAuthBannerSessionState;
 use crate::terminal::writeable_pty::command_history::update_command_history;
 use crate::{GlobalResourceHandles, GlobalResourceHandlesProvider, ReferralThemeStatus};
 
+fn pending_ctrl_r_handoff() -> PendingShellWidgetHandoff {
+    PendingShellWidgetHandoff {
+        session_id: SessionId::from(1),
+        original_buffer: "draft".to_string(),
+        selection: None,
+        block_id: BlockId::new(),
+        apply_mode: ShellWidgetApplyMode::Replace,
+        cursor_offset: None,
+    }
+}
+
+fn pending_ctrl_t_handoff() -> PendingShellWidgetHandoff {
+    PendingShellWidgetHandoff {
+        session_id: SessionId::from(1),
+        original_buffer: "echo ".to_string(),
+        selection: None,
+        block_id: BlockId::new(),
+        apply_mode: ShellWidgetApplyMode::Splice,
+        cursor_offset: Some(ByteOffset::from(5)),
+    }
+}
+
+#[test]
+fn matching_shell_widget_handoff_selection_is_applied() {
+    let mut handoff = pending_ctrl_r_handoff();
+    handoff.maybe_apply_selection(SessionId::from(1), "echo selected");
+    assert_eq!(handoff.restore_text(), "echo selected");
+
+    let mut handoff = pending_ctrl_t_handoff();
+    handoff.maybe_apply_selection(SessionId::from(1), "selected/file.txt");
+    assert_eq!(handoff.selection, Some("selected/file.txt".to_string()));
+}
+
+#[test]
+fn unsolicited_or_stale_shell_widget_handoff_selection_is_ignored() {
+    let mut handoff = pending_ctrl_r_handoff();
+    handoff.maybe_apply_selection(SessionId::from(2), "echo selected");
+    assert_eq!(handoff.restore_text(), "draft");
+}
+
+#[test]
+fn empty_shell_widget_handoff_selection_keeps_original_buffer() {
+    let mut handoff = pending_ctrl_r_handoff();
+    handoff.maybe_apply_selection(SessionId::from(1), "");
+    assert_eq!(handoff.restore_text(), "draft");
+
+    let mut handoff = pending_ctrl_t_handoff();
+    handoff.maybe_apply_selection(SessionId::from(1), "");
+    assert_eq!(handoff.selection, None);
+}
+
 #[test]
 fn renders_git_checkout_prompt_chip_command_as_single_shell_argument() {
     let command = PromptChipShellCommand::GitCheckout {

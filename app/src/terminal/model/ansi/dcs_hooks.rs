@@ -54,6 +54,9 @@ pub(super) enum DProtoHook {
     InputBuffer {
         value: InputBufferValue,
     },
+    ExternalShellWidgetSelection {
+        value: ExternalShellWidgetSelectionValue,
+    },
     Clear {
         value: ClearValue,
     },
@@ -95,6 +98,7 @@ impl DProtoHook {
             DProtoHook::SSH { .. } => "SSH",
             DProtoHook::InitShell { .. } => "InitShell",
             DProtoHook::InputBuffer { .. } => "InputBuffer",
+            DProtoHook::ExternalShellWidgetSelection { .. } => "ExternalShellWidgetSelection",
             DProtoHook::Clear { .. } => "Clear",
             DProtoHook::InitSubshell { .. } => "InitSubshell",
             DProtoHook::SourcedRcFileForWarp { .. } => "SourcedRcFileForWarp",
@@ -671,6 +675,24 @@ pub struct SourcedRcFileForWarpValue {
 #[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub struct InputBufferValue {
     pub buffer: String,
+}
+
+/// Selection reported by an external shell widget (ctrl-r history or ctrl-t file search).
+/// Empty `buffer` means the user cancelled.
+#[derive(Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ExternalShellWidgetSelectionValue {
+    pub buffer: String,
+    #[serde(default)]
+    pub session_id: HookSessionId,
+}
+
+impl std::fmt::Debug for ExternalShellWidgetSelectionValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExternalShellWidgetSelectionValue")
+            .field("buffer", &"<redacted>")
+            .field("session_id", &self.session_id)
+            .finish()
+    }
 }
 
 /// Received from the pty when the terminal screen should be cleared (e.g. via
