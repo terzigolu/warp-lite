@@ -1,3 +1,4 @@
+static TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 use std::sync::Arc;
 
 use super::get_or_parse;
@@ -7,6 +8,7 @@ use super::get_or_parse;
 /// regex and pool were allocated.
 #[test]
 fn reuses_cached_entry_for_unchanged_file() {
+    let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     super::clear_for_test();
     let temp_dir = tempfile::tempdir().unwrap();
     let path = temp_dir.path().join(".gitignore");
@@ -25,6 +27,7 @@ fn reuses_cached_entry_for_unchanged_file() {
 /// detected: content hashing must not mistake it for an unchanged file.
 #[test]
 fn rebuilds_when_content_changes_at_the_same_length() {
+    let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     super::clear_for_test();
     let temp_dir = tempfile::tempdir().unwrap();
     let path = temp_dir.path().join(".gitignore");
@@ -68,6 +71,7 @@ fn rebuilds_when_content_changes_at_the_same_length() {
 #[cfg(unix)]
 #[test]
 fn recovers_after_a_transient_read_failure() {
+    let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     use std::os::unix::fs::PermissionsExt;
 
     super::clear_for_test();
@@ -102,6 +106,7 @@ fn recovers_after_a_transient_read_failure() {
 /// the line must not be shadowed by a previously cached partial result.
 #[test]
 fn does_not_cache_a_failed_parse() {
+    let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     super::clear_for_test();
     let temp_dir = tempfile::tempdir().unwrap();
     let path = temp_dir.path().join(".gitignore");
@@ -126,6 +131,7 @@ fn does_not_cache_a_failed_parse() {
 /// Exceeding the cache's byte budget evicts the least-recently-used entry first.
 #[test]
 fn evicts_least_recently_used_entry_over_capacity() {
+    let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     super::clear_for_test();
     let temp_dir = tempfile::tempdir().unwrap();
 
@@ -149,4 +155,47 @@ fn evicts_least_recently_used_entry_over_capacity() {
         !Arc::ptr_eq(&first_instances[0], &refetched_first),
         "the least-recently-used entry should have been evicted and re-parsed"
     );
+}
+
+#[test]
+fn empty_sources_cannot_grow_the_cache_without_bound() {
+    let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut cache = super::Cache::default();
+    for index in 0..600 {
+        cache.insert(
+            format!("/synthetic/project-{index}/.gitignore").into(),
+            0,
+            Arc::new(ignore::gitignore::Gitignore::empty()),
+            0,
+        );
+    }
+    assert!(cache.entries.len() <= 512, "empty files still retain paths and matchers");
+}
+
+#[test]
+fn snapshot_parser_uses_fingerprinted_bytes_even_after_the_file_changes() {
+    let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join(".gitignore");
+    std::fs::write(&path, "new/\n").unwrap();
+    let (matcher, complete) = super::parse_snapshot(&path, b"old/\n");
+    assert!(complete);
+    assert!(matcher.matched(dir.path().join("old"), true).is_ignore());
+    assert!(!matcher.matched(dir.path().join("new"), true).is_ignore());
+}
+
+#[test]
+fn snapshot_parser_preserves_bom_crlf_and_partial_utf8_failure_behavior() {
+    let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join(".gitignore");
+    let content = b"\xef\xbb\xbftarget/\r\n*.tmp\r\n\xff\nassets/\n";
+    std::fs::write(&path, content).unwrap();
+    let (expected, _) = ignore::gitignore::Gitignore::new(&path);
+    let (actual, complete) = super::parse_snapshot(&path, content);
+    assert!(!complete);
+    for (name, is_dir) in [("target", true), ("file.tmp", false), ("assets", true)] {
+        assert_eq!(actual.matched(dir.path().join(name), is_dir).is_ignore(),
+                   expected.matched(dir.path().join(name), is_dir).is_ignore());
+    }
 }

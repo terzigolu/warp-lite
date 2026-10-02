@@ -9,21 +9,20 @@
 //! (and allocates its pool) at most once until the file is actually edited.
 //!
 //! Invalidation is keyed by a hash of the file's content, so an edit is detected even when it
-//! preserves the file's mtime and byte length. Hashing means an extra read on every call (in
-//! addition to the read `Gitignore::new` itself does on a miss), but `.gitignore` files are
+//! preserves the file's mtime and byte length. Hashing reads the file once per call; a miss parses those same bytes. `.gitignore` files are
 //! small and page-cached after the first traversal, so this stays cheap relative to the parse
 //! it guards.
 //!
-//! Eviction is source-byte-bounded LRU rather than count-bounded (see
-//! [`MAX_CACHED_SOURCE_BYTES`]).
+//! Eviction is bounded by both source bytes and entry count, including empty files.
 
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 
-use ignore::gitignore::Gitignore;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use parking_lot::Mutex;
 
 /// Total `.gitignore` source bytes the cache may hold before evicting least-recently-used
@@ -35,6 +34,9 @@ const MAX_CACHED_SOURCE_BYTES: u64 = 384 * 1024;
 /// Small in tests so eviction can be exercised without huge fixtures.
 #[cfg(test)]
 const MAX_CACHED_SOURCE_BYTES: u64 = 24;
+
+/// Empty files still retain paths, matchers, and map entries.
+const MAX_CACHED_ENTRIES: usize = 512;
 
 struct CacheEntry {
     content_digest: u64,
@@ -98,7 +100,7 @@ impl Cache {
     /// Evicts least-recently-used entries until the cache is back under
     /// [`MAX_CACHED_SOURCE_BYTES`].
     fn evict_if_over_budget(&mut self) {
-        if self.total_source_bytes <= MAX_CACHED_SOURCE_BYTES {
+        if self.total_source_bytes <= MAX_CACHED_SOURCE_BYTES && self.entries.len() <= MAX_CACHED_ENTRIES {
             return;
         }
         let mut by_last_used: Vec<(PathBuf, u64, u64)> = self
@@ -108,7 +110,7 @@ impl Cache {
             .collect();
         by_last_used.sort_by_key(|(_, last_used, _)| *last_used);
         for (path, _, source_len) in by_last_used {
-            if self.total_source_bytes <= MAX_CACHED_SOURCE_BYTES {
+            if self.total_source_bytes <= MAX_CACHED_SOURCE_BYTES && self.entries.len() <= MAX_CACHED_ENTRIES {
                 break;
             }
             self.entries.remove(&path);
@@ -147,15 +149,10 @@ pub(crate) fn get_or_parse(gitignore_path: &Path) -> Arc<Gitignore> {
         return gitignore;
     }
 
-    // Parse outside the lock (`Gitignore::new` does its own blocking file I/O) so a slow parse
-    // doesn't block unrelated cache lookups. A concurrent caller parsing the same path at the
-    // same time is a harmless, rare race: the last insert wins and both callers still get a
-    // valid, usable matcher.
-    let (gitignore, error) = Gitignore::new(gitignore_path);
-    if error.is_some() {
-        // A parse error (e.g. one malformed glob line) means this instance doesn't fully
-        // represent the file. Don't cache it, so a later call — after the file is fixed, but
-        // with the same content otherwise — isn't shadowed by this partial result.
+    // Parse exactly the fingerprinted bytes. Reopening here can cache a matcher for
+    // changed contents under the old digest when an editor writes during traversal.
+    let (gitignore, complete) = parse_snapshot(gitignore_path, &content);
+    if !complete {
         return Arc::new(gitignore);
     }
     let gitignore = Arc::new(gitignore);
@@ -168,6 +165,23 @@ pub(crate) fn get_or_parse(gitignore_path: &Path) -> Arc<Gitignore> {
         source_len,
     );
     gitignore
+}
+
+fn parse_snapshot(path: &Path, content: &[u8]) -> (Gitignore, bool) {
+    let mut builder = GitignoreBuilder::new(path.parent().unwrap_or(Path::new("/")));
+    let mut complete = true;
+    // Match ignore::GitignoreBuilder::add's line, UTF-8, BOM, and partial-error behavior.
+    for (index, line) in std::io::Cursor::new(content).lines().enumerate() {
+        let Ok(line) = line else { complete = false; break; };
+        let line = if index == 0 { line.trim_start_matches('\u{feff}') } else { &line };
+        if builder.add_line(Some(path.to_path_buf()), line).is_err() {
+            complete = false;
+        }
+    }
+    match builder.build() {
+        Ok(matcher) => (matcher, complete),
+        Err(_) => (Gitignore::empty(), false),
+    }
 }
 
 #[cfg(test)]
