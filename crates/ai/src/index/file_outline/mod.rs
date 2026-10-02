@@ -1,4 +1,3 @@
-use std::sync::Arc;
 #![cfg_attr(target_arch = "wasm32", allow(dead_code))]
 
 cfg_if::cfg_if! {
@@ -183,3 +182,5 @@ impl FileOutline {
         )
     }
 }
+
+use std::sync::Arc;

@@ -36,7 +36,7 @@ pub async fn build_outline(
     // Add global gitignore, if it exists
     let (global_gitignore, _) = Gitignore::global();
     if !global_gitignore.is_empty() {
-        gitignores.push(global_gitignore);
+        gitignores.push(Arc::new(global_gitignore));
     }
 
     let gitignore_path = path.join(".gitignore");
