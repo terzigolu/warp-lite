@@ -15433,31 +15433,6 @@ impl TerminalView {
                         ))
                         .into_item(),
                 ]);
-                items.append(&mut vec![
-                    MenuItemFields::new("Toggle block filter")
-                        .with_on_select_action(
-                            TerminalAction::ToggleBlockFilterOnSelectedOrLastBlock(
-                                ToggleBlockFilterSource::ContextMenu,
-                            ),
-                        )
-                        .with_key_shortcut_label(keybinding_name_to_display_string(
-                            TOGGLE_BLOCK_FILTER_KEYBINDING,
-                            ctx,
-                        ))
-                        .into_item(),
-                ]);
-                items.append(&mut vec![
-                    MenuItem::Separator,
-                    MenuItemFields::new(find_str)
-                        .with_on_select_action(TerminalAction::ContextMenu(
-                            ContextMenuAction::FindWithinBlock,
-                        ))
-                        .with_key_shortcut_label(keybinding_name_to_display_string(
-                            "terminal:find",
-                            ctx,
-                        ))
-                        .into_item(),
-                ]);
                 items.append(&mut vec![MenuItemFields::new("Toggle block filter")
                     .with_on_select_action(TerminalAction::ToggleBlockFilterOnSelectedOrLastBlock(
                         ToggleBlockFilterSource::ContextMenu,

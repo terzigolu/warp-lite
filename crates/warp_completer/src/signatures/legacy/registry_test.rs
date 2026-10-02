@@ -329,7 +329,7 @@ fn test_oversized_later_token_does_not_bypass_the_length_guard() {
         .expect("global command signatures should include 'sudo'");
     let ctx =
         FakeCompletionContext::new(create_test_command_registry([sudo])).with_case_sensitivity();
-    let result = warpui_core::r#async::block_on(
+    let result = warpui::r#async::block_on(
         ctx.command_registry()
             .signature_with_alias_expansion(&tokens, false, &ctx),
     );
