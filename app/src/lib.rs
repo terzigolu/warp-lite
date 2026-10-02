@@ -615,6 +615,10 @@ pub fn run() -> Result<()> {
                 return debug_dump::run();
             }
             #[cfg(not(target_family = "wasm"))]
+            warp_cli::Command::DumpSettingsSchema { output_path } => {
+                return settings::dump_settings_schema(output_path.as_deref());
+            }
+            #[cfg(not(target_family = "wasm"))]
             warp_cli::Command::PrintTelemetryEvents => {
                 return TelemetryEvent::print_telemetry_events_json();
             }

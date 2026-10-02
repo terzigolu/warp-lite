@@ -125,6 +125,16 @@ if [ "${SKIP_SETTINGS_SCHEMA:-}" != "1" ]; then
   SCHEMA_OUTPUT="$DEST_DIR/settings_schema.json"
   echo "Generating settings schema at $SCHEMA_OUTPUT"
 
+  # Reuse a built Lite binary when available, avoiding another app link.
+  # Keep the existing channel-aware generator as a compatibility fallback.
+  if [ -n "${SETTINGS_SCHEMA_EXECUTABLE:-}" ] && [ -n "${SETTINGS_SCHEMA_SOURCE:-}" ]; then
+    echo "SETTINGS_SCHEMA_EXECUTABLE and SETTINGS_SCHEMA_SOURCE are mutually exclusive" >&2
+    exit 1
+  elif [ -n "${SETTINGS_SCHEMA_EXECUTABLE:-}" ]; then
+    "$SETTINGS_SCHEMA_EXECUTABLE" dump-settings-schema "$SCHEMA_OUTPUT"
+  elif [ -n "${SETTINGS_SCHEMA_SOURCE:-}" ]; then
+    cp "$SETTINGS_SCHEMA_SOURCE" "$SCHEMA_OUTPUT"
+  else
   SCHEMA_CMD=(cargo run)
   if [ -n "$CARGO_PROFILE" ]; then
     SCHEMA_CMD+=(--profile "$CARGO_PROFILE")
@@ -136,6 +146,9 @@ if [ "${SKIP_SETTINGS_SCHEMA:-}" != "1" ]; then
   SCHEMA_CMD+=("$SCHEMA_OUTPUT")
 
   "${SCHEMA_CMD[@]}"
+  fi
+  test -s "$SCHEMA_OUTPUT"
+
 fi
 
 echo "Successfully prepared bundled resources in $DEST_DIR"
