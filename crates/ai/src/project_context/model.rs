@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use anyhow::Result;
 #[cfg(feature = "local_fs")]
 use repo_metadata::repositories::RepoDetectionSource;

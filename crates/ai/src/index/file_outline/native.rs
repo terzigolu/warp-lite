@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use futures::channel::oneshot;
 use ignore::gitignore::Gitignore;
 use rayon::prelude::*;

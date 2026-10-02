@@ -1,3 +1,4 @@
+use std::sync::Arc;
 #![cfg_attr(target_arch = "wasm32", allow(dead_code))]
 
 cfg_if::cfg_if! {
@@ -31,7 +32,7 @@ pub struct Outline {
     file_id_to_outline: HashMap<FileId, FileOutline>,
 
     /// List of gitignore patterns.
-    gitignores: Vec<Gitignore>,
+    gitignores: Vec<Arc<Gitignore>>,
 }
 
 impl Outline {
@@ -126,7 +127,7 @@ impl Outline {
         self.file_id_to_outline.len()
     }
 
-    pub fn gitignores(&self) -> Vec<Gitignore> {
+    pub fn gitignores(&self) -> Vec<Arc<Gitignore>> {
         self.gitignores.clone()
     }
 }
