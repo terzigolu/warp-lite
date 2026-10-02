@@ -105,6 +105,7 @@ pub struct FileNotebookView {
     /// This is preserved so we can restore it when toggling between raw and rendered Markdown.
     #[cfg(feature = "local_fs")]
     code_source: Option<CodeSource>,
+    pending_scroll_fraction: Option<f32>,
 }
 
 #[derive(Debug, Clone)]
@@ -293,6 +294,7 @@ impl FileNotebookView {
             links,
             context_menu,
             view_position_id,
+            pending_scroll_fraction: None,
             markdown_display_mode: MarkdownDisplayMode::Rendered,
             display_mode_segmented_control,
             #[cfg(feature = "local_fs")]
@@ -326,13 +328,46 @@ impl FileNotebookView {
     }
 
     /// Reset the rich text contents based on the given Markdown content.
+    /// Set the scroll fraction to restore once the file content is first loaded. Used to preserve
+    /// scroll position when toggling markdown from raw to rendered.
+    #[cfg_attr(not(feature = "local_fs"), expect(dead_code))]
+    pub(crate) fn set_pending_scroll_fraction(&mut self, scroll_fraction: Option<f32>) {
+        self.pending_scroll_fraction = scroll_fraction;
+    }
+
+    /// The current vertical scroll fraction of the rendered editor, in `0..=1`.
+    #[cfg_attr(not(feature = "local_fs"), expect(dead_code))]
+    fn scroll_fraction(&self, ctx: &AppContext) -> Option<f32> {
+        Some(
+            self.editor
+                .as_ref(ctx)
+                .model()
+                .as_ref(ctx)
+                .render_state()
+                .as_ref(ctx)
+                .scroll_fraction(),
+        )
+    }
+
     pub fn set_content(&mut self, content: &str, ctx: &mut ViewContext<Self>) {
+        let scroll_fraction = self.pending_scroll_fraction.take();
         let doc_path = self.file_state.local_path().map(|p| p.to_path_buf());
         self.editor.update(ctx, |editor, ctx| {
             editor.reset_with_markdown(content, ctx);
             // Set the document path for resolving relative image paths
             editor.model().update(ctx, |model, ctx| {
                 model.set_document_path(doc_path, ctx);
+                // Restore scroll captured before a raw->rendered toggle. Deferred through the
+                // layout pipeline so it applies after the new content is laid out. The version is
+                // read here (after the reset above advanced it) rather than at dequeue: the reset's
+                // BufferEdit reaches the layout channel via a deferred subscription, so it can be
+                // enqueued after our ScrollToFraction.
+                if let Some(fraction) = scroll_fraction {
+                    let version = model.buffer_version(ctx);
+                    model.render_state().update(ctx, |render_state, _ctx| {
+                        render_state.scroll_to_fraction(fraction, version);
+                    });
+                }
             });
         });
     }
@@ -531,10 +566,12 @@ impl FileNotebookView {
     #[cfg(feature = "local_fs")]
     fn open_as_code(&mut self, ctx: &mut ViewContext<Self>) {
         if let Some(path) = self.local_path() {
+            let scroll_fraction = self.scroll_fraction(ctx).map(ordered_float::OrderedFloat);
             // Emit an event to the pane group to handle the replacement
             ctx.emit(FileNotebookEvent::Pane(PaneEvent::ReplaceWithCodePane {
                 path: path.clone(),
                 source: self.code_source.clone(),
+                scroll_fraction,
             }));
         }
     }
@@ -900,9 +937,11 @@ impl TypedActionView for FileNotebookView {
                         #[cfg(feature = "local_fs")]
                         {
                             if let Some(path) = self.local_path() {
+            let scroll_fraction = self.scroll_fraction(ctx).map(ordered_float::OrderedFloat);
                                 ctx.emit(FileNotebookEvent::Pane(PaneEvent::ReplaceWithCodePane {
                                     path,
                                     source: self.code_source.clone(),
+                                    scroll_fraction,
                                 }));
                             }
                         }
