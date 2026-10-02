@@ -1,5 +1,11 @@
+use settings_page::{
+    Category, FilteredPageType, MatchData, PageType, SettingsWidget,
+    categories_with_visible_content, search_terms_match,
+};
+use warpui::elements::Empty;
+use warpui::{App, AppContext, Element, Entity, View};
+
 use super::*;
-use settings_page::MatchData;
 
 // ── SettingsSection classification ──────────────────────────────────────────
 
@@ -1033,4 +1039,256 @@ fn arrow_down_collapsed_umbrella_respects_search_filter() {
         CycleDirection::Down,
     );
     assert_eq!(next, SettingsSection::AgentMCPServers);
+}
+
+// ── PageType filter lifecycle across a rebuild (APP-4922) ────────────────────
+// Rebuilding a page's PageType resets its widget filter to every widget, so an
+// active query has to be reapplied for only matching widgets to render. No page
+// rebuilds itself on navigation any more (each subpage owns its own view), but
+// these tests still pin the underlying PageType::Uncategorized filter lifecycle
+// and the real search_terms_match predicate that the invariant rests on.
+
+/// Minimal View so PageType<V> can be instantiated in a unit test without the
+/// full SettingsView/ViewContext a real settings page requires.
+struct TestSettingsView;
+
+impl Entity for TestSettingsView {
+    type Event = ();
+}
+
+impl View for TestSettingsView {
+    fn ui_name() -> &'static str {
+        "TestSettingsView"
+    }
+
+    fn render(&self, _: &AppContext) -> Box<dyn Element> {
+        Empty::new().finish()
+    }
+}
+
+/// A SettingsWidget whose only test-relevant state is its search terms; render
+/// is never invoked by the filter lifecycle under test.
+struct StubWidget {
+    terms: &'static str,
+}
+
+impl SettingsWidget for StubWidget {
+    type View = TestSettingsView;
+
+    fn search_terms(&self) -> &str {
+        self.terms
+    }
+
+    fn render(&self, _: &Self::View, _: &Appearance, _: &AppContext) -> Box<dyn Element> {
+        Empty::new().finish()
+    }
+}
+
+/// A fresh Uncategorized page mirroring build_page -> new_uncategorized: every
+/// widget index visible by default.
+fn stub_widgets_page() -> PageType<TestSettingsView> {
+    let widgets: Vec<Box<dyn SettingsWidget<View = TestSettingsView>>> = vec![
+        Box::new(StubWidget {
+            terms: "warp agent global ai toggle",
+        }),
+        Box::new(StubWidget {
+            terms: "active ai autosuggestions prompt",
+        }),
+        Box::new(StubWidget {
+            terms: "ai input model api key",
+        }),
+        Box::new(StubWidget {
+            terms: "file search fuzzy opener",
+        }),
+        Box::new(StubWidget {
+            terms: "voice input",
+        }),
+    ];
+    PageType::new_uncategorized(widgets, None)
+}
+
+/// Number of widgets the page would render under its current filter.
+fn visible_widget_count<V: View>(page: &PageType<V>) -> usize {
+    let FilteredPageType::Uncategorized { widgets, .. } = page.get_filtered() else {
+        panic!("expected Uncategorized page");
+    };
+    widgets.len()
+}
+
+#[test]
+fn search_terms_match_direct_unit_checks() {
+    // Empty query matches everything (mirrors PageType::update_filter's guard).
+    assert!(search_terms_match("warp agent global ai toggle", ""));
+    // All-words, case-insensitive, non-contiguous.
+    assert!(search_terms_match(
+        "active ai autosuggestions prompt",
+        "autosuggestions"
+    ));
+    assert!(search_terms_match(
+        "active ai autosuggestions prompt",
+        "ACTIVE AI"
+    ));
+    assert!(search_terms_match(
+        "file search fuzzy opener",
+        "file search"
+    ));
+    // Every word must appear.
+    assert!(!search_terms_match(
+        "warp agent global ai toggle",
+        "file search"
+    ));
+    assert!(!search_terms_match(
+        "active ai autosuggestions prompt",
+        "autosuggestions key"
+    ));
+}
+
+#[test]
+fn rebuild_resets_filter_to_all_widgets() {
+    // Searching "file search" matches exactly one widget. A freshly built page
+    // (mirroring build_page -> new_uncategorized) resets the filter to every
+    // widget, so without reapplying update_filter the page would show all
+    // widgets.
+    App::test((), |mut app| async move {
+        app.update(|ctx| {
+            let mut page = stub_widgets_page();
+            let md = page.update_filter("file search", ctx);
+            assert!(md.is_truthy());
+            assert_eq!(visible_widget_count(&page), 1);
+
+            let rebuilt = stub_widgets_page();
+            assert_eq!(
+                visible_widget_count(&rebuilt),
+                5,
+                "rebuild resets the filter to all widgets when update_filter isn't reapplied"
+            );
+        });
+    });
+}
+
+#[test]
+fn rebuild_with_reapply_keeps_only_matching_widgets() {
+    // The fix: after a rebuild, reapply update_filter with the active query so
+    // only matching widgets render on the restored subpage.
+    App::test((), |mut app| async move {
+        app.update(|ctx| {
+            let mut page = stub_widgets_page();
+            page.update_filter("file search", ctx);
+            assert_eq!(visible_widget_count(&page), 1);
+
+            let mut rebuilt = stub_widgets_page();
+            rebuilt.update_filter("file search", ctx);
+            assert_eq!(
+                visible_widget_count(&rebuilt),
+                1,
+                "reapplying the filter after a rebuild keeps only matching widgets visible"
+            );
+        });
+    });
+}
+
+#[test]
+fn reapply_handles_multi_word_and_case() {
+    // A multi-word, case-insensitive query survives the rebuild + reapply cycle.
+    App::test((), |mut app| async move {
+        app.update(|ctx| {
+            let mut page = stub_widgets_page();
+            page.update_filter("AI INPUT", ctx);
+            assert_eq!(visible_widget_count(&page), 1);
+
+            let mut rebuilt = stub_widgets_page();
+            rebuilt.update_filter("AI INPUT", ctx);
+            assert_eq!(visible_widget_count(&rebuilt), 1);
+        });
+    });
+}
+
+#[test]
+fn empty_query_after_reapply_shows_all_widgets() {
+    // When the search is cleared, the subpage shows all widgets again.
+    App::test((), |mut app| async move {
+        app.update(|ctx| {
+            let mut page = stub_widgets_page();
+            page.update_filter("agent", ctx);
+            assert_eq!(visible_widget_count(&page), 1);
+
+            let mut rebuilt = stub_widgets_page();
+            rebuilt.update_filter("", ctx);
+            assert_eq!(
+                visible_widget_count(&rebuilt),
+                5,
+                "an empty query restores every widget on the subpage"
+            );
+        });
+    });
+}
+
+struct NeverRendersWidget {
+    terms: &'static str,
+}
+
+impl SettingsWidget for NeverRendersWidget {
+    type View = TestSettingsView;
+
+    fn search_terms(&self) -> &str {
+        self.terms
+    }
+
+    fn should_render(&self, _: &AppContext) -> bool {
+        false
+    }
+
+    fn render(&self, _: &Self::View, _: &Appearance, _: &AppContext) -> Box<dyn Element> {
+        Empty::new().finish()
+    }
+}
+
+#[test]
+fn category_whose_sole_widget_cannot_render_has_no_visible_content_before_any_filter_pass() {
+    App::test((), |mut app| async move {
+        app.update(|ctx| {
+            let children: Vec<Box<dyn SettingsWidget<View = TestSettingsView>>> =
+                vec![Box::new(NeverRendersWidget {
+                    terms: "cloud handoff",
+                })];
+            let page =
+                PageType::new_categorized(vec![Category::new("Cloud Handoff", children)], None);
+
+            let FilteredPageType::Categorized { categories, .. } = page.get_filtered() else {
+                panic!("expected Categorized page");
+            };
+            assert_eq!(
+                categories.len(),
+                1,
+                "the untouched filter includes every widget index, so the category is still present here"
+            );
+            assert!(
+                categories_with_visible_content(categories, ctx).is_empty(),
+                "the category's sole widget can't render right now, so it has nothing visible to show"
+            );
+        });
+    });
+}
+
+#[test]
+fn category_whose_sole_widget_cannot_render_has_no_visible_content_after_an_empty_query() {
+    App::test((), |mut app| async move {
+        app.update(|ctx| {
+            let children: Vec<Box<dyn SettingsWidget<View = TestSettingsView>>> =
+                vec![Box::new(NeverRendersWidget {
+                    terms: "cloud handoff",
+                })];
+            let mut page =
+                PageType::new_categorized(vec![Category::new("Cloud Handoff", children)], None);
+            page.update_filter("", ctx);
+
+            let FilteredPageType::Categorized { categories, .. } = page.get_filtered() else {
+                panic!("expected Categorized page");
+            };
+            assert!(
+                categories.is_empty(),
+                "an empty-query filter pass already drops a category with no should_render widgets"
+            );
+        });
+    });
 }
