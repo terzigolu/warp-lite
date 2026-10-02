@@ -1,3 +1,4 @@
+use super::settings_page::PageTitle;
 use super::{
     flags,
     settings_page::{
@@ -282,7 +283,7 @@ impl MainSettingsPageView {
 
         widgets.push(Box::new(LogoutWidget::default()));
 
-        let page = PageType::new_uncategorized(widgets, Some("Account"));
+        let page = PageType::new_uncategorized(widgets, Some(PageTitle::new("Account")));
 
         MainSettingsPageView { page, auth_state }
     }
