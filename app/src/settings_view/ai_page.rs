@@ -1533,7 +1533,7 @@ impl AISettingsPageView {
         // Subpage widgets render their own subheader-sized titles internally,
         // so we don't pass a page-level title to PageType.
         let title: Option<&str> = None;
-        PageType::new_uncategorized(widgets, title)
+        PageType::new_uncategorized(widgets, title.map(super::settings_page::PageTitle::new))
     }
 
     fn handle_detection_denylist_editor_event(

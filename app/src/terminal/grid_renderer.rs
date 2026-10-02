@@ -622,7 +622,6 @@ fn render_grid_without_ligatures<'a>(
         let offset_row = start_row + offset;
 
         let Some(row) = grid.row(row_idx) else {
-            #[cfg(debug_assertions)]
             static REPORTED: std::sync::Once = std::sync::Once::new();
             REPORTED.call_once(|| log::error!("grid_renderer should not try to render an out-of-bounds row"));
             continue;
