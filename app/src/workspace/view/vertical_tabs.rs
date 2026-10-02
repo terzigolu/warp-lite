@@ -31,7 +31,7 @@ use crate::pane_group::TerminalPane;
 use crate::pane_group::{
     CodePane, NotebookPane, PaneGroup, PaneId, TabBarHoverIndex, WorkflowPane,
 };
-use crate::tab::{tab_position_id, SelectedTabColor, TabData};
+use crate::tab::{tab_position_id, SelectedTabColor, TabData, TAB_ACTIVATE_BINDING_NAMES, reveals_tab_shortcut_hints};
 use crate::terminal::session_settings::SessionSettings;
 use crate::terminal::TerminalView;
 use crate::themes::theme::Fill as ThemeFill;
@@ -428,6 +428,7 @@ fn render_pane_row_element(
         pane_rename_editor: _,
         is_pinned,
         container_is_hovered,
+        shortcut_hint_tab_index: _,
     } = props;
     let is_selected = is_active_tab && is_focused;
     let show_pin = FeatureFlag::PinnedTabs.is_enabled() && is_pinned && !container_is_hovered;
@@ -868,6 +869,7 @@ struct PaneProps<'a> {
     /// True when the tab container containing this pane is hovered.
     /// The pin icon is hidden when a tab is hovered.
     container_is_hovered: bool,
+    shortcut_hint_tab_index: Option<usize>,
 }
 
 struct PaneRowState {
@@ -1202,6 +1204,7 @@ impl VerticalTabsPanelState {
                                 None,
                                 tab.pinned,
                                 false,
+                                Some(*tab_index),
                                 app,
                             )
                             .is_some_and(|props| pane_matches_query(&props, &query_lower, app))
@@ -1794,6 +1797,7 @@ fn render_groups(
                                     None,
                                     tab.pinned,
                                     false,
+                                    Some(tab_index),
                                     app,
                                 )
                                 .is_some_and(|props| {
@@ -1825,6 +1829,7 @@ fn render_groups(
                                 None,
                                 tab.pinned,
                                 false,
+                                Some(tab_index),
                                 app,
                             )
                             .is_some_and(|props| pane_matches_query(&props, &query_lower, app))
@@ -2181,6 +2186,7 @@ fn render_tab_group_internal(
                     None,
                     tab.pinned,
                     group_state.is_hovered(),
+                    Some(tab_index),
                     app,
                 ) else {
                     return Empty::new().finish();
@@ -2239,6 +2245,7 @@ fn render_tab_group_internal(
                     is_pane_being_renamed.then_some(workspace.pane_rename_editor.clone()),
                     tab.pinned,
                     group_state.is_hovered(),
+                    Some(tab_index),
                     app,
                 ) else {
                     continue;
@@ -3433,6 +3440,13 @@ fn render_pane_row(props: PaneProps<'_>, app: &AppContext) -> Box<dyn Element> {
                     .finish(),
             );
         }
+        if let Some(label) = shortcut_hint_label(&props, app) {
+            title_row.add_child(
+                Container::new(render_shortcut_hint(&label, appearance))
+                    .with_margin_left(4.)
+                    .finish(),
+            );
+        }
 
         let mut content_col = Flex::column()
             .with_main_axis_size(MainAxisSize::Min)
@@ -3768,6 +3782,7 @@ impl<'a> PaneProps<'a> {
         pane_rename_editor: Option<ViewHandle<EditorView>>,
         is_pinned: bool,
         container_is_hovered: bool,
+        shortcut_hint_tab_index: Option<usize>,
         app: &AppContext,
     ) -> Option<Self> {
         let pane = pane_group.pane_by_id(pane_id)?;
@@ -3822,6 +3837,7 @@ impl<'a> PaneProps<'a> {
             pane_rename_editor,
             is_pinned,
             container_is_hovered,
+            shortcut_hint_tab_index,
         })
     }
 
@@ -6511,6 +6527,7 @@ fn detail_pane_props<'a>(
         None,
         false,
         false,
+        None,
         app,
     )
 }
@@ -7171,3 +7188,41 @@ impl Workspace {
 #[cfg(test)]
 #[path = "vertical_tabs_tests.rs"]
 mod tests;
+
+/// Whether a row is eligible to surface the switch-to-tab shortcut hint: the
+/// reveal modifier is held and the tab falls within the first 8 (the only tabs
+/// with a `cmdorctrl-N` binding). Whether a label is actually shown also
+/// depends on the binding being assigned — see [`shortcut_hint_label`].
+fn shows_shortcut_hint(modifier_held: bool, tab_index: usize) -> bool {
+    modifier_held && tab_index < TAB_ACTIVATE_BINDING_NAMES.len()
+}
+
+/// Resolves the switch-to-tab shortcut label for a row while the reveal
+/// modifier is held. Returns `None` when no hint should be shown.
+fn shortcut_hint_label(props: &PaneProps<'_>, app: &AppContext) -> Option<String> {
+    let tab_index = props.shortcut_hint_tab_index?;
+    if !shows_shortcut_hint(reveals_tab_shortcut_hints(app), tab_index) {
+        return None;
+    }
+    keybinding_name_to_display_string(TAB_ACTIVATE_BINDING_NAMES[tab_index], app)
+}
+
+/// Inline label showing the switch-to-tab keyboard shortcut, mirroring the
+/// horizontal tab bar's `TabComponent::render_shortcut_hint`.
+fn render_shortcut_hint(label: &str, appearance: &Appearance) -> Box<dyn Element> {
+    let theme = appearance.theme();
+    Text::new_inline(label.to_string(), appearance.ui_font_family(), 12.)
+        .with_color(theme.sub_text_color(theme.background()).into())
+        .finish()
+}
+
+
+fn with_shortcut_hint(title: Box<dyn Element>, props: &PaneProps<'_>, appearance: &Appearance, app: &AppContext) -> Box<dyn Element> {
+    match shortcut_hint_label(props, app) {
+        None => title,
+        Some(label) => Flex::row().with_main_axis_size(MainAxisSize::Max)
+            .with_main_axis_alignment(MainAxisAlignment::SpaceBetween)
+            .with_child(Shrinkable::new(1., title).finish())
+            .with_child(render_shortcut_hint(&label, appearance)).finish(),
+    }
+}

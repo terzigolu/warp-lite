@@ -1,3 +1,4 @@
+use warpui::platform::keyboard::KeyCode;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -261,6 +262,10 @@ pub enum WorkspaceAction {
     DecreaseZoom,
     ResetZoom,
     ActivateTabByNumber(usize),
+    SetTabShortcutModifierKey {
+        key_code: KeyCode,
+        pressed: bool,
+    },
     OpenPalette {
         mode: PaletteMode,
         source: PaletteSource,
@@ -793,6 +798,7 @@ impl WorkspaceAction {
             ContinueConversationLocally { .. } => true,
             ActivateTab(_)
             | ActivateTabByNumber(_)
+            | SetTabShortcutModifierKey { .. }
             | ActivatePrevTab
             | ActivateNextTab
             | ActivateLastTab
