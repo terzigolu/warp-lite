@@ -1,3 +1,4 @@
+use crate::workspace::WorkspaceRegistry;
 use warp_completer::meta::Span;
 mod action;
 mod agent_view;
@@ -10574,7 +10575,17 @@ impl TerminalView {
                 // case, we want the block to be focused because otherwise,
                 // users get stuck as they'd otherwise need to click into the
                 // box to respond to whether or not they want to update oh my zsh.
-                self.focus_terminal(ctx);
+                //
+                // Skipped while a tab or tab-group rename editor is focused. Taking focus
+                // would end the rename and lose user inputs (#14241).
+                let inline_rename_editor_is_focused = WorkspaceRegistry::as_ref(ctx)
+                    .get(self.window_id, ctx)
+                    .is_some_and(|workspace| {
+                        workspace.as_ref(ctx).is_inline_rename_editor_focused(ctx)
+                    });
+                if !inline_rename_editor_is_focused {
+                    self.focus_terminal(ctx);
+                }
             }
             ModelEvent::AfterBlockStarted {
                 command,
