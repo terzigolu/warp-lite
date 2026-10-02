@@ -860,7 +860,6 @@ mod full_text_searcher {
             // instead of 3 separate O(N×D) passes.
             let active_uids = model.active_object_uids();
 
-            self.notebook_searcher.clear_search_index_async()?;
             let notebook_docs = model
                 .cloud_objects()
                 .filter(|obj| active_uids.contains(&obj.uid()))
@@ -882,9 +881,8 @@ mod full_text_searcher {
                         }
                     })
                 });
-            self.notebook_searcher.build_index_async(notebook_docs)?;
+            self.notebook_searcher.rebuild_index_async(notebook_docs)?;
 
-            self.workflow_searcher.clear_search_index_async()?;
             let workflow_docs = model
                 .cloud_objects()
                 .filter(|obj| active_uids.contains(&obj.uid()))
@@ -908,9 +906,8 @@ mod full_text_searcher {
                         }
                     })
                 });
-            self.workflow_searcher.build_index_async(workflow_docs)?;
+            self.workflow_searcher.rebuild_index_async(workflow_docs)?;
 
-            self.env_var_searcher.clear_search_index_async()?;
             let env_var_docs = model
                 .cloud_objects()
                 .filter(|obj| active_uids.contains(&obj.uid()))
@@ -944,7 +941,7 @@ mod full_text_searcher {
                         }
                     })
                 });
-            self.env_var_searcher.build_index_async(env_var_docs)?;
+            self.env_var_searcher.rebuild_index_async(env_var_docs)?;
 
             Ok(())
         }
