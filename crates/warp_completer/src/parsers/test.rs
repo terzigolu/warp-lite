@@ -1,3 +1,4 @@
+use crate::signatures::testing::{git_signature, add_content_signature};
 use itertools::Itertools;
 use warp_util::path::EscapeChar;
 
