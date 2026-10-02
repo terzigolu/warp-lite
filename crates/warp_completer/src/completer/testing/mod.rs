@@ -271,6 +271,8 @@ pub struct FakeCompletionContext {
 
 impl FakeCompletionContext {
     pub fn new(command_registry: CommandRegistry) -> Self {
+        // Standalone completer tests do not run the application's feature initialization.
+        warp_core::features::mark_initialized();
         Self {
             command_registry,
             supports_autocd: None,

@@ -4469,7 +4469,7 @@ fn render_terminal_row_content(
     let mut content = Flex::column()
         .with_main_axis_size(MainAxisSize::Min)
         .with_cross_axis_alignment(CrossAxisAlignment::Start);
-    content.add_child(first_line_element);
+    content.add_child(with_shortcut_hint(first_line_element, props, appearance, app));
     content.add_child(Container::new(second_line).with_margin_top(2.).finish());
     content.add_child(
         Container::new(render_terminal_metadata_line(
@@ -7158,7 +7158,7 @@ fn render_compact_pane_row(props: PaneProps<'_>, app: &AppContext) -> Box<dyn El
         .with_main_axis_size(MainAxisSize::Min)
         .with_cross_axis_alignment(CrossAxisAlignment::Start)
         .with_spacing(1.);
-    text_col.add_child(title_row);
+    text_col.add_child(with_shortcut_hint(title_row, &props, appearance, app));
 
     if let Some(subtitle) = subtitle_element {
         text_col.add_child(subtitle);

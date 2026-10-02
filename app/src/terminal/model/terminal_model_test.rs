@@ -17,6 +17,15 @@ use warp_terminal::model::ansi::ClearMode;
 use warpui::text::str_to_byte_vec;
 use warpui::text::SelectionType;
 
+#[test]
+fn shell_widget_selection_requires_the_active_shell_session() {
+    let mut model = TerminalModel::mock(None, None);
+    assert!(!model.accepts_shell_widget_session(42));
+    model.block_list_mut().active_block_mut().set_session_id(SessionId::from(42));
+    assert!(model.accepts_shell_widget_session(42));
+    assert!(!model.accepts_shell_widget_session(43));
+}
+
 /// Helper function to create a SerializedBlock with default values,
 /// including the new is_local field.
 fn create_default_serialized_block() -> SerializedBlock {
@@ -1102,4 +1111,3 @@ fn completion_replacement_span_saturates_an_out_of_range_pair_rather_than_panick
         .expect("a CompletionsFinished event should have been emitted");
     assert_eq!(saturated, Some((usize::MAX, usize::MAX)));
 }
-

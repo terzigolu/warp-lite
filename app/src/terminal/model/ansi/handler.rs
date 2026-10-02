@@ -291,6 +291,11 @@ pub trait Handler {
 
     fn external_shell_widget_selection(&mut self, _data: ExternalShellWidgetSelectionValue) {}
 
+    /// Only the active shell may report a selection for an in-flight widget handoff.
+    fn accepts_shell_widget_session(&self, _session_id: u64) -> bool {
+        false
+    }
+
     /// Callback emitted during the initialization process for subshells with where the shell type
     /// is initiall not known.
     fn init_subshell(&mut self, _data: InitSubshellValue) {}

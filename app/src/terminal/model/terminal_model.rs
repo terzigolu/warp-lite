@@ -2999,6 +2999,10 @@ impl ansi::Handler for TerminalModel {
             .send_terminal_event(Event::ExternalShellWidgetSelection(data));
     }
 
+    fn accepts_shell_widget_session(&self, session_id: u64) -> bool {
+        self.block_list().active_block().session_id() == Some(SessionId::from(session_id))
+    }
+
     fn init_subshell(&mut self, data: InitSubshellValue) {
         let is_tmux_ssh = self.pending_warp_initiated_control_mode.is_some();
         let shell_type = ShellType::from_name(data.shell.as_str());

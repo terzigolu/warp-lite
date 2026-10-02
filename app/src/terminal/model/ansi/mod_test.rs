@@ -28,6 +28,10 @@ struct MockHandler {
 }
 
 impl Handler for MockHandler {
+    fn accepts_shell_widget_session(&self, session_id: u64) -> bool {
+        session_id == 167303092612201
+    }
+
     fn terminal_attribute(&mut self, attr: Attr) {
         self.attr = Some(attr);
     }
@@ -771,6 +775,15 @@ fn parse_dcs_external_shell_widget_selection_with_unregistered_session_is_reject
         handler.d_proto_hooks.is_empty(),
         "a selection for an unregistered session_id must be rejected, not dispatched"
     );
+}
+
+#[test]
+fn parse_dcs_external_shell_widget_selection_without_session_is_rejected() {
+    let bytes = hex_encoded_dcs_string(
+        r#"{"hook":"ExternalShellWidgetSelection","value":{"buffer":"echo selected"}}"#,
+    );
+    let (_, handler) = parse_bytes(&bytes);
+    assert!(handler.d_proto_hooks.is_empty());
 }
 
 #[test]
