@@ -2,9 +2,7 @@ pub mod alias;
 mod legacy;
 mod priority;
 use alias::{expand_command_aliases, AliasExpansionResult};
-pub use priority::Priority;
 
-use imp::*;
 use warp_core::ui::theme::AnsiColorIdentifier;
 
 use std::cmp::Ordering;
