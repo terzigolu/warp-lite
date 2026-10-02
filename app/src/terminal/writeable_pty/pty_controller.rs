@@ -666,7 +666,7 @@ impl<T: EventLoopSender> PtyController<T> {
                     )),
                     true,
                     Some(
-                        Box::new(move || terminal_model.lock().start_in_band_command_execution())
+                        Box::new(move || terminal_model.lock().block_list_mut().start_active_block_for_in_band_command())
                             as Box<dyn Fn() + Send + 'static>,
                     ),
                     false,

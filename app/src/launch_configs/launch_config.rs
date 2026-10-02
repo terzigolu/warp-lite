@@ -155,10 +155,8 @@ pub fn resolve_group_memberships(tabs: &[TabTemplate], group_count: usize) -> Ve
                 .filter(|index| *index < group_count)
                 .filter(|index| !closed[*index]);
 
-            if previous != group
-                && let Some(previous) = previous
-            {
-                closed[previous] = true;
+            if previous != group {
+                if let Some(previous) = previous { closed[previous] = true; }
             }
             previous = group;
             group

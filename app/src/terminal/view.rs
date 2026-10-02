@@ -11394,8 +11394,7 @@ impl TerminalView {
                 }
             }
             ModelEvent::ExternalShellWidgetSelection(data) => {
-                if FeatureFlag::ShellWidgetHandoff.is_enabled()
-                    && let Some(session_id) = data.session_id.map(SessionId::from)
+                if let Some(session_id) = data.session_id.filter(|_| FeatureFlag::ShellWidgetHandoff.is_enabled()).map(SessionId::from)
                 {
                     self.input.update(ctx, |input, _ctx| {
                         input.set_external_shell_widget_selection(session_id, &data.buffer);

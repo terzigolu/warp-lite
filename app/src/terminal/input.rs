@@ -1,3 +1,4 @@
+use warp_completer::meta::Span;
 use super::model::completions::ShellCompletion;
 mod agent;
 pub mod buffer_model;
@@ -6096,8 +6097,7 @@ impl Input {
         let block_id = self.model.lock().block_list().active_block_id().clone();
         // Prefixed with a leading space, the "ignorespace" convention.
         let mut command = format!(" {helper_command}");
-        if let Some(cursor_offset) = cursor_offset
-            && apply_mode == ShellWidgetApplyMode::Replace
+        if let Some(cursor_offset) = cursor_offset.filter(|_| apply_mode == ShellWidgetApplyMode::Replace)
         {
             let char_cursor = original_buffer[..cursor_offset.as_usize()].chars().count();
             command.push_str(&format!(" {char_cursor}:{}", hex::encode(&original_buffer)));
@@ -10655,7 +10655,7 @@ impl Input {
         let fallback_strategy = {
             let use_native_shell_completions = comp_sources.uses_native();
             match completions_trigger {
-                CompletionsTrigger::Keybinding | CompletionsTrigger::SlashCommandAutoOpen
+                CompletionsTrigger::Keybinding
                     if !use_native_shell_completions =>
                 {
                     CompletionsFallbackStrategy::FilePaths

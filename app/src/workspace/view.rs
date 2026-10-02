@@ -15672,11 +15672,7 @@ impl Workspace {
             return;
         }
 
-        if query_filter.is_none()
-            && let Some(terminal_view_handle) = self.active_session_view(ctx)
-            && terminal_view_handle.update(ctx, |terminal_view, ctx| {
-                terminal_view.maybe_trigger_external_ctrl_r_history_search(ctx)
-            })
+        if query_filter.is_none() && self.active_session_view(ctx).is_some_and(|handle| handle.update(ctx, |terminal_view, ctx| { terminal_view.maybe_trigger_external_ctrl_r_history_search(ctx) }))
         {
             return;
         }

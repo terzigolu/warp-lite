@@ -683,7 +683,7 @@ pub struct InputBufferValue {
 pub struct ExternalShellWidgetSelectionValue {
     pub buffer: String,
     #[serde(default)]
-    pub session_id: HookSessionId,
+    pub session_id: Option<u64>,
 }
 
 impl std::fmt::Debug for ExternalShellWidgetSelectionValue {

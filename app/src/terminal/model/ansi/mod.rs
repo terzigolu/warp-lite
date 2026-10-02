@@ -13,6 +13,7 @@ mod ansi_c_decoder;
 mod dcs_hooks;
 mod handler;
 
+use warp_core::safe_warn;
 use ansi_c_decoder::*;
 pub use dcs_hooks::*;
 pub use handler::*;
