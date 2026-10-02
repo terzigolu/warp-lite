@@ -42,7 +42,7 @@ pub async fn build_outline(
     let gitignore_path = path.join(".gitignore");
     if gitignore_path.exists() {
         let (gitignore, _) = Gitignore::new(gitignore_path);
-        gitignores.push(gitignore);
+        gitignores.push(Arc::new(gitignore));
     }
 
     // First traverse the repo path to retrieve all files we want to parse.
