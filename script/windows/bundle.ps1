@@ -59,7 +59,7 @@ if ($ARCH -eq 'arm64') {
 
 $ErrorActionPreference = 'Stop'
 
-$WORKSPACE_ROOT_DIR = $(Get-Location).Path
+$WORKSPACE_ROOT_DIR = $PWD.Path
 $CARGO_TARGET_DIR = $WORKSPACE_ROOT_DIR + '\target'
 $WINDOWS_INSTALLER_DIR = $WORKSPACE_ROOT_DIR + '\script\windows'
 
