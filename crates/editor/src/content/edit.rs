@@ -740,7 +740,7 @@ pub fn layout_temporary_blocks(
                 match task.run(layout, location, false) {
                     Ok(result) => Some((line_count, result.0)),
                     Err(e) => {
-                        report_error!(e.context("Failed to lay out temporary blocks"));
+                        log::error!("Failed to lay out temporary blocks: {e:?}");
                         None
                     }
                 }

@@ -52,10 +52,10 @@ impl MissCache {
         if entries.set.contains(&command) {
             return;
         }
-        if entries.order.len() >= self.capacity
-            && let Some(oldest) = entries.order.pop_front()
-        {
-            entries.set.remove(&oldest);
+        if entries.order.len() >= self.capacity {
+            if let Some(oldest) = entries.order.pop_front() {
+                entries.set.remove(&oldest);
+            }
         }
         entries.order.push_back(command.clone());
         entries.set.insert(command);
