@@ -272,17 +272,6 @@ impl CommandSearchView {
                     ctx,
                 );
 
-                mixer.add_async_source(
-                    notebooks_data_source(),
-                    HashSet::from([QueryFilter::Notebooks]),
-                    AddAsyncSourceOptions {
-                        debounce_interval: Some(Duration::from_millis(50)),
-                        run_in_zero_state: true,
-                        run_when_unfiltered: true,
-                    },
-                    ctx,
-                );
-
                 // EnvVarCollectionDataSource stays synchronous because each match target is
                 // structurally short (title, variable name, description). The per-item fuzzy
                 // match cost is negligible, so offloading to an async task would add complexity
@@ -302,9 +291,7 @@ impl CommandSearchView {
             }
 
             if History::as_ref(ctx).is_queryable(&session_id) {
-                let source = History::handle(ctx).read(ctx, |history_model, app| {
-                    history_data_source_for_session(session_id, history_model, app)
-                });
+                let source = history_data_source_for_session(session_id);
                 mixer.add_async_source(
                     source,
                     HashSet::from([QueryFilter::History]),
@@ -320,11 +307,7 @@ impl CommandSearchView {
                     match history_event {
                         HistoryEvent::Initialized(id) => {
                             if id == &session_id {
-                                let source = history_data_source_for_session(
-                                    session_id,
-                                    History::as_ref(ctx),
-                                    ctx,
-                                );
+                                let source = history_data_source_for_session(session_id);
                                 mixer.add_async_source(
                                     source,
                                     HashSet::from([QueryFilter::History]),

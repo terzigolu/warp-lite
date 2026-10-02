@@ -181,6 +181,8 @@ pub enum FeatureFlag {
     /// Enables support for using native shell completions to supplement our
     /// completion specs.
     NativeShellCompletions,
+    /// Local history ranking using match quality, recency, session, and exit status.
+    HistorySearchRankingV2,
 
     /// Adds avatar to the tab bar.
     AvatarInTabBar,

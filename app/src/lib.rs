@@ -2663,6 +2663,8 @@ pub fn enabled_features() -> HashSet<FeatureFlag> {
         FeatureFlag::ClassicCompletions,
         #[cfg(feature = "force_classic_completions")]
         FeatureFlag::ForceClassicCompletions,
+        #[cfg(feature = "history_search_ranking_v2")]
+        FeatureFlag::HistorySearchRankingV2,
         #[cfg(feature = "native_shell_completions")]
         FeatureFlag::NativeShellCompletions,
         #[cfg(feature = "shell_widget_handoff")]

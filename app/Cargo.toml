@@ -452,6 +452,9 @@ creating_shared_sessions = []
 cross_repo_context = []
 codebase_index_persistence = ["full_source_code_embedding"]
 default = [
+    "history_search_ranking_v2",
+    "native_shell_completions",
+    "shell_widget_handoff",
     "osc_hyperlinks",
     "render_continuous_block_selections_with_single_border",
     "settings_import",
@@ -760,6 +763,7 @@ agent_view_prompt_chip = ["agent_view"]
 ambient_agents_rtc = []
 team_api_keys = []
 classic_completions = []
+history_search_ranking_v2 = []
 native_shell_completions = []
 cloud_mode = []
 cloud_mode_from_local_session = []
