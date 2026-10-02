@@ -1,6 +1,7 @@
 #[macro_use]
 pub mod macros;
 pub mod manager;
+pub mod registration;
 pub mod schema;
 
 // Re-export commonly used types and traits
@@ -571,6 +572,10 @@ pub trait Setting {
 
     /// Returns true if this setting was explicitly set by the user (i.e., not using the default value).
     fn is_value_explicitly_set(&self) -> bool;
+}
+
+pub trait SettingChangeEvent: Setting {
+    fn change_event(reason: ChangeEventReason) -> <Self::Group as Entity>::Event;
 }
 
 /// A trait for settings that can be toggled between two values.
