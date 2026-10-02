@@ -1,0 +1,243 @@
+{
+  "code_head": "b3b3adbeeb42070fd9bb9b481eb161d0743cbd94",
+  "platform": "macOS aarch64",
+  "toolchain": "Rust 1.92.0",
+  "check": {
+    "command": "cargo check -p warp --bin warp-oss --quiet",
+    "exit_code": 0,
+    "log": "/tmp/warp-lite-sync-20261002/check-final-02.log"
+  },
+  "app_test_build": {
+    "command": "cargo test -p warp --lib --features agent_management_view --no-run",
+    "exit_code": 0
+  },
+  "crate_tests": {
+    "command": "cargo test -p repo_metadata -p settings -p warp_completer -p warp_terminal -p warp_editor -p vim -p warp_util --lib --quiet",
+    "exit_code": 0,
+    "passed": 1023,
+    "ignored": 9,
+    "per_package": {
+      "repo_metadata": [
+        56,
+        3
+      ],
+      "settings": [
+        72,
+        0
+      ],
+      "vim": [
+        74,
+        0
+      ],
+      "warp_completer": [
+        190,
+        4
+      ],
+      "warp_editor": [
+        445,
+        0
+      ],
+      "warp_terminal": [
+        112,
+        2
+      ],
+      "warp_util": [
+        74,
+        0
+      ]
+    }
+  },
+  "app_tests": {
+    "unique_passed": 1147,
+    "unique_failed": 1,
+    "filters": [
+      {
+        "filter": "completer::",
+        "status": 0,
+        "summary": [
+          "test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 3988 filtered out; finished in 0.93s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-00.log"
+      },
+      {
+        "filter": "terminal::model::",
+        "status": 0,
+        "summary": [
+          "test result: ok. 589 passed; 0 failed; 0 ignored; 0 measured; 3421 filtered out; finished in 0.61s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-01.log"
+      },
+      {
+        "filter": "terminal::input::tests::native_",
+        "status": 0,
+        "summary": [
+          "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 4006 filtered out; finished in 0.08s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-02.log"
+      },
+      {
+        "filter": "terminal::input::tests::combined_completions",
+        "status": 0,
+        "summary": [
+          "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 4008 filtered out; finished in 0.10s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-03.log"
+      },
+      {
+        "filter": "shell_widget_handoff",
+        "status": 0,
+        "summary": [
+          "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 4007 filtered out; finished in 0.00s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-04.log"
+      },
+      {
+        "filter": "aborting_native_completions",
+        "status": 0,
+        "summary": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4009 filtered out; finished in 0.07s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-05.log"
+      },
+      {
+        "filter": "input_tab_",
+        "status": 0,
+        "summary": [
+          "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 4008 filtered out; finished in 0.14s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-06.log"
+      },
+      {
+        "filter": "terminal::writeable_pty::pty_controller::command_bytes_tests",
+        "status": 0,
+        "summary": [
+          "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 4003 filtered out; finished in 0.01s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-command-bytes-final.log"
+      },
+      {
+        "filter": "search::searcher::",
+        "status": 0,
+        "summary": [
+          "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 3991 filtered out; finished in 4.81s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-08.log"
+      },
+      {
+        "filter": "search::command_search::history::rank",
+        "status": 0,
+        "summary": [
+          "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 4001 filtered out; finished in 0.00s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-09.log"
+      },
+      {
+        "filter": "tab::tests::",
+        "status": 0,
+        "summary": [
+          "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 4000 filtered out; finished in 0.00s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-10.log"
+      },
+      {
+        "filter": "workspace::view::",
+        "status": 101,
+        "summary": [
+          "test result: FAILED. 157 passed; 1 failed; 0 ignored; 0 measured; 3852 filtered out; finished in 6.47s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-11.log"
+      },
+      {
+        "filter": "launch_configs::launch_config::",
+        "status": 0,
+        "summary": [
+          "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 3994 filtered out; finished in 0.00s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-12.log"
+      },
+      {
+        "filter": "settings_view::tests::",
+        "status": 0,
+        "summary": [
+          "test result: ok. 59 passed; 0 failed; 0 ignored; 0 measured; 3951 filtered out; finished in 0.01s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-13.log"
+      },
+      {
+        "filter": "settings::schema_generation::",
+        "status": 0,
+        "summary": [
+          "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 4006 filtered out; finished in 0.01s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-14.log"
+      },
+      {
+        "filter": "code::editor::",
+        "status": 0,
+        "summary": [
+          "test result: ok. 111 passed; 0 failed; 0 ignored; 0 measured; 3899 filtered out; finished in 0.70s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-15.log"
+      },
+      {
+        "filter": "code_review::code_review_view::tests::test_duplicate",
+        "status": 0,
+        "summary": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4009 filtered out; finished in 0.01s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-16.log"
+      },
+      {
+        "filter": "editor::view::vim_handler::tests::",
+        "status": 0,
+        "summary": [
+          "test result: ok. 66 passed; 0 failed; 0 ignored; 0 measured; 3944 filtered out; finished in 0.45s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-final-17.log"
+      },
+      {
+        "filter": "editor::view::tests::vim_handler_tests",
+        "status": 0,
+        "summary": [
+          "test result: ok. 126 passed; 0 failed; 0 ignored; 0 measured; 3884 filtered out; finished in 0.89s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-terminal-vim-final.log"
+      },
+      {
+        "filter": "editor::view::tests::marked_text_tests",
+        "status": 0,
+        "summary": [
+          "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 4005 filtered out; finished in 0.05s"
+        ],
+        "log": "/tmp/warp-lite-sync-20261002/app-marked-text-final.log"
+      }
+    ],
+    "remaining_failure": {
+      "test": "workspace::view::tests::test_switch_focus_panels",
+      "expectation": "Expected AI panel to be focused",
+      "evidence": "Lite render gate is false && is_ai_assistant_panel_open. Test and focus_left_panel are unchanged from base. Separate baseline test executable was not run."
+    }
+  },
+  "shell_syntax": {
+    "bash_body.sh": 0,
+    "zsh_body.sh": 0,
+    "fish.sh": 0,
+    "script/lint_shellcheck": 0,
+    "script/prepare_bundled_resources": 0
+  },
+  "protected_crates_diff": "empty",
+  "not_run": [
+    "release packaging/signing/notarization",
+    "native GUI smoke test",
+    "Windows/Linux/WSL/PowerShell runtime",
+    "ShellCheck",
+    "PSScriptAnalyzer",
+    "full application suite",
+    "clippy -D warnings"
+  ],
+  "notes": [
+    "Application focused batch ran on 2223b958e; latest command-byte tests ran after b3b3adbee. The latter changes only command line-ending normalization.",
+    "Raw logs are local temporary artifacts, not durable release evidence.",
+    "Warnings exist; successful compilation is not a warning-free check."
+  ]
+}
