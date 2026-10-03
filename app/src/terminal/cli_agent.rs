@@ -116,6 +116,8 @@ pub enum CLIAgent {
     Pi,
     Auggie,
     CursorCli,
+    Grok,
+    Kiro,
     /// Represents an unknown/custom CLI agent matched by user-configured regex patterns.
     Unknown,
 }
@@ -134,6 +136,8 @@ impl CLIAgent {
             CLIAgent::Pi => "pi",
             CLIAgent::Auggie => "auggie",
             CLIAgent::CursorCli => "agent",
+            CLIAgent::Grok => "grok",
+            CLIAgent::Kiro => "kiro-cli",
             CLIAgent::Unknown => "",
         }
     }
@@ -164,6 +168,8 @@ impl CLIAgent {
             CLIAgent::Pi => "Pi",
             CLIAgent::Auggie => "Auggie",
             CLIAgent::CursorCli => "Cursor",
+            CLIAgent::Grok => "Grok Build",
+            CLIAgent::Kiro => "Kiro CLI",
             CLIAgent::Unknown => "CLI Agent",
         }
     }
@@ -181,6 +187,8 @@ impl CLIAgent {
             CLIAgent::Pi => Some(Icon::PiLogo),
             CLIAgent::Auggie => Some(Icon::AuggieLogo),
             CLIAgent::CursorCli => Some(Icon::CursorLogo),
+            CLIAgent::Grok => Some(Icon::GrokLogo),
+            CLIAgent::Kiro => Some(Icon::KiroLogo),
             CLIAgent::Unknown => None,
         }
     }
@@ -208,7 +216,8 @@ impl CLIAgent {
             CLIAgent::Pi => &[SkillProvider::Agents],
             CLIAgent::Auggie => &[SkillProvider::Agents],
             CLIAgent::CursorCli => &[SkillProvider::Agents],
-            CLIAgent::Unknown => &[],
+            CLIAgent::Grok => &[SkillProvider::Agents],
+            CLIAgent::Kiro | CLIAgent::Unknown => &[],
         }
     }
 
@@ -230,7 +239,11 @@ impl CLIAgent {
     pub fn supports_bash_mode(&self) -> bool {
         matches!(
             self,
-            CLIAgent::Claude | CLIAgent::Codex | CLIAgent::OpenCode
+            CLIAgent::Claude
+                | CLIAgent::Codex
+                | CLIAgent::OpenCode
+                | CLIAgent::Grok
+                | CLIAgent::Kiro
         )
     }
 
@@ -247,6 +260,8 @@ impl CLIAgent {
             CLIAgent::Pi => Some(PI_COLOR),
             CLIAgent::Auggie => Some(AUGGIE_COLOR),
             CLIAgent::CursorCli => Some(CURSOR_COLOR),
+            CLIAgent::Grok => Some(ColorU::new(16, 16, 16, 255)),
+            CLIAgent::Kiro => Some(ColorU::new(144, 70, 255, 255)),
             CLIAgent::Unknown => None,
         }
     }
@@ -313,6 +328,7 @@ impl CLIAgent {
             .filter(|agent| !matches!(agent, CLIAgent::Unknown))
             .find(|agent| {
                 resolved_first_word == agent.command_prefix()
+                    || (*agent == CLIAgent::Kiro && resolved_first_word == "kiro")
                     || (matches!(agent, CLIAgent::Claude)
                         && Self::is_aifx_agent_run_claude(&resolved_command, ctx))
             })
@@ -507,6 +523,8 @@ impl From<CLIAgent> for CLIAgentType {
             CLIAgent::Pi => CLIAgentType::Pi,
             CLIAgent::Auggie => CLIAgentType::Auggie,
             CLIAgent::CursorCli => CLIAgentType::Cursor,
+            CLIAgent::Grok => CLIAgentType::Grok,
+            CLIAgent::Kiro => CLIAgentType::Kiro,
             CLIAgent::Unknown => CLIAgentType::Unknown,
         }
     }

@@ -1,3 +1,5 @@
+use crate::settings::RightClickBehavior;
+use crate::terminal::should_right_click_paste;
 use std::cell::RefCell;
 use std::pin::pin;
 use std::rc::Rc;
@@ -277,7 +279,7 @@ fn unregister_cli_agent_session_restores_unlocked_input_config() {
 fn clear_buffer_action_in_fullscreen_agent_view_starts_new_conversation() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -333,8 +335,8 @@ fn root_cloud_mode_pane_sets_root_cloud_mode_context_key() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
         app.add_singleton_model(ImportedConfigModel::new);
-        FeatureFlag::AgentView.set_enabled(true);
-        FeatureFlag::CloudMode.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
+        let _cloud_mode = FeatureFlag::CloudMode.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -379,8 +381,8 @@ fn set_input_mode_agent_does_not_enter_local_agent_from_root_cloud_mode_pane() {
 
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
-        FeatureFlag::CloudMode.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
+        let _cloud_mode = FeatureFlag::CloudMode.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -399,6 +401,555 @@ fn set_input_mode_agent_does_not_enter_local_agent_from_root_cloud_mode_pane() {
             assert!(!view.agent_view_controller().as_ref(ctx).is_active());
         });
     });
+}
+
+#[test]
+fn should_right_click_paste_true_only_without_shift_when_setting_enabled() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let terminal = add_window_with_terminal(&mut app, None);
+
+        SelectionSettings::handle(&app).update(&mut app, |settings, ctx| {
+            let _ = settings
+                .right_click_behavior
+                .set_value(RightClickBehavior::Paste, ctx);
+        });
+
+        terminal.update(&mut app, |_view, ctx| {
+            assert!(
+                should_right_click_paste(false, ctx),
+                "a bare right-click should paste once the setting is enabled"
+            );
+            assert!(
+        !should_right_click_paste(true, ctx),
+        "Shift+right-click should always reveal the context menu, even with the setting enabled"
+    );
+        });
+    })
+}
+
+/// Right-clicking a long-running block that owns the mouse (SGR mouse reporting on) must forward
+/// the raw click to the PTY as a mouse report, under both `right_click_behavior` values -- it must
+/// never fall through to Paste or the block list's own context menu.
+#[test]
+fn block_list_right_click_forwards_to_pty_when_long_running_block_owns_mouse() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let (window_id, terminal) = add_window_with_id_and_terminal(&mut app, None);
+
+        let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+        let writes = pty_writes.clone();
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                if let Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        let mut updated = std::collections::HashSet::default();
+        updated.insert(app.root_view_id(window_id).unwrap());
+        let invalidation = WindowInvalidation {
+            updated,
+            ..Default::default()
+        };
+        let presenter = Rc::new(RefCell::new(Presenter::new(window_id)));
+
+        let size_info = terminal.update(&mut app, |view, ctx| {
+            let mut model = view.model.lock();
+            model.simulate_long_running_block("cmd", "output");
+            model.set_mode(ansi::Mode::SgrMouse);
+            model.set_mode(ansi::Mode::ReportMouseClicks);
+            assert!(!model.is_alt_screen_active());
+            assert!(
+                !should_intercept_mouse(&model, false, ctx),
+                "the running command should own the mouse with SGR reporting enabled"
+            );
+            *view.size_info
+        });
+
+        macro_rules! rerender {
+    () => {
+        app.update(enclose!((presenter, invalidation) move |ctx| {
+            presenter
+                .borrow_mut()
+                .invalidate(invalidation, ctx);
+            presenter.borrow_mut().build_scene(
+                vec2f(size_info.pane_width_px, size_info.pane_height_px),
+                1.,
+                None,
+                ctx,
+            );
+        }));
+    };
+}
+
+        // The block list is pinned to the bottom of the pane by default, so a lone, short block
+        // sits just above the input box rather than at the top of the viewport.
+        let position = vec2f(
+            2. * size_info.cell_width_px.as_f32(),
+            size_info.pane_height_px - 3. * size_info.cell_height_px.as_f32(),
+        );
+
+        for right_click_behavior in [RightClickBehavior::ContextMenu, RightClickBehavior::Paste] {
+            SelectionSettings::handle(&app).update(&mut app, |settings, ctx| {
+                let _ = settings
+                    .right_click_behavior
+                    .set_value(right_click_behavior, ctx);
+            });
+            pty_writes.borrow_mut().clear();
+
+            rerender!();
+            app.update(enclose!((presenter) move |ctx| {
+                ctx.simulate_window_event(
+                    warpui::Event::RightMouseDown {
+                        position,
+                        cmd: false,
+                        shift: false,
+                        click_count: 1,
+                    },
+                    window_id,
+                    presenter.clone(),
+                );
+            }));
+
+            let writes = pty_writes.borrow();
+            assert_eq!(
+        writes.len(),
+        1,
+        "exactly one raw mouse report should reach the PTY under {right_click_behavior:?}, got {writes:?}"
+    );
+            assert!(
+        writes[0].starts_with(b"\x1b[<2;"),
+        "expected an SGR right-button-press mouse report under {right_click_behavior:?}, got {:?}",
+        writes[0]
+    );
+        }
+
+        // The input box must never have received a paste from either right-click.
+        let input = terminal.read(&app, |terminal, _ctx| terminal.input().clone());
+        input.read(&app, |input, ctx| {
+            assert_eq!(
+                input.buffer_text(ctx),
+                "",
+                "a long-running block's right-click must never be treated as Paste"
+            );
+        });
+    })
+}
+
+#[test]
+fn block_list_shift_right_click_opens_context_menu_when_right_click_pastes() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let (window_id, terminal) = add_window_with_id_and_terminal(&mut app, None);
+
+        let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+        let writes = pty_writes.clone();
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                if let Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        let mut updated = std::collections::HashSet::default();
+        updated.insert(app.root_view_id(window_id).unwrap());
+        let invalidation = WindowInvalidation {
+            updated,
+            ..Default::default()
+        };
+        let presenter = Rc::new(RefCell::new(Presenter::new(window_id)));
+
+        let size_info = terminal.update(&mut app, |view, ctx| {
+            let mut model = view.model.lock();
+            model.simulate_long_running_block("cmd", "output");
+            assert!(!model.is_alt_screen_active());
+            // No mouse reporting is enabled, so Warp -- not the running command -- owns this
+            // right-click regardless of Shift.
+            assert!(should_intercept_mouse(&model, false, ctx));
+            *view.size_info
+        });
+
+        SelectionSettings::handle(&app).update(&mut app, |settings, ctx| {
+            let _ = settings
+                .right_click_behavior
+                .set_value(RightClickBehavior::Paste, ctx);
+        });
+
+        macro_rules! rerender {
+    () => {
+        app.update(enclose!((presenter, invalidation) move |ctx| {
+            presenter
+                .borrow_mut()
+                .invalidate(invalidation, ctx);
+            presenter.borrow_mut().build_scene(
+                vec2f(size_info.pane_width_px, size_info.pane_height_px),
+                1.,
+                None,
+                ctx,
+            );
+        }));
+    };
+}
+
+        // Same position as the long-running block above: a lone, short block sitting just
+        // above the input box.
+        let position = vec2f(
+            2. * size_info.cell_width_px.as_f32(),
+            size_info.pane_height_px - 3. * size_info.cell_height_px.as_f32(),
+        );
+
+        let input = terminal.read(&app, |terminal, _ctx| terminal.input().clone());
+        let input_text_before = input.read(&app, |input, ctx| input.buffer_text(ctx));
+        assert!(!terminal.read(&app, |view, _ctx| view.is_context_menu_open()));
+
+        rerender!();
+        app.update(enclose!((presenter) move |ctx| {
+            ctx.simulate_window_event(
+                warpui::Event::RightMouseDown {
+                    position,
+                    cmd: false,
+                    shift: true,
+                    click_count: 1,
+                },
+                window_id,
+                presenter.clone(),
+            );
+        }));
+
+        assert!(
+    terminal.read(&app, |view, _ctx| view.is_context_menu_open()),
+    "Shift+right-click must open the block's context menu, even when right-click-pastes is enabled"
+);
+        assert!(
+            pty_writes.borrow().is_empty(),
+            "Shift+right-click must never paste to the PTY, got {:?}",
+            pty_writes.borrow()
+        );
+        input.read(&app, |input, ctx| {
+            assert_eq!(
+                input.buffer_text(ctx),
+                input_text_before,
+                "Shift+right-click must never paste into the input box"
+            );
+        });
+    })
+}
+
+#[test]
+fn alt_screen_shift_right_click_opens_context_menu_when_right_click_pastes() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let (window_id, terminal) = add_window_with_id_and_terminal(&mut app, None);
+
+        let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+        let writes = pty_writes.clone();
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                if let Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        let mut updated = std::collections::HashSet::default();
+        updated.insert(app.root_view_id(window_id).unwrap());
+        let invalidation = WindowInvalidation {
+            updated,
+            ..Default::default()
+        };
+        let presenter = Rc::new(RefCell::new(Presenter::new(window_id)));
+
+        let size_info = terminal.update(&mut app, |view, ctx| {
+            let mut model = view.model.lock();
+            model.set_mode(ansi::Mode::SwapScreen {
+                save_cursor_and_clear_screen: true,
+            });
+            assert!(model.is_alt_screen_active());
+            // No mouse reporting is enabled, so Warp -- not the alt-screen application -- owns
+            // this right-click, with or without Shift.
+            assert!(should_intercept_mouse(&model, false, ctx));
+            assert!(should_intercept_mouse(&model, true, ctx));
+            *view.size_info
+        });
+
+        SelectionSettings::handle(&app).update(&mut app, |settings, ctx| {
+            let _ = settings
+                .right_click_behavior
+                .set_value(RightClickBehavior::Paste, ctx);
+        });
+
+        macro_rules! rerender {
+    () => {
+        app.update(enclose!((presenter, invalidation) move |ctx| {
+            presenter
+                .borrow_mut()
+                .invalidate(invalidation, ctx);
+            presenter.borrow_mut().build_scene(
+                vec2f(size_info.pane_width_px, size_info.pane_height_px),
+                1.,
+                None,
+                ctx,
+            );
+        }));
+    };
+}
+
+        let position = vec2f(
+            2. * size_info.cell_width_px.as_f32(),
+            2. * size_info.cell_height_px.as_f32() - 1.,
+        );
+
+        let input = terminal.read(&app, |terminal, _ctx| terminal.input().clone());
+        let input_text_before = input.read(&app, |input, ctx| input.buffer_text(ctx));
+        assert!(!terminal.read(&app, |view, _ctx| view.is_context_menu_open()));
+
+        rerender!();
+        app.update(enclose!((presenter) move |ctx| {
+            ctx.simulate_window_event(
+                warpui::Event::RightMouseDown {
+                    position,
+                    cmd: false,
+                    shift: true,
+                    click_count: 1,
+                },
+                window_id,
+                presenter.clone(),
+            );
+        }));
+
+        assert!(
+    terminal.read(&app, |view, _ctx| view.is_context_menu_open()),
+    "Shift+right-click must open the alt-screen context menu, even when right-click-pastes is enabled"
+);
+        assert!(
+            pty_writes.borrow().is_empty(),
+            "Shift+right-click must never paste to the PTY, got {:?}",
+            pty_writes.borrow()
+        );
+        input.read(&app, |input, ctx| {
+            assert_eq!(
+                input.buffer_text(ctx),
+                input_text_before,
+                "Shift+right-click must never paste into the input box"
+            );
+        });
+    })
+}
+
+#[test]
+fn input_shift_right_click_opens_context_menu_when_right_click_pastes() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let (window_id, terminal) = add_window_with_id_and_terminal(&mut app, None);
+
+        let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+        let writes = pty_writes.clone();
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                if let Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        let mut updated = std::collections::HashSet::default();
+        updated.insert(app.root_view_id(window_id).unwrap());
+        let invalidation = WindowInvalidation {
+            updated,
+            ..Default::default()
+        };
+        let presenter = Rc::new(RefCell::new(Presenter::new(window_id)));
+
+        let size_info = terminal.read(&app, |view, _ctx| *view.size_info);
+
+        SelectionSettings::handle(&app).update(&mut app, |settings, ctx| {
+            let _ = settings
+                .right_click_behavior
+                .set_value(RightClickBehavior::Paste, ctx);
+        });
+
+        macro_rules! rerender {
+    () => {
+        app.update(enclose!((presenter, invalidation) move |ctx| {
+            presenter
+                .borrow_mut()
+                .invalidate(invalidation, ctx);
+            presenter.borrow_mut().build_scene(
+                vec2f(size_info.pane_width_px, size_info.pane_height_px),
+                1.,
+                None,
+                ctx,
+            );
+        }));
+    };
+}
+
+        // The input box is docked to the very bottom of the pane, below the block list.
+        let position = vec2f(
+            2. * size_info.cell_width_px.as_f32(),
+            size_info.pane_height_px - 0.5 * size_info.cell_height_px.as_f32(),
+        );
+
+        let input = terminal.read(&app, |terminal, _ctx| terminal.input().clone());
+        let input_text_before = input.read(&app, |input, ctx| input.buffer_text(ctx));
+        assert!(!terminal.read(&app, |view, _ctx| view.is_context_menu_open()));
+
+        rerender!();
+        app.update(enclose!((presenter) move |ctx| {
+            ctx.simulate_window_event(
+                warpui::Event::RightMouseDown {
+                    position,
+                    cmd: false,
+                    shift: true,
+                    click_count: 1,
+                },
+                window_id,
+                presenter.clone(),
+            );
+        }));
+
+        assert!(
+    terminal.read(&app, |view, _ctx| view.is_context_menu_open()),
+    "Shift+right-click on the input box must open its context menu, even when right-click-pastes is enabled"
+);
+        assert!(
+            pty_writes.borrow().is_empty(),
+            "Shift+right-click must never paste to the PTY, got {:?}",
+            pty_writes.borrow()
+        );
+        input.read(&app, |input, ctx| {
+            assert_eq!(
+                input.buffer_text(ctx),
+                input_text_before,
+                "Shift+right-click must never paste into the input box"
+            );
+        });
+    })
+}
+
+#[test]
+fn waterfall_background_right_click_honors_right_click_pastes_setting() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let (window_id, terminal) = add_window_with_id_and_terminal(&mut app, None);
+
+        terminal.update(&mut app, |_view, ctx| {
+            InputModeSettings::handle(ctx).update(ctx, |input_mode_settings, ctx| {
+                let _ = input_mode_settings
+                    .input_mode
+                    .set_value(InputMode::Waterfall, ctx);
+            });
+        });
+
+        SelectionSettings::handle(&app).update(&mut app, |settings, ctx| {
+            let _ = settings
+                .right_click_behavior
+                .set_value(RightClickBehavior::Paste, ctx);
+        });
+
+        app.update(|ctx| {
+            ctx.clipboard().write(ClipboardContent::plain_text(
+                "waterfall-paste-test".to_string(),
+            ));
+        });
+
+        let mut updated = std::collections::HashSet::default();
+        updated.insert(app.root_view_id(window_id).unwrap());
+        let invalidation = WindowInvalidation {
+            updated,
+            ..Default::default()
+        };
+        let presenter = Rc::new(RefCell::new(Presenter::new(window_id)));
+
+        let size_info = terminal.read(&app, |view, _ctx| *view.size_info);
+
+        macro_rules! rerender {
+    () => {
+        app.update(enclose!((presenter, invalidation) move |ctx| {
+            presenter
+                .borrow_mut()
+                .invalidate(invalidation, ctx);
+            presenter.borrow_mut().build_scene(
+                vec2f(size_info.pane_width_px, size_info.pane_height_px),
+                1.,
+                None,
+                ctx,
+            );
+        }));
+    };
+}
+
+        // With no blocks, both the block content height and the input's saved position height
+        // are zero, so any position within the pane satisfies "outside the block"; pick a point
+        // near the bottom of the pane, comfortably inside its bounds.
+        let position = vec2f(
+            2. * size_info.cell_width_px.as_f32(),
+            size_info.pane_height_px - 0.1,
+        );
+
+        let input = terminal.read(&app, |terminal, _ctx| terminal.input().clone());
+        assert!(!terminal.read(&app, |view, _ctx| view.is_context_menu_open()));
+
+        rerender!();
+        app.update(enclose!((presenter) move |ctx| {
+            ctx.simulate_window_event(
+                warpui::Event::RightMouseDown {
+                    position,
+                    cmd: false,
+                    shift: false,
+                    click_count: 1,
+                },
+                window_id,
+                presenter.clone(),
+            );
+        }));
+
+        assert!(
+            !terminal.read(&app, |view, _ctx| view.is_context_menu_open()),
+            "a bare right-click on the waterfall background must paste, not open the context menu"
+        );
+        input.read(&app, |input, ctx| {
+            assert_eq!(
+        input.buffer_text(ctx),
+        "waterfall-paste-test",
+        "a bare right-click on the waterfall background must paste the clipboard into the input"
+    );
+        });
+
+        // Reset the input, then confirm Shift still reveals the context menu instead.
+        input.update(&mut app, |input, ctx| {
+            input.replace_buffer_content("", ctx);
+        });
+
+        rerender!();
+        app.update(enclose!((presenter) move |ctx| {
+            ctx.simulate_window_event(
+                warpui::Event::RightMouseDown {
+                    position,
+                    cmd: false,
+                    shift: true,
+                    click_count: 1,
+                },
+                window_id,
+                presenter.clone(),
+            );
+        }));
+
+        assert!(
+    terminal.read(&app, |view, _ctx| view.is_context_menu_open()),
+    "Shift+right-click on the waterfall background must open the context menu, even when right-click-pastes is enabled"
+);
+        input.read(&app, |input, ctx| {
+            assert_eq!(
+                input.buffer_text(ctx),
+                "",
+                "Shift+right-click must never paste into the input box"
+            );
+        });
+    })
 }
 
 /// Test clearing of session flag state when terminal is cleared
@@ -3094,7 +3645,7 @@ fn test_prompt_context_menu_items_for_agent_toolbelt_flag() {
 fn agent_footer_updates_chip_groups_when_side_assignment_changes() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -3275,7 +3826,7 @@ fn test_scroll_position_doesnt_change_when_block_finished() {
 fn inline_agent_view_exits_when_tagged_in_long_running_command_is_tagged_out() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -3336,7 +3887,7 @@ fn inline_agent_view_exits_when_tagged_in_long_running_command_is_tagged_out() {
 fn inline_agent_view_persists_across_transfer_takeover_for_monitored_long_running_command() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -3418,7 +3969,7 @@ fn inline_agent_view_persists_across_transfer_takeover_for_monitored_long_runnin
 fn use_agent_footer_renders_for_transfer_handoff_even_when_user_command_footer_setting_disabled() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
         AISettings::handle(&app).update(&mut app, |settings, ctx| {
             let _ = settings
                 .should_render_use_agent_footer_for_user_commands
@@ -3571,7 +4122,7 @@ fn exiting_agent_view_removes_empty_conversations() {
 fn ctrl_c_exit_agent_view_requires_confirmation() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -3619,7 +4170,7 @@ fn ctrl_c_exit_agent_view_requires_confirmation() {
 fn ctrl_c_buffer_clear_then_exit_requires_three_presses_in_agent_view() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -3677,7 +4228,7 @@ fn ctrl_c_buffer_clear_then_exit_requires_three_presses_in_agent_view() {
 fn terminal_action_ctrl_c_exit_agent_view_requires_confirmation() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -4651,7 +5202,7 @@ fn linear_deeplink_populates_input_as_draft_when_not_in_agent_view() {
 
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -4697,7 +5248,7 @@ fn linear_deeplink_does_not_auto_submit_when_already_in_agent_view() {
 
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 
@@ -4777,7 +5328,7 @@ fn linear_deeplink_via_default_entrypoint_does_not_auto_submit_in_fullscreen() {
 
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
-        FeatureFlag::AgentView.set_enabled(true);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
 
         let terminal = add_window_with_terminal(&mut app, None);
 

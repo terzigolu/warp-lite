@@ -20,13 +20,8 @@ fn loading_mermaid_layout_uses_default_height() {
     App::test((), |app| async move {
         app.read(|ctx| {
             let source = "graph TD\nA[Start] --> B[Finish]\n";
-            let layout_cache = LayoutCache::new();
-            let text_layout = TextLayout::new(
-                &layout_cache,
-                ctx.font_cache().text_layout_system(),
-                &TEST_STYLES,
-                800.,
-            );
+            let text_layout =
+                TextLayout::new(ctx.font_cache().text_layout_system(), &TEST_STYLES, 800.);
             let (_asset_source, config) =
                 mermaid_diagram_layout(source, &text_layout, mermaid_block_spacing(), ctx);
             let expected_height = TEST_STYLES.base_line_height()
@@ -50,13 +45,8 @@ fn failed_mermaid_layout_uses_compact_height() {
                 AssetState::FailedToLoad(_)
             ));
 
-            let layout_cache = LayoutCache::new();
-            let text_layout = TextLayout::new(
-                &layout_cache,
-                ctx.font_cache().text_layout_system(),
-                &TEST_STYLES,
-                800.,
-            );
+            let text_layout =
+                TextLayout::new(ctx.font_cache().text_layout_system(), &TEST_STYLES, 800.);
             let config =
                 mermaid_diagram_config(&asset_source, &text_layout, mermaid_block_spacing(), ctx);
             let expected_height = TEST_STYLES.base_line_height()

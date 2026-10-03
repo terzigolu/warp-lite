@@ -1,7 +1,8 @@
 use std::sync::Arc;
+use warpui::text_layout::LayoutCache;
 
 use warpui::{
-    AppContext, LayoutContext,
+    AppContext,
     geometry::vector::{Vector2F, vec2f},
     text_layout::Line,
 };
@@ -48,7 +49,7 @@ impl BlockPlaceholder {
         &mut self,
         item: &ViewportItem,
         model: &RenderState,
-        ctx: &mut LayoutContext,
+        layout_cache: &LayoutCache,
         app: &AppContext,
         options: F,
     ) where
@@ -83,10 +84,15 @@ impl BlockPlaceholder {
             return;
         }
 
-        let layout = TextLayout::from_layout_context(ctx, app, model);
+        let layout = TextLayout::for_render_state(app, model);
         let options = options(block.item);
         self.state = State::LaidOut {
-            line: layout.layout_placeholder(options.text, &options.block_style, &item.spacing),
+            line: layout.layout_placeholder(
+                layout_cache,
+                options.text,
+                &options.block_style,
+                &item.spacing,
+            ),
             block_style: options.block_style,
             contains_cursor,
         };

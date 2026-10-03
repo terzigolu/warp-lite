@@ -1,3 +1,4 @@
+use crate::window_settings::migrate_legacy_background_backdrop;
 use settings::{Setting as _, SettingsManager};
 use warp_core::features::FeatureFlag;
 use warpui::{rendering::GPUPowerPreference, AppContext, SingletonEntity};
@@ -125,6 +126,7 @@ pub fn init(
     if needs_settings_file_migration(ctx) {
         migrate_native_settings_to_settings_file(ctx);
     }
+    migrate_legacy_background_backdrop(ctx);
 
     let use_thin_strokes = *FontSettings::as_ref(ctx).use_thin_strokes;
 

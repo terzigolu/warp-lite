@@ -1,3 +1,4 @@
+use crate::settings::SelectionSettings;
 pub use block_list_element::GridType;
 use model::alt_screen::AltScreen;
 use model::blocks::BlockList;
@@ -7,6 +8,7 @@ use ordered_float::Float;
 use pathfinder_geometry::vector::vec2f;
 use serde::{Deserialize, Serialize};
 use std::cmp::max;
+use warpui::SingletonEntity;
 mod package_installers;
 pub(crate) use history::UpArrowHistoryConfig;
 pub use view::Event;
@@ -127,6 +129,10 @@ pub const PTY_READS_BROADCAST_CHANNEL_SIZE: usize = 1024;
 pub fn init(app: &mut AppContext) {
     share_block_modal::init(app);
     view::init(app);
+}
+
+pub fn should_right_click_paste(shift: bool, ctx: &AppContext) -> bool {
+    !shift && SelectionSettings::as_ref(ctx).right_click_pastes()
 }
 
 /// Treat rounding errors for heights within this amount as equal.

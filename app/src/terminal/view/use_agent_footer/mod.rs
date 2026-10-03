@@ -126,8 +126,9 @@ fn rich_input_submit_strategy(agent: CLIAgent) -> RichInputSubmitStrategy {
         | CLIAgent::OpenCode
         | CLIAgent::Gemini
         | CLIAgent::Auggie
-        | CLIAgent::CursorCli => RichInputSubmitStrategy::DelayedEnter,
-        CLIAgent::Amp | CLIAgent::Droid | CLIAgent::Pi | CLIAgent::Unknown => {
+        | CLIAgent::CursorCli
+        | CLIAgent::Grok => RichInputSubmitStrategy::DelayedEnter,
+        CLIAgent::Kiro | CLIAgent::Amp | CLIAgent::Droid | CLIAgent::Pi | CLIAgent::Unknown => {
             RichInputSubmitStrategy::Inline
         }
     }
@@ -555,8 +556,7 @@ impl TerminalView {
         let cli_agent_type: Option<CLIAgentType> = CLIAgentSessionsModel::as_ref(ctx)
             .session(self.view_id)
             .map(|s| s.agent.into());
-        if let Some(cli_agent) = cli_agent_type {
-        }
+        if let Some(cli_agent) = cli_agent_type {}
 
         self.redetermine_terminal_focus(ctx);
         ctx.notify();
@@ -604,8 +604,7 @@ impl TerminalView {
         let cli_agent: Option<CLIAgentType> = CLIAgentSessionsModel::as_ref(ctx)
             .session(self.view_id)
             .map(|s| s.agent.into());
-        if let Some(cli_agent) = cli_agent {
-        }
+        if let Some(cli_agent) = cli_agent {}
 
         // Clear any saved draft so submitted text isn't restored on the next open.
         let view_id = self.view_id;
@@ -871,7 +870,6 @@ impl TerminalView {
                 ctx,
             );
         });
-
 
         // Input mode switch, buffer clear, draft restoration, and hint text
         // are handled reactively by Input's subscription to InputSessionChanged.

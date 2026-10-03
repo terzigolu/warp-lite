@@ -1,3 +1,5 @@
+mod grok;
+use grok::GrokPluginManager;
 pub(crate) mod claude;
 pub(crate) mod codex;
 pub(crate) mod gemini;
@@ -232,6 +234,7 @@ pub(crate) fn plugin_manager_for_with_shell(
             shell_type,
             path_env_var,
         ))),
+        CLIAgent::Grok => Some(Box::new(GrokPluginManager)),
         CLIAgent::OpenCode
             if FeatureFlag::OpenCodeNotifications.is_enabled()
                 && FeatureFlag::HOANotifications.is_enabled() =>
@@ -263,6 +266,7 @@ pub(crate) fn plugin_manager_for_with_shell(
         | CLIAgent::Pi
         | CLIAgent::Auggie
         | CLIAgent::CursorCli
+        | CLIAgent::Kiro
         | CLIAgent::Unknown => None,
     }
 }

@@ -5,6 +5,7 @@ use crate::features::FeatureFlag;
 use crate::settings::InputSettings;
 use crate::terminal::grid_size_util::grid_compute_baseline_position_fn;
 use crate::terminal::ligature_settings::should_use_ligature_rendering;
+use crate::terminal::should_right_click_paste;
 use crate::terminal::view::TerminalAction;
 use crate::themes::theme::PromptColors;
 use crate::{appearance::Appearance, terminal::model::blockgrid::BlockGrid};
@@ -641,7 +642,11 @@ impl PromptRenderHelper {
                 } else {
                     prompt_with_padding_container
                 })
-                .on_right_mouse_down(move |ctx, _, position| {
+                .on_right_mouse_down(move |ctx, app, position, modifiers| {
+                    if should_right_click_paste(modifiers.shift, app) {
+                        ctx.dispatch_typed_action(TerminalAction::Paste);
+                        return DispatchEventResult::StopPropagation;
+                    }
                     let position_id = format!("prompt_area_{view_id}");
                     let Some(prompt_rect) = ctx.element_position_by_id(position_id) else {
                         return DispatchEventResult::PropagateToParent;
@@ -691,7 +696,11 @@ impl PromptRenderHelper {
 
         SavePosition::new(
             EventHandler::new(prompt_with_padding_container)
-                .on_right_mouse_down(move |ctx, _, position| {
+                .on_right_mouse_down(move |ctx, app, position, modifiers| {
+                    if should_right_click_paste(modifiers.shift, app) {
+                        ctx.dispatch_typed_action(TerminalAction::Paste);
+                        return DispatchEventResult::StopPropagation;
+                    }
                     let position_id = format!("prompt_area_{view_id}");
                     let Some(prompt_rect) = ctx.element_position_by_id(position_id) else {
                         return DispatchEventResult::PropagateToParent;

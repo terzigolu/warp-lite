@@ -258,6 +258,9 @@ fn test_detect_known_agents() {
                 ("opencode", CLIAgent::OpenCode),
                 ("copilot", CLIAgent::Copilot),
                 ("agent", CLIAgent::CursorCli),
+                ("grok", CLIAgent::Grok),
+                ("kiro-cli", CLIAgent::Kiro),
+                ("kiro", CLIAgent::Kiro),
             ] {
                 assert_eq!(
                     CLIAgent::detect(command, None, None, ctx),
@@ -528,6 +531,31 @@ fn test_detect_aifx_agent_run_claude_wrong_team() {
                 CLIAgent::detect("aifx agent run claude", None, None, ctx),
                 None,
             );
+        });
+    });
+}
+
+#[test]
+fn grok_and_kiro_detection_preserves_shell_parsing_and_aliases() {
+    App::test((), |mut app| async move {
+        app.update(|ctx| {
+            let map = aliases(&[("k", "kiro-cli"), ("g", "grok")]);
+            for (command, expected) in [
+                ("FOO=1 grok --help", Some(CLIAgent::Grok)),
+                ("FOO=1 kiro chat", Some(CLIAgent::Kiro)),
+                ("k chat", Some(CLIAgent::Kiro)),
+                ("g --help", Some(CLIAgent::Grok)),
+                ("kiro-wrapper", None),
+                ("grok-wrapper", None),
+                ("echo grok", None),
+                ("agent", Some(CLIAgent::CursorCli)),
+            ] {
+                assert_eq!(
+                    CLIAgent::detect(command, Some(EscapeChar::Backslash), Some(&map), ctx),
+                    expected,
+                    "{command}"
+                );
+            }
         });
     });
 }

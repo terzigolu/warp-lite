@@ -1,6 +1,6 @@
+use crate::tab::TabShortcutModifierState;
 use instant::Instant;
 use warpui::event::KeyState;
-use crate::tab::TabShortcutModifierState;
 #[cfg(feature = "warp_platform")]
 mod build_plan_migration_modal;
 #[cfg(feature = "cloud_mode")]
@@ -37,10 +37,10 @@ mod wasm_view;
 
 use std::cell::RefCell;
 
-use crate::GlobalResourceHandles;
 use crate::workspace::cross_window_tab_drag::{
     AttachTarget, CrossWindowTabDrag, DragResult, DropResult, GhostState,
 };
+use crate::GlobalResourceHandles;
 pub(crate) use onboarding::OnboardingTutorial;
 
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
@@ -82,8 +82,8 @@ use crate::ai::{
 use crate::ai_assistant::execution_context::WarpAiExecutionContext;
 use crate::app_state::{
     LeafContents, LeafSnapshot, LeftPanelDisplayedTab, LeftPanelSnapshot, NotebookPaneSnapshot,
-    PaneNodeSnapshot, PaneUuid, RightPanelSnapshot, SettingsPaneSnapshot, TabGroupSnapshot, TabSnapshot,
-    TerminalPaneSnapshot, WindowSnapshot, WorkflowPaneSnapshot,
+    PaneNodeSnapshot, PaneUuid, RightPanelSnapshot, SettingsPaneSnapshot, TabGroupSnapshot,
+    TabSnapshot, TerminalPaneSnapshot, WindowSnapshot, WorkflowPaneSnapshot,
 };
 use crate::code_review::diff_state::DiffStateModel;
 #[cfg(feature = "local_fs")]
@@ -318,7 +318,7 @@ use crate::settings_view::flags;
 use crate::settings_view::keybindings::{KeybindingChangedEvent, KeybindingChangedNotifier};
 use crate::terminal::alt_screen_reporting::AltScreenReporting;
 use crate::terminal::general_settings::GeneralSettings;
-use crate::terminal::input::{EXTERNAL_ALT_C_BINDING_CONTEXT, Input, MenuPositioning};
+use crate::terminal::input::{Input, MenuPositioning, EXTERNAL_ALT_C_BINDING_CONTEXT};
 #[cfg(feature = "local_tty")]
 use crate::terminal::local_tty::docker_sandbox::resolve_sbx_path_from_user_shell;
 use crate::terminal::model::blockgrid::BlockGrid;
@@ -422,8 +422,8 @@ use warpui::clipboard::ClipboardContent;
 #[cfg(target_family = "wasm")]
 use warpui::elements::Percentage;
 use warpui::elements::{
-    CacheOption, DispatchEventResult, DragAxis, Draggable, DraggableState, DropTarget, EventHandler,
-    Image, MouseInBehavior, Rect, SizeConstraintCondition, SizeConstraintSwitch,
+    CacheOption, DispatchEventResult, DragAxis, Draggable, DraggableState, DropTarget,
+    EventHandler, Image, MouseInBehavior, Rect, SizeConstraintCondition, SizeConstraintSwitch,
 };
 use warpui::ui_components::button::{Button, ButtonVariant};
 use warpui::windowing::{state::ApplicationStage, StateEvent, WindowManager};
@@ -491,13 +491,15 @@ use crate::palette::PaletteMode;
 use crate::search::command_palette::view::{Event as CommandPaletteEvent, View as CommandPalette};
 use crate::server::telemetry::{NotificationsTurnedOnSource, PaletteSource, TabRenameEvent};
 use crate::tab::{
-    color_picker_menu_items, next_tab_color, tab_position_id, uses_vertical_tabs, ColorPickerTarget,
-    NewSessionMenuItem, PaneNameMenuTarget, SelectedTabColor, TabBarState, TabComponent, TabData,
-    TabTelemetryAction, COMPACT_TAB_WIDTH_THRESHOLD, MOVE_TO_GROUP_LABEL, TAB_BAR_BORDER_HEIGHT,
-    TAB_INDICATOR_HEIGHT, TAB_PIN_INDICATOR_ICON_SIZE, TAB_PIN_VANISH_THRESHOLD,
+    color_picker_menu_items, next_tab_color, tab_position_id, uses_vertical_tabs,
+    ColorPickerTarget, NewSessionMenuItem, PaneNameMenuTarget, SelectedTabColor, TabBarState,
+    TabComponent, TabData, TabTelemetryAction, COMPACT_TAB_WIDTH_THRESHOLD, MOVE_TO_GROUP_LABEL,
+    TAB_BAR_BORDER_HEIGHT, TAB_INDICATOR_HEIGHT, TAB_PIN_INDICATOR_ICON_SIZE,
+    TAB_PIN_VANISH_THRESHOLD,
 };
 use crate::terminal::view::ssh_file_upload::FileUploadId;
 use crate::ui_components::icons;
+use crate::workspace::tab_group::{TabGroup, TabGroupId};
 use crate::TelemetryEvent;
 use autoupdate::AutoupdateStage;
 #[cfg(target_os = "macos")]
@@ -515,9 +517,7 @@ use std::path::PathBuf;
 use std::process;
 use std::sync::{mpsc, Mutex};
 use std::{cmp::Ordering, sync::Arc};
-use warp_core::ui::theme::{
-    color::internal_colors, phenomenon::PhenomenonStyle, AnsiColors, Fill,
-};
+use warp_core::ui::theme::{color::internal_colors, phenomenon::PhenomenonStyle, AnsiColors, Fill};
 use warp_core::ui::{color::coloru_with_opacity, Icon};
 use warp_editor::editor::NavigationKey;
 use warpui::keymap::Context;
@@ -542,7 +542,6 @@ use warpui::{
     geometry::vector::{vec2f, Vector2F},
     AppContext, Entity, TypedActionView, UpdateView, View, ViewContext, ViewHandle,
 };
-use crate::workspace::tab_group::{TabGroup, TabGroupId};
 use warpui::{
     EntityId, FocusContext, ModelHandle, SingletonEntity, UpdateModel, ViewAsRef, WeakViewHandle,
     WindowId,
@@ -2675,7 +2674,9 @@ impl Workspace {
     fn sync_settings_error_state_into_settings_pane(&mut self, ctx: &mut ViewContext<Self>) {
         let error = self.settings_file_error.clone();
         let dismissed = self.settings_error_banner_dismissed;
-        if let Some(pane) = ctx.view_with_id::<SettingsView>(ctx.window_id(), self.settings_pane.id()) {
+        if let Some(pane) =
+            ctx.view_with_id::<SettingsView>(ctx.window_id(), self.settings_pane.id())
+        {
             pane.update(ctx, |view, ctx| {
                 view.set_settings_error_state(error, dismissed, ctx);
             });
@@ -6679,11 +6680,7 @@ impl Workspace {
         ctx.notify();
     }
 
-    fn new_session_menu_max_height(
-        &self,
-        position: Vector2F,
-        ctx: &ViewContext<Self>,
-    ) -> f32 {
+    fn new_session_menu_max_height(&self, position: Vector2F, ctx: &ViewContext<Self>) -> f32 {
         let Some(window) = ctx.windows().platform_window(ctx.window_id()) else {
             return NEW_SESSION_MENU_FALLBACK_MAX_HEIGHT;
         };
@@ -6695,11 +6692,7 @@ impl Workspace {
         available_height.max(NEW_SESSION_MENU_MIN_HEIGHT)
     }
 
-    fn new_session_menu_height_anchor_y(
-        &self,
-        position: Vector2F,
-        ctx: &ViewContext<Self>,
-    ) -> f32 {
+    fn new_session_menu_height_anchor_y(&self, position: Vector2F, ctx: &ViewContext<Self>) -> f32 {
         let use_vertical_tabs =
             FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs;
         if use_vertical_tabs && self.vertical_tabs_panel_open {
@@ -6707,9 +6700,7 @@ impl Workspace {
                 self.window_id,
                 vertical_tabs::VERTICAL_TABS_ADD_TAB_POSITION_ID,
             )
-            .map(|position| {
-                position.lower_left().y() + NEW_SESSION_MENU_VERTICAL_BUTTON_OFFSET_Y
-            })
+            .map(|position| position.lower_left().y() + NEW_SESSION_MENU_VERTICAL_BUTTON_OFFSET_Y)
             .unwrap_or_else(|| position.y().max(TOTAL_TAB_BAR_HEIGHT))
         } else {
             position.y()
@@ -15683,7 +15674,12 @@ impl Workspace {
             return;
         }
 
-        if query_filter.is_none() && self.active_session_view(ctx).is_some_and(|handle| handle.update(ctx, |terminal_view, ctx| { terminal_view.maybe_trigger_external_ctrl_r_history_search(ctx) }))
+        if query_filter.is_none()
+            && self.active_session_view(ctx).is_some_and(|handle| {
+                handle.update(ctx, |terminal_view, ctx| {
+                    terminal_view.maybe_trigger_external_ctrl_r_history_search(ctx)
+                })
+            })
         {
             return;
         }
@@ -16555,6 +16551,12 @@ impl Workspace {
         match event {
             WindowSettingsChangedEvent::BackgroundOpacity { .. } => {
                 ctx.notify();
+            }
+            WindowSettingsChangedEvent::BackgroundBackdrop { .. } => {
+                let backdrop = *WindowSettings::as_ref(ctx).background_backdrop;
+                if let Some(window) = ctx.windows().platform_window(ctx.window_id()) {
+                    window.set_background_backdrop(backdrop);
+                }
             }
             WindowSettingsChangedEvent::LeftPanelVisibilityAcrossTabs { .. } => {
                 if self.left_panel_visibility_across_tabs_enabled(ctx) {
@@ -19254,7 +19256,7 @@ impl Workspace {
                     .with_padding_right(TAB_BAR_PADDING_RIGHT)
                     .finish(),
             )
-            .on_right_mouse_down(|ctx, _, position| {
+            .on_right_mouse_down(|ctx, _, position, _| {
                 ctx.dispatch_typed_action(WorkspaceAction::ShowHeaderToolbarContextMenu {
                     position,
                 });
@@ -19402,7 +19404,7 @@ impl Workspace {
                 .with_padding_right(TAB_BAR_PADDING_RIGHT)
                 .finish(),
         )
-        .on_right_mouse_down(|ctx, _, position| {
+        .on_right_mouse_down(|ctx, _, position, _| {
             ctx.dispatch_typed_action(WorkspaceAction::ShowHeaderToolbarContextMenu { position });
             DispatchEventResult::StopPropagation
         })
@@ -19445,7 +19447,7 @@ impl Workspace {
         Some(
             Container::new(
                 EventHandler::new(inner)
-                    .on_right_mouse_down(|ctx, _, position| {
+                    .on_right_mouse_down(|ctx, _, position, _| {
                         ctx.dispatch_typed_action(WorkspaceAction::ShowHeaderToolbarContextMenu {
                             position,
                         });
@@ -25259,7 +25261,9 @@ impl View for Workspace {
                         .cover()
                         .with_opacity(opacity_ratio)
                         .with_corner_radius(window_corner_radius)
-                        .enable_animation_with_start_time(self.background_image_animation_start_time)
+                        .enable_animation_with_start_time(
+                            self.background_image_animation_start_time,
+                        )
                         .finish(),
                 )
                 .finish(),

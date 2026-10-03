@@ -894,7 +894,6 @@ impl NotebookView {
             let delta = content.len().abs_diff(self.last_content_length);
             self.last_content_length = content.len();
             self.send_edit_telemetry = false;
-
         }
 
         // Schedule another check. If we stop editing in the meantime, either the mode check above
@@ -1090,8 +1089,7 @@ impl NotebookView {
     }
 
     /// Send a [`NotebookTelemetryAction`] telemetry event.
-    fn send_telemetry_action(&self, action: NotebookTelemetryAction, ctx: &mut ViewContext<Self>) {
-    }
+    fn send_telemetry_action(&self, action: NotebookTelemetryAction, ctx: &mut ViewContext<Self>) {}
 
     /// Puts the nodebook into edit mode and focuses the editor. The caller is responsible for
     /// checking that the notebook is editable.
@@ -1616,7 +1614,6 @@ impl NotebookView {
             editor.set_space(notebook.space(ctx), ctx);
         });
 
-
         // Once we've received metadata from the server, check if we can eagerly edit the notebook.
         let has_metadata = UpdateManager::as_ref(ctx).initial_load_complete();
         let baton_future = ctx.spawn(has_metadata, |me, _, ctx| {
@@ -1862,7 +1859,7 @@ impl NotebookView {
         let saved_position = self.view_position_id.clone();
 
         EventHandler::new(styles::wrap_body(ChildView::new(&self.input).finish()))
-            .on_right_mouse_down(move |ctx, _, position| {
+            .on_right_mouse_down(move |ctx, _, position, _| {
                 show_rich_editor_context_menu::<NotebookAction>(
                     ctx,
                     position,
@@ -1879,7 +1876,7 @@ impl NotebookView {
         let saved_position = self.view_position_id.clone();
         let appearance = Appearance::as_ref(app);
         let title = EventHandler::new(Clipped::new(ChildView::new(&self.title).finish()).finish())
-            .on_right_mouse_down(move |ctx, _, position| {
+            .on_right_mouse_down(move |ctx, _, position, _| {
                 show_text_editor_context_menu::<NotebookAction>(
                     ctx,
                     position,

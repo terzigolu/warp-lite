@@ -12,10 +12,13 @@ use pathfinder_geometry::vector::Vector2F;
 use std::cell::RefCell;
 
 type Handler = Box<dyn FnMut(&mut EventContext, &AppContext, Vector2F) -> DispatchEventResult>;
-type KeyHandler = Box<dyn FnMut(&mut EventContext, &AppContext, &Keystroke) -> DispatchEventResult>;
+type HandlerWithModifiers = Box<
+    dyn FnMut(&mut EventContext, &AppContext, Vector2F, &ModifiersState) -> DispatchEventResult,
+>;
 type ScrollHandler = Box<
     dyn FnMut(&mut EventContext, &AppContext, &Vector2F, &ModifiersState) -> DispatchEventResult,
 >;
+type KeyHandler = Box<dyn FnMut(&mut EventContext, &AppContext, &Keystroke) -> DispatchEventResult>;
 type ModifierStateChangedHandler =
     Box<dyn FnMut(&mut EventContext, &AppContext, &KeyCode, &KeyState) -> DispatchEventResult>;
 
@@ -47,7 +50,7 @@ pub struct EventHandler {
     left_mouse_down: Option<RefCell<Handler>>,
     left_mouse_up: Option<RefCell<Handler>>,
     middle_mouse_down: Option<RefCell<Handler>>,
-    right_mouse_down: Option<RefCell<Handler>>,
+    right_mouse_down: Option<RefCell<HandlerWithModifiers>>,
     forward_mouse_down: Option<RefCell<Handler>>,
     back_mouse_down: Option<RefCell<Handler>>,
     mouse_in: Option<RefCell<Handler>>,
@@ -130,7 +133,8 @@ impl EventHandler {
 
     pub fn on_right_mouse_down<F>(mut self, callback: F) -> Self
     where
-        F: 'static + FnMut(&mut EventContext, &AppContext, Vector2F) -> DispatchEventResult,
+        F: 'static
+            + FnMut(&mut EventContext, &AppContext, Vector2F, &ModifiersState) -> DispatchEventResult,
     {
         self.right_mouse_down = Some(RefCell::new(Box::new(callback)));
         self
@@ -308,9 +312,27 @@ impl Element for EventHandler {
                     return true;
                 }
             }
-            Some(Event::RightMouseDown { position, .. }) => {
-                if self.dispatch_callback(self.right_mouse_down.as_ref(), ctx, *position, app) {
-                    return true;
+            Some(Event::RightMouseDown {
+                position,
+                cmd,
+                shift,
+                ..
+            }) => {
+                if let Some(callback) = self.right_mouse_down.as_ref() {
+                    if let Some(rect) = ctx.visible_rect(self.origin.unwrap(), self.size().unwrap())
+                    {
+                        if rect.contains_point(*position) {
+                            let modifiers = ModifiersState {
+                                cmd: *cmd,
+                                shift: *shift,
+                                ..Default::default()
+                            };
+                            return match callback.borrow_mut()(ctx, app, *position, &modifiers) {
+                                DispatchEventResult::PropagateToParent => false,
+                                DispatchEventResult::StopPropagation => true,
+                            };
+                        }
+                    }
                 }
             }
             Some(Event::BackMouseDown { position, .. }) => {

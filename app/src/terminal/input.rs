@@ -1,5 +1,6 @@
-use warp_completer::meta::Span;
 use super::model::completions::ShellCompletion;
+use crate::terminal::should_right_click_paste;
+use warp_completer::meta::Span;
 mod agent;
 pub mod buffer_model;
 mod classic;
@@ -3771,7 +3772,6 @@ impl Input {
             let is_udi_enabled =
                 InputSettings::as_ref(ctx).is_universal_developer_input_enabled(ctx);
             let current_input_mode = self.ai_input_model.as_ref(ctx).input_type();
-
         } else if self.suggestions_mode_model.as_ref(ctx).is_ai_context_menu() {
             self.close_ai_context_menu(ctx);
         }
@@ -5010,7 +5010,6 @@ impl Input {
         // TODO(advait): Avoid using user-simulated codepaths here. Revisit function to use here.
         self.submit_ai_query(Some(suggestion_type), ctx);
 
-
         ctx.notify()
     }
 
@@ -6108,7 +6107,8 @@ impl Input {
         let block_id = self.model.lock().block_list().active_block_id().clone();
         // Prefixed with a leading space, the "ignorespace" convention.
         let mut command = format!(" {helper_command}");
-        if let Some(cursor_offset) = cursor_offset.filter(|_| apply_mode == ShellWidgetApplyMode::Replace)
+        if let Some(cursor_offset) =
+            cursor_offset.filter(|_| apply_mode == ShellWidgetApplyMode::Replace)
         {
             let char_cursor = original_buffer[..cursor_offset.as_usize()].chars().count();
             command.push_str(&format!(" {char_cursor}:{}", hex::encode(&original_buffer)));
@@ -6569,7 +6569,6 @@ impl Input {
                 let workflow_source = *workflow_source;
                 let _ = workflow_id;
                 let _ = workflow_source;
-
 
                 self.show_workflows_info_box_on_workflow_selection(
                     *workflow.clone(),
@@ -7177,7 +7176,6 @@ impl Input {
                 if !self.confirm_and_execute_suggestion(suggestion, ctx) {
                     return;
                 }
-
 
                 self.close_input_suggestions(/*should_focus_input=*/ true, ctx);
 
@@ -10694,9 +10692,7 @@ impl Input {
         let fallback_strategy = {
             let use_native_shell_completions = comp_sources.uses_native();
             match completions_trigger {
-                CompletionsTrigger::Keybinding
-                    if !use_native_shell_completions =>
-                {
+                CompletionsTrigger::Keybinding if !use_native_shell_completions => {
                     CompletionsFallbackStrategy::FilePaths
                 }
                 _ => CompletionsFallbackStrategy::None,
@@ -11280,7 +11276,6 @@ impl Input {
                                 ctx,
                             );
                         });
-
 
                         let preselect_option = if self.is_classic_completions_enabled(ctx) {
                             TabCompletionsPreselectOption::Unselected
@@ -12733,8 +12728,7 @@ impl Input {
         }
 
         if PromptAlertView::does_alert_block_ai_requests(ctx) {
-            if !has_requests_remaining {
-            }
+            if !has_requests_remaining {}
 
             AIRequestUsageModel::handle(ctx).update(ctx, |usage_model, ctx| {
                 // Rate limit requests to fetch the user's AI usage if triggered by enter
@@ -12800,7 +12794,6 @@ impl Input {
 
         if let Some(workflow_state) = self.workflows_state.selected_workflow_state.as_ref() {
             if let WorkflowType::Cloud(workflow) = &workflow_state.workflow_type {
-
                 UpdateManager::handle(ctx).update(ctx, move |update_manager, ctx| {
                     update_manager.record_object_action(
                         workflow.cloud_object_type_and_id(),
@@ -13525,8 +13518,17 @@ impl Input {
                 {
                     shared_session_history_model.update(ctx, |history_model, _ctx| {
                         history_model.push(HistoryEntry::for_completed_block(
-                            block_completed.command.get_with(|compute| { let model = self.model.lock(); compute(model.block_list()) }).to_owned(),
-                            block_completed.serialized_block.get_with(|compute| { let model = self.model.lock(); compute(model.block_list()) }),
+                            block_completed
+                                .command
+                                .get_with(|compute| {
+                                    let model = self.model.lock();
+                                    compute(model.block_list())
+                                })
+                                .to_owned(),
+                            block_completed.serialized_block.get_with(|compute| {
+                                let model = self.model.lock();
+                                compute(model.block_list())
+                            }),
                         ))
                     })
                 } else {
@@ -13595,7 +13597,6 @@ impl Input {
         let (workflow_id, workflow_command) = {
             match self.workflows_state.selected_workflow_state.as_ref() {
                 Some(selected_workflow_state) => {
-
                     let workflow_type = &selected_workflow_state.workflow_type;
                     let workflow_id = match workflow_type {
                         WorkflowType::Cloud(workflow) => Some(workflow.id),
@@ -14012,7 +14013,14 @@ impl Input {
         let input_editor_save_position_id = self.editor_save_position_id();
         SavePosition::new(
             EventHandler::new(input_box)
-                .on_right_mouse_down(move |ctx, _, position| {
+                .on_right_mouse_down(move |ctx, app, position, modifiers| {
+                    if should_right_click_paste(modifiers.shift, app) {
+                        // Same path as the `terminal:paste` keybinding, so escaped-path
+                        // processing and CLI-agent image handling behave identically.
+                        ctx.dispatch_typed_action(TerminalAction::Paste);
+                        return DispatchEventResult::StopPropagation;
+                    }
+
                     let input_rect = ctx
                         .element_position_by_id(input_editor_save_position_id.clone())
                         .expect("input editor position id should be saved");
@@ -14272,8 +14280,7 @@ impl TypedActionView for Input {
                             .ai_autodetection_enabled_internal
                             .toggle_and_save_value(model_ctx)
                     })
-                {
-                }
+                {}
             }
             InputAction::CycleNextCommandSuggestion => {
                 self.cycle_next_command_suggestion(ctx);
@@ -14643,12 +14650,13 @@ impl Autosuggester for Input {
         }
 
         let match_strategy = result.match_strategy;
-        let autosuggestion_result_substring = result
-            .autosuggestion_result
-            .as_ref()
-            .and_then(|suggestion| {
-                match_strategy.prefix_remainder(buffer_text.as_str(), suggestion)
-            });
+        let autosuggestion_result_substring =
+            result
+                .autosuggestion_result
+                .as_ref()
+                .and_then(|suggestion| {
+                    match_strategy.prefix_remainder(buffer_text.as_str(), suggestion)
+                });
 
         if let Some(autosuggestion) = autosuggestion_result_substring {
             self.set_autosuggestion(

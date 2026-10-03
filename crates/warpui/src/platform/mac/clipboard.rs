@@ -148,6 +148,7 @@ impl Clipboard {
                 make_nsstring("public.gif"),
                 make_nsstring("public.webp"),
                 make_nsstring("public.svg-image"),
+                make_nsstring("public.tiff"),
                 make_nsstring("com.compuserve.gif"),
             ];
 
@@ -170,6 +171,7 @@ impl Clipboard {
                             "public.gif" | "com.compuserve.gif" => "image/gif",
                             "public.webp" => "image/webp",
                             "public.svg-image" => "image/svg+xml",
+                            "public.tiff" => "image/tiff",
                             _ => "image/unknown",
                         };
 

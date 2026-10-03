@@ -541,8 +541,7 @@ impl FileNotebookView {
     }
 
     /// Send a [`NotebookTelemetryAction`] telemetry event.
-    fn send_telemetry_action(&self, action: NotebookTelemetryAction, ctx: &mut ViewContext<Self>) {
-    }
+    fn send_telemetry_action(&self, action: NotebookTelemetryAction, ctx: &mut ViewContext<Self>) {}
 
     /// Reload the file that was most recently opened (or attempted to open).
     fn reload_file(&mut self, ctx: &mut ViewContext<Self>) {
@@ -862,7 +861,7 @@ impl View for FileNotebookView {
                     ctx.dispatch_typed_action(FileNotebookAction::Focus);
                     DispatchEventResult::StopPropagation
                 })
-                .on_right_mouse_down(move |ctx, _, position| {
+                .on_right_mouse_down(move |ctx, _, position, _| {
                     show_rich_editor_context_menu::<FileNotebookAction>(
                         ctx,
                         position,
@@ -937,7 +936,8 @@ impl TypedActionView for FileNotebookView {
                         #[cfg(feature = "local_fs")]
                         {
                             if let Some(path) = self.local_path() {
-            let scroll_fraction = self.scroll_fraction(ctx).map(ordered_float::OrderedFloat);
+                                let scroll_fraction =
+                                    self.scroll_fraction(ctx).map(ordered_float::OrderedFloat);
                                 ctx.emit(FileNotebookEvent::Pane(PaneEvent::ReplaceWithCodePane {
                                     path,
                                     source: self.code_source.clone(),

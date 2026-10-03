@@ -66,3 +66,7 @@ criterion = { version = "0.5.1", features = ["html_reports"] }
 [[bench]]
 name = "buffer_bench"
 harness = false
+
+[[bench]]
+name = "text_layout_bench"
+harness = false

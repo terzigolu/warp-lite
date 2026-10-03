@@ -19,6 +19,7 @@ use crate::terminal::safe_mode_settings::get_secret_obfuscation_mode;
 use crate::terminal::shared_session::presence_manager::{
     text_selection_color, PresenceManager, MUTED_PARTICIPANT_COLOR,
 };
+use crate::terminal::should_right_click_paste;
 use crate::terminal::view::{
     ActiveSessionState, TerminalAction, TerminalEditor, TerminalViewRenderContext,
 };
@@ -301,11 +302,16 @@ impl AltScreenElement {
         }
 
         let point = self.coord_to_point(local_position);
+        let shift = mouse_state.modifiers().shift;
 
-        if should_intercept_mouse(&self.model.lock(), mouse_state.modifiers().shift, app) {
-            ctx.dispatch_typed_action(TerminalAction::AltScreenContextMenu {
-                position: local_position,
-            });
+        if should_intercept_mouse(&self.model.lock(), shift, app) {
+            if should_right_click_paste(shift, app) {
+                ctx.dispatch_typed_action(TerminalAction::Paste);
+            } else {
+                ctx.dispatch_typed_action(TerminalAction::AltScreenContextMenu {
+                    position: local_position,
+                });
+            }
         } else {
             ctx.dispatch_typed_action(TerminalAction::AltMouseAction(mouse_state.set_point(point)));
         }

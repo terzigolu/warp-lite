@@ -49,7 +49,7 @@ use crate::themes::theme::{self, RespectSystemTheme, SelectedSystemThemes, Theme
 use crate::user_config::WarpConfig;
 use crate::util::bindings;
 use crate::window_settings::{
-    BackgroundBlurRadius, BackgroundBlurTexture, BackgroundOpacity, LeftPanelVisibilityAcrossTabs,
+    BackgroundBackdrop, BackgroundBlurRadius, BackgroundOpacity, LeftPanelVisibilityAcrossTabs,
     OpenWindowsAtCustomSize, WindowSettings, WindowSettingsChangedEvent, ZoomLevel,
 };
 use crate::workspace::header_toolbar_editor::HeaderToolbarInlineEditor;
@@ -81,6 +81,7 @@ use warpui::elements::{
 };
 use warpui::fonts::{FamilyId, FontInfo, Weight};
 use warpui::keymap::{ContextPredicate, FixedBinding};
+use warpui::platform::WindowBackdrop;
 use warpui::platform::{Cursor, FilePickerConfiguration, GraphicsBackend};
 use warpui::ui_components::button::ButtonVariant;
 use warpui::ui_components::components::{Coords, UiComponent, UiComponentStyles};
@@ -465,7 +466,7 @@ pub enum AppearancePageAction {
     ToggleHideTitleBarSearchBarInVerticalTabs,
     ToggleUseLatestUserPromptAsConversationTitleInTabNames,
     ToggleLigatureRendering,
-    ToggleBlurTexture,
+    SetWindowBackdrop(WindowBackdrop),
     ToggleLeftPanelVisibility,
     SetEnforceMinimumContrast(EnforceMinimumContrast),
     OpenUrl(String),
@@ -504,6 +505,7 @@ pub struct AppearanceSettingsPageView {
     thin_strokes_dropdown: ViewHandle<Dropdown<AppearancePageAction>>,
     enforce_min_contrast_dropdown: ViewHandle<Dropdown<AppearancePageAction>>,
     input_mode_dropdown: ViewHandle<Dropdown<AppearancePageAction>>,
+    window_backdrop_dropdown: ViewHandle<Dropdown<AppearancePageAction>>,
     input_type_radio_state: RadioButtonStateHandle,
     app_icon_dropdown: ViewHandle<Dropdown<AppearancePageAction>>,
     workspace_decorations_dropdown: ViewHandle<Dropdown<AppearancePageAction>>,
@@ -583,7 +585,7 @@ impl TypedActionView for AppearanceSettingsPageView {
             ToggleRespectSystemTheme => self.toggle_respect_system_theme(ctx),
             ToggleAllAvailableFonts => self.toggle_all_available_fonts(ctx),
             ToggleDimInactivePanes => self.toggle_dim_inactive_panes(ctx),
-            ToggleBlurTexture => self.toggle_blur_texture(ctx),
+            SetWindowBackdrop(backdrop) => self.set_window_backdrop(*backdrop, ctx),
             ToggleLeftPanelVisibility => self.toggle_left_panel_visibility(ctx),
             SetInputMode {
                 new_mode,
@@ -618,8 +620,7 @@ impl TypedActionView for AppearanceSettingsPageView {
                         .focus_panes_on_hover
                         .toggle_and_save_value(ctx)
                     {
-                        Ok(new_val) => {
-                        }
+                        Ok(new_val) => {}
                         Err(e) => {
                             report_error!(e);
                         }
@@ -906,6 +907,15 @@ impl AppearanceSettingsPageView {
                 WindowSettingsChangedEvent::BackgroundBlurRadius { .. } => {
                     // Reset the slider state so that it uses the current opacity value on the next render.
                     me.blur_state.reset_offset();
+                }
+                WindowSettingsChangedEvent::BackgroundBackdrop { .. } => {
+                    let backdrop = *WindowSettings::as_ref(ctx).background_backdrop;
+                    me.window_backdrop_dropdown.update(ctx, |dropdown, ctx| {
+                        dropdown.set_selected_by_action(
+                            AppearancePageAction::SetWindowBackdrop(backdrop),
+                            ctx,
+                        );
+                    });
                 }
                 WindowSettingsChangedEvent::ZoomLevel { .. } => {
                     let zoom_level = *WindowSettings::as_ref(ctx).zoom_level;
@@ -1214,6 +1224,7 @@ impl AppearanceSettingsPageView {
             font_weight_dropdown,
             thin_strokes_dropdown,
             input_mode_dropdown,
+            window_backdrop_dropdown: Self::build_window_backdrop_dropdown(ctx),
             input_type_radio_state,
             app_icon_dropdown,
             enforce_min_contrast_dropdown,
@@ -1277,10 +1288,10 @@ impl AppearanceSettingsPageView {
             window_settings_widgets.push(Box::new(WindowBlurWidget::default()));
         }
         if window_settings
-            .background_blur_texture
+            .background_backdrop
             .is_supported_on_current_platform()
         {
-            window_settings_widgets.push(Box::new(WindowBlurTextureWidget::default()));
+            window_settings_widgets.push(Box::new(WindowBackdropWidget));
         }
 
         if FeatureFlag::UIZoom.is_enabled() {
@@ -1749,8 +1760,7 @@ impl AppearanceSettingsPageView {
         should_set_defaults: bool,
         ctx: &mut ViewContext<Self>,
     ) {
-        if should_set_defaults {
-        }
+        if should_set_defaults {}
         WindowSettings::handle(ctx).update(ctx, |window_settings, ctx| {
             report_if_error!(window_settings
                 .background_opacity
@@ -1765,8 +1775,7 @@ impl AppearanceSettingsPageView {
         should_set_defaults: bool,
         ctx: &mut ViewContext<Self>,
     ) {
-        if should_set_defaults {
-        }
+        if should_set_defaults {}
 
         ctx.windows()
             .set_all_windows_background_blur_radius(blur_value as u8);
@@ -1783,7 +1792,6 @@ impl AppearanceSettingsPageView {
         self.line_height_editor.update(ctx, |editor, ctx| {
             editor.set_buffer_text(&format!("{DEFAULT_UI_LINE_HEIGHT_RATIO}"), ctx);
         });
-
 
         FontSettings::handle(ctx).update(ctx, |font_settings, ctx| {
             report_if_error!(font_settings
@@ -1802,7 +1810,6 @@ impl AppearanceSettingsPageView {
         let current_line_height = appearance.ui_builder().line_height_ratio();
 
         if (current_line_height - new_line_height).abs() > f32::EPSILON {
-
             if (MIN_LINE_SPACING..=MAX_LINE_SPACING).contains(&new_line_height) {
                 FontSettings::handle(ctx).update(ctx, |font_settings, ctx| {
                     report_if_error!(font_settings
@@ -2038,8 +2045,7 @@ impl AppearanceSettingsPageView {
     fn set_thin_strokes(&mut self, value: &ThinStrokes, ctx: &mut ViewContext<Self>) {
         FontSettings::handle(ctx).update(ctx, |font_settings, ctx| {
             match font_settings.use_thin_strokes.set_value(*value, ctx) {
-                Ok(_) => {
-                }
+                Ok(_) => {}
                 Err(e) => {
                     report_error!(e);
                 }
@@ -2100,8 +2106,7 @@ impl AppearanceSettingsPageView {
                 .should_dim_inactive_panes
                 .toggle_and_save_value(ctx)
             {
-                Ok(new_value) => {
-                }
+                Ok(new_value) => {}
                 Err(e) => {
                     report_error!(e);
                 }
@@ -2109,16 +2114,9 @@ impl AppearanceSettingsPageView {
         });
     }
 
-    pub fn toggle_blur_texture(&mut self, ctx: &mut ViewContext<Self>) {
-        let blur_enabled = WindowSettings::handle(ctx).read(ctx, |window_settings, _ctx| {
-            *window_settings.background_blur_texture.value()
-        });
-        ctx.windows()
-            .set_all_windows_background_blur_texture(!blur_enabled);
+    fn set_window_backdrop(&mut self, backdrop: WindowBackdrop, ctx: &mut ViewContext<Self>) {
         WindowSettings::handle(ctx).update(ctx, |window_settings, ctx| {
-            report_if_error!(window_settings
-                .background_blur_texture
-                .toggle_and_save_value(ctx));
+            report_if_error!(window_settings.background_backdrop.set_value(backdrop, ctx));
         });
         ctx.notify();
     }
@@ -2212,7 +2210,6 @@ impl AppearanceSettingsPageView {
         ctx.update_model(&tab_settings, move |tab_settings, ctx| {
             report_if_error!(tab_settings.show_indicators.set_value(new_value, ctx));
         });
-
     }
 
     fn toggle_show_code_review_button(&mut self, ctx: &mut ViewContext<Self>) {
@@ -2235,7 +2232,6 @@ impl AppearanceSettingsPageView {
                 .preserve_active_tab_color
                 .set_value(new_value, ctx));
         });
-
     }
 
     fn toggle_vertical_tabs(&mut self, ctx: &mut ViewContext<Self>) {
@@ -2302,6 +2298,41 @@ impl AppearanceSettingsPageView {
             });
     }
 
+    fn build_window_backdrop_dropdown(
+        ctx: &mut ViewContext<Self>,
+    ) -> ViewHandle<Dropdown<AppearancePageAction>> {
+        ctx.add_typed_action_view(|ctx| {
+            let mut dropdown = Dropdown::new(ctx);
+            dropdown.set_items(
+                WindowBackdrop::ALL
+                    .into_iter()
+                    .map(|backdrop| {
+                        DropdownItem::new(
+                            Self::window_backdrop_dropdown_item_label(backdrop),
+                            AppearancePageAction::SetWindowBackdrop(backdrop),
+                        )
+                    })
+                    .collect(),
+                ctx,
+            );
+            dropdown.set_selected_by_action(
+                AppearancePageAction::SetWindowBackdrop(
+                    *WindowSettings::as_ref(ctx).background_backdrop,
+                ),
+                ctx,
+            );
+            dropdown
+        })
+    }
+
+    fn window_backdrop_dropdown_item_label(backdrop: WindowBackdrop) -> &'static str {
+        match backdrop {
+            WindowBackdrop::None => "No material",
+            WindowBackdrop::Mica => "Mica",
+            WindowBackdrop::Acrylic => "Acrylic",
+            WindowBackdrop::MicaAlt => "Mica Alt",
+        }
+    }
     fn build_workspace_decoration_visibility_dropdown(
         ctx: &mut ViewContext<Self>,
     ) -> ViewHandle<Dropdown<AppearancePageAction>> {
@@ -2434,7 +2465,6 @@ impl AppearanceSettingsPageView {
                     .ligature_rendering_enabled
                     .set_value(new_value, ctx));
             });
-
         }
     }
 
@@ -3156,16 +3186,13 @@ impl SettingsWidget for WindowBlurWidget {
     }
 }
 
-#[derive(Default)]
-struct WindowBlurTextureWidget {
-    switch_state: SwitchStateHandle,
-}
+struct WindowBackdropWidget;
 
-impl SettingsWidget for WindowBlurTextureWidget {
+impl SettingsWidget for WindowBackdropWidget {
     type View = AppearanceSettingsPageView;
 
     fn search_terms(&self) -> &str {
-        "window blur texture acrylic"
+        "window backdrop material blur acrylic mica"
     }
 
     fn render(
@@ -3174,29 +3201,20 @@ impl SettingsWidget for WindowBlurTextureWidget {
         appearance: &Appearance,
         app: &AppContext,
     ) -> Box<dyn Element> {
-        let window_settings = WindowSettings::as_ref(app);
-        let use_blur_texture = *window_settings.background_blur_texture;
-        let mut col = Flex::column().with_child(render_body_item::<AppearancePageAction>(
-            "Use Window Blur (Acrylic texture)".to_string(),
+        let mut col = Flex::column().with_child(render_dropdown_item(
+            appearance,
+            "Window backdrop",
+            (*WindowSettings::as_ref(app).background_opacity == BackgroundOpacity::MAX)
+                .then_some("Backdrop is not visible at opacity 100%"),
             None,
             LocalOnlyIconState::for_setting(
-                BackgroundBlurTexture::storage_key(),
-                BackgroundBlurTexture::sync_to_cloud(),
+                BackgroundBackdrop::storage_key(),
+                BackgroundBackdrop::sync_to_cloud(),
                 &mut view.local_only_icon_tooltip_states.borrow_mut(),
                 app,
             ),
-            ToggleState::Enabled,
-            appearance,
-            appearance
-                .ui_builder()
-                .switch(self.switch_state.clone())
-                .check(use_blur_texture)
-                .build()
-                .on_click(|evt_ctx, _app, _v2f| {
-                    evt_ctx.dispatch_typed_action(AppearancePageAction::ToggleBlurTexture);
-                })
-                .finish(),
             None,
+            &view.window_backdrop_dropdown,
         ));
         if let Some(window) = app.windows().platform_window(view.window_id) {
             if !window.supports_transparency() && window.graphics_backend() != GraphicsBackend::Gl {

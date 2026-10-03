@@ -499,6 +499,8 @@ pub enum CLIAgentType {
     Pi,
     Auggie,
     Cursor,
+    Grok,
+    Kiro,
     Unknown,
 }
 

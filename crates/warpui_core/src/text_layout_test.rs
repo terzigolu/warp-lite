@@ -399,3 +399,58 @@ fn test_paint_start_fade_unchanged_by_ellipsis_offset() {
         });
     });
 }
+
+#[test]
+fn uncached_editor_layout_matches_cached_unicode_and_bom_layout() {
+    App::test((), |mut app| async move {
+        app.update(|ctx| {
+            let cache = LayoutCache::new();
+            let system = ctx.font_cache().text_layout_system();
+            let line_style = LineStyle {
+                font_size: 12.,
+                line_height_ratio: 1.2,
+                baseline_ratio: DEFAULT_TOP_BOTTOM_RATIO,
+                fixed_width_tab_size: Some(4),
+            };
+            for text in [
+                "",
+                "office ffi",
+                "\u{feff}Türkçe 界",
+                "مرحبا שלום",
+                "👩‍💻 café\nsecond line",
+            ] {
+                let styles = [(
+                    0..text.chars().count(),
+                    StyleAndFont::new(FamilyId(0), Properties::default(), TextStyle::default()),
+                )];
+                for width in [32., 400.] {
+                    let cached = cache.layout_text(
+                        text,
+                        line_style,
+                        &styles,
+                        width,
+                        f32::MAX,
+                        TextAlignment::default(),
+                        None,
+                        &system,
+                    );
+                    let uncached = system.layout_text_uncached(
+                        text,
+                        line_style,
+                        &styles,
+                        width,
+                        f32::MAX,
+                        TextAlignment::default(),
+                        None,
+                    );
+                    // Compare glyph runs, caret offsets, fallback requests, line sizes and alignment.
+                    assert_eq!(
+                        format!("{cached:?}"),
+                        format!("{uncached:?}"),
+                        "text={text:?}, width={width}"
+                    );
+                }
+            }
+        });
+    });
+}
