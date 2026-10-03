@@ -1,0 +1,197 @@
+{
+  "baseline": "4286947a2344df96dccf529e0c718431b6f90709",
+  "upstream": "c157d411d988176506a4a7278890f626a22413dd",
+  "scope": "Local-terminal follow-up; user authorized lifting protected UI/core boundary. No release publication in this step.",
+  "adapted_sources": 14,
+  "commits": [
+    {
+      "sha": "b1731dde0f595974d6a282a807511db6bff1f2a2",
+      "subject": "Throttle TUI frame-draw error reports to once per run (#15287)",
+      "previous_status": "held_ui_boundary",
+      "status": "excluded",
+      "reason": "Targets the absent Warp Agent TUI runtime; no corresponding Lite frame driver."
+    },
+    {
+      "sha": "d68a638ef9f2e2bdb1f7be9cf1fcc96487fbc5a8",
+      "subject": "Fix report_error! demotions of typed errors into extra: (APP-5522) (#15298)",
+      "previous_status": "held_ui_boundary",
+      "status": "excluded",
+      "reason": "Typed Sentry reporting fixes target disabled/removed reporting; Lite core already uses local logging. No reporting infrastructure restored."
+    },
+    {
+      "sha": "04a7f8342c0b78978f12ecd2a3e032ff439bd56f",
+      "subject": "Downgrade key-binding responder-chain report_error! to log::error! (#15299)",
+      "previous_status": "held_ui_boundary",
+      "status": "adapted",
+      "reason": "Lite already used local logging; preserve upstream full error-chain formatting."
+    },
+    {
+      "sha": "27f8ee6c1d39980997823d65161b2d665dcde569",
+      "subject": "Fix Sentry data exposure: PII/typed-content leaks missed by #15298's merge race (APP-5522) (#15300)",
+      "previous_status": "held_ui_boundary",
+      "status": "excluded",
+      "reason": "Sentry typed-error change and removed AI credentials; Lite does not use the affected reporting path."
+    },
+    {
+      "sha": "c25ac40707f80d02583053cb9437af97c9944b49",
+      "subject": "Add a right-click behavior setting: context menu (default) or paste (#15365)",
+      "previous_status": "held_ui_api",
+      "status": "adapted",
+      "reason": "Opt-in right-click paste across input, prompt, blocks and alt screen; Shift and mouse ownership preserved. Existing scroll callback signature retained."
+    },
+    {
+      "sha": "8936686f261e07e4c763b30760c48abe60e98bd2",
+      "subject": "Restore report_error! for flex infinite-constraint, guarded to report once (#15390)",
+      "previous_status": "held_ui_boundary",
+      "status": "adapted",
+      "reason": "Once-per-run flex diagnostic adapted to local AtomicBool guard, without restoring reporting infrastructure."
+    },
+    {
+      "sha": "18179177ab33790ef226b811e9a7ca0ba0d9f72f",
+      "subject": "Explain Shift+right-click when the right-click setting pastes (#15392)",
+      "previous_status": "held_ui_api",
+      "status": "adapted",
+      "reason": "Shift+right-click help text included."
+    },
+    {
+      "sha": "dc1077845f09778b78067fe7e2e8e00964ab817b",
+      "subject": "Reduce monomorphization in warpui_core update and spawn paths (#15453)",
+      "previous_status": "held_ui_boundary",
+      "status": "adapted",
+      "reason": "Non-generic update bookkeeping and boxed spawn paths adapted to Lite Box<dyn AnyView>."
+    },
+    {
+      "sha": "ee351a0e71da0fe2797c5f269c935f23754cd201",
+      "subject": "Terminate TUI when host terminal disconnects (#15421)",
+      "previous_status": "held_ui_boundary",
+      "status": "excluded",
+      "reason": "Host disconnect lifecycle targets absent warp_tui/runtime, not the GUI terminal PTY."
+    },
+    {
+      "sha": "ad28e590f8781cac00c8b762425a19971a8549da",
+      "subject": "Recover the renderer after Windows RDP device loss (#15566)",
+      "previous_status": "held_ui_boundary",
+      "status": "adapted",
+      "reason": "WGPU device-loss guard before acquiring a frame; Windows runtime not available."
+    },
+    {
+      "sha": "542683634e9144e923ffbe303165d61c8089c8fa",
+      "subject": "Pin cosmic-text to the fix that forbids Hack as a fallback donor (APP-5492) (#15569)",
+      "previous_status": "held_ui_boundary",
+      "status": "adapted",
+      "reason": "Pinned cosmic-text fallback donor fix; native macOS uses CoreText."
+    },
+    {
+      "sha": "2a183d5523309e52ff35d869eb7c7ae40e06bdea",
+      "subject": "Extract secret detection into secret_redaction and regex_dfas crates (#15462)",
+      "previous_status": "held_ui_api",
+      "status": "excluded",
+      "reason": "Secret detection crate extraction is structural; retained local detection does not require new crates."
+    },
+    {
+      "sha": "6fac731c4bbfbec44a2ca42c52a1618d8ee87871",
+      "subject": "Show live cloud connection indicator on third-party agent rich input (#15625)",
+      "previous_status": "held_ui_boundary",
+      "status": "excluded",
+      "reason": "Cloud connection status chip; excluded cloud behavior."
+    },
+    {
+      "sha": "83e270f1d17a9505f7aa32fdcccf9067752faa40",
+      "subject": "Fix em_width panic when a glyph has no bounding box (#15705)",
+      "previous_status": "held_ui_boundary",
+      "status": "adapted",
+      "reason": "Glyph bounds failure uses positive advance or finite fallback; regression tests retained."
+    },
+    {
+      "sha": "97037ec83e162d24fa5d83e545d848fab8322af7",
+      "subject": "Add ViewHandle::try_update and use it to guard shared session retention (#15695)",
+      "previous_status": "held_ui_boundary",
+      "status": "excluded",
+      "reason": "New try_update API is consumed by removed/shared-session agent retention; no local-terminal behavior requires it."
+    },
+    {
+      "sha": "712baa4cfed76ab8518232763cb3a4c031586b77",
+      "subject": "[REMOTE-3086] Make text in Thought dropdowns selectable and copyable (#15691)",
+      "previous_status": "held_ui_boundary",
+      "status": "excluded",
+      "reason": "Selection behavior is for the disabled AI Thought dropdown."
+    },
+    {
+      "sha": "c3c397d6c0c7c2566d0a30329fef46f71b74fa30",
+      "subject": "Switch WASM team picker in place instead of opening a window (REV-2280) (#15740)",
+      "previous_status": "held_ui_boundary",
+      "status": "excluded",
+      "reason": "WASM team picker is outside native local terminal scope."
+    },
+    {
+      "sha": "58d94a53b308b8e7ab1541f194ce5ffef29742c6",
+      "subject": "Guard reversed glyph bounds in smart_select (#15772)",
+      "previous_status": "held_ui_boundary",
+      "status": "adapted",
+      "reason": "RTL smart-select guards reversed visual glyph bounds; regression test retained."
+    },
+    {
+      "sha": "742ca57b50a034d5f7ddcdd9e7791367ab7624c0",
+      "subject": "[APP-5825] Bypass layout cache for editor text (#15831)",
+      "previous_status": "held_ui_api",
+      "status": "adapted",
+      "reason": "Uncached editor text layout with font fallback requests; persistent placeholder cache retained. Adapted to Lite warpui imports."
+    },
+    {
+      "sha": "2718b665844ed332f4abb3ecdc0110df493db7c1",
+      "subject": "Adds first-class Grok Build support (#14228)",
+      "previous_status": "excluded_ai_cloud",
+      "status": "adapted",
+      "reason": "Local Grok identity, rich-input strategy, OSC9/OSC777 and user-triggered plugin install adapted; no cloud or telemetry activation."
+    },
+    {
+      "sha": "e6e1c4e0f87d34749b81d73db8439381d3870fd7",
+      "subject": "Add Windows backdrop material dropdown (#15879)",
+      "previous_status": "held_ui_boundary",
+      "status": "adapted",
+      "reason": "Windows backdrop dropdown and legacy Acrylic migration adapted to local settings initialization; no new cloud subscription."
+    },
+    {
+      "sha": "91dad6a70f6136747dfda8e50773b46c5a5ae7bb",
+      "subject": "[APP-5720] Conversation usage popover in the agent input footer (#15946)",
+      "previous_status": "held_ui_boundary",
+      "status": "excluded",
+      "reason": "Agent usage/cost UI; excluded billing/embedded-agent behavior."
+    },
+    {
+      "sha": "221eda318b509b3a0a0d8db0ea337c230224e881",
+      "subject": "Split is_headless into is_gui/is_headless and rename AppBackend::Headless to Windowless (#16034)",
+      "previous_status": "held_ui_api",
+      "status": "excluded",
+      "reason": "Headless/backend renaming is structural and tied to Agent TUI; no local GUI behavior improvement."
+    },
+    {
+      "sha": "2c6029018c492ab162ba2716d5675b82346b6dd9",
+      "subject": "Recognize TIFF images in the macOS clipboard (#16055)",
+      "previous_status": "held_ui_boundary",
+      "status": "adapted",
+      "reason": "macOS TIFF clipboard detection included. Removed warp_tui attachment path not imported."
+    },
+    {
+      "sha": "114bacea6d3041e04970ead8f86c610c563ae865",
+      "subject": "fix: update rmcp to 2.2.0 to resolve CVE-2026-64684 (#16092)",
+      "previous_status": "held_dependency_migration",
+      "status": "deferred",
+      "reason": "Not directly portable: Lite is on the rmcp 0.10 fork with SseClientTransport and OAuth handling in app/src/ai/mcp/templatable_manager/native.rs; upstream migrates 1.6 to 2.2 using crates/mcp, which Lite does not contain. Requires a separate transport/API migration or removal of the unused platform dependency. Upstream labels this a security fix; remediation and non-applicability are not claimed."
+    },
+    {
+      "sha": "c4351aee38d4d97235cabf82a0bd627fa75c69d8",
+      "subject": "[Chat][MCP] Send the MCP server's Warp-side identity in MCPContext (#15942)",
+      "previous_status": "held_ui_boundary",
+      "status": "excluded",
+      "reason": "Warp-side MCP identity for embedded agent; no local terminal improvement."
+    },
+    {
+      "sha": "41b83dc7caa4a29ebc565097fad0efaf8277b640",
+      "subject": "Support Kiro CLI as a first-class coding agent (#16243)",
+      "previous_status": "excluded_ai_cloud",
+      "status": "adapted",
+      "reason": "Local Kiro identity, kiro-cli/kiro detection, icon and rich input adapted; no notification plugin or cloud activation."
+    }
+  ]
+}

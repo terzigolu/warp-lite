@@ -81,6 +81,10 @@ The current build is `v0.5.8-lite`.
 
 ## What Changed Recently
 
+### Unreleased — additional October local-terminal improvements
+
+Right-click paste with Shift-menu override, macOS TIFF clipboard support, uncached editor text layout, RTL/font crash guards, smaller UI-core update/spawn code, local Grok/Kiro CLI integration, Windows backdrop/GPU recovery, and font-fallback fixes. See the [follow-up source and validation report](WARP_LITE_SYNC_FOLLOWUP_2026-10.md). This extends the former protected UI/core boundary; v0.5.8 release assets are unchanged.
+
 ### v0.5.8-lite — October upstream sync (2026-10)
 
 - Reviewed 368 upstream commits; imported or adapted compatible changes from 73 of them, plus one earlier command-line-ending prerequisite. Superseded command-signature pins are included in that source count.

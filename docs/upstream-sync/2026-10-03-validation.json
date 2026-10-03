@@ -1,0 +1,161 @@
+{
+  "source_revision": "a86f918501e7e2d3f00a2806dbb44c2b3c1d3821",
+  "platform": "macOS arm64",
+  "toolchain": "Rust 1.92.0 (session-local toolchain)",
+  "source_checks": {
+    "default_cargo_check": "passed",
+    "warp_platform_cargo_check": "Passed at 15a830397 before final notification correction; not re-run at the final source revision.",
+    "benchmark_compile": "passed",
+    "clippy": "passed with pre-existing overly_complex_bool_expr lint allowed; unmodified false && AI-panel gate triggers the default-deny lint. Other warnings remain; not -D warnings."
+  },
+  "automated_tests": {
+    "passed_unique": 1258,
+    "ignored": 7,
+    "failed": 1,
+    "core_and_editor": {
+      "passed": 744,
+      "ignored": 7
+    },
+    "uncached_unicode_bom_parity": {
+      "passed": 1
+    },
+    "application": [
+      {
+        "filter": "terminal::view::tests::",
+        "exit_code": 0,
+        "summary": [
+          "test result: ok. 96 passed; 0 failed; 0 ignored; 0 measured; 3931 filtered out; finished in 0.36s"
+        ],
+        "log": "app-final-0.log"
+      },
+      {
+        "filter": "terminal::cli_agent::tests::",
+        "exit_code": 0,
+        "summary": [
+          "test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 3998 filtered out; finished in 0.01s"
+        ],
+        "log": "app-final-1.log"
+      },
+      {
+        "filter": "terminal::cli_agent_sessions::",
+        "exit_code": 0,
+        "summary": [
+          "test result: ok. 92 passed; 0 failed; 0 ignored; 0 measured; 3935 filtered out; finished in 0.49s"
+        ],
+        "log": "app-final-2.log"
+      },
+      {
+        "filter": "terminal::view::use_agent_footer::",
+        "exit_code": 0,
+        "summary": [
+          "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 4023 filtered out; finished in 0.04s"
+        ],
+        "log": "app-final-3.log"
+      },
+      {
+        "filter": "settings_view::tests::",
+        "exit_code": 0,
+        "summary": [
+          "test result: ok. 59 passed; 0 failed; 0 ignored; 0 measured; 3968 filtered out; finished in 0.00s"
+        ],
+        "log": "app-final-4.log"
+      },
+      {
+        "filter": "settings::schema_generation::",
+        "exit_code": 0,
+        "summary": [
+          "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 4023 filtered out; finished in 0.01s"
+        ],
+        "log": "app-final-5.log"
+      },
+      {
+        "filter": "code::editor::",
+        "exit_code": 0,
+        "summary": [
+          "test result: ok. 111 passed; 0 failed; 0 ignored; 0 measured; 3916 filtered out; finished in 0.17s"
+        ],
+        "log": "app-final-6.log"
+      },
+      {
+        "filter": "window_settings::",
+        "exit_code": 0,
+        "summary": [
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4027 filtered out; finished in 0.00s"
+        ],
+        "log": "app-final-7.log"
+      },
+      {
+        "filter": "terminal::input::tests::",
+        "exit_code": 101,
+        "summary": [
+          "    InputSuggestionsMode::AIContextMenu { .. })",
+          "    terminal::input::tests::test_ai_context_menu_closes_when_space_immediately_after_at_symbol",
+          "test result: FAILED. 117 passed; 1 failed; 0 ignored; 0 measured; 3909 filtered out; finished in 1.64s"
+        ],
+        "log": "app-final-8.log"
+      }
+    ],
+    "remaining_failure": {
+      "test": "terminal::input::tests::test_ai_context_menu_closes_when_space_immediately_after_at_symbol",
+      "evidence": "Fails in isolation as well as the batch; expects AIContextMenu, a disabled Lite feature. No separate full baseline application binary was built."
+    },
+    "native_tiff_pasteboard": {
+      "passed": 1,
+      "scope": "Private macOS NSPasteboard containing only public.tiff; real Cocoa read path; user clipboard untouched."
+    }
+  },
+  "regressions": {
+    "font_and_rtl": "New tests with only fonts.rs and formatted_text_element.rs restored to v0.5.8 fail in 4 cases; restoring the implementation passes all 294 core tests (7 ignored) in that feature configuration.",
+    "terminal_test_isolation": "Three existing terminal view tests used global AgentView/CloudMode set_enabled; unrelated tests failed in the same process while passing in isolation. Scoped override guards make the complete 96-test batch pass.",
+    "grok_no_python_test": "Cleared inherited environment in the no-parser subprocess fixture; fallback and lifecycle tests pass.",
+    "cli_plugin_detection": "Two tests pass: command-detected Grok has no assumed plugin version; explicit plugin install seeds its minimum version.",
+    "native_cli_notifications": "Initial candidate sent an empty bracketed paste. Enabled pluggable_notifications in default Cargo features; final signed candidate delivers 0x16 with real TIFF-only macOS clipboard and a synthetic Grok session."
+  },
+  "format": "Touched Rust files formatted with their own crate edition; git diff --check passed. Full-repository formatting not claimed.",
+  "release_build": {
+    "status": "passed",
+    "command": "cargo build --release --bin warp-oss",
+    "source_revision": "a86f918501e7e2d3f00a2806dbb44c2b3c1d3821",
+    "duration": "5m 14s",
+    "package": {
+      "app": "/tmp/warp-lite-followup-20261003/WarpLite Followup.app",
+      "source_revision": "a86f918501e7e2d3f00a2806dbb44c2b3c1d3821",
+      "uuid": "499A151D-F91F-37DB-9330-13F71D3449F6",
+      "signed_binary_sha256": "adb754024c5a76df94e9e20c79616ca9335245ced4ac713507ae5e16a5e73788",
+      "signature": "strict ad-hoc verification passed; not notarized",
+      "installed": false
+    }
+  },
+  "native_smoke": {
+    "status": "passed",
+    "application_pid": 45553,
+    "checks": [
+      "Native macOS launch",
+      "Shell command execution",
+      "UTF-8 output: FOLLOWUP_FINAL_OK | T\u00fcrk\u00e7e | \u754c",
+      "TIFF-only system clipboard pasted into a synthetic Grok OSC 777 session delivers Ctrl+V (0x16) to its PTY"
+    ],
+    "tiff_pty": {
+      "received_hex": "16",
+      "expected_hex": "16",
+      "passed": true
+    },
+    "scope": "Synthetic local protocol/PTY probe, not an authenticated Grok provider session. User clipboard saved in memory and restored. Existing /Applications/WarpLite.app unchanged.",
+    "screenshot": "/tmp/warp-lite-followup-20261003/native-final-smoke.png",
+    "accessibility_snapshot": "/tmp/warp-lite-followup-20261003/native-final-ax.txt"
+  },
+  "not_verified": [
+    "Windows/Linux runtime and RDP device recovery",
+    "Authenticated Grok/Kiro requests",
+    "Notarization",
+    "Hosted CI",
+    "Whole-workspace test suite"
+  ],
+  "publication": "Local implementation only; v0.5.8 release assets unchanged.",
+  "default_feature_change": "Enabled pluggable_notifications so local OSC 9/777 events reach session handlers. Embedded Warp AI/cloud/telemetry remain disabled.",
+  "remaining_upstream_security_migration": {
+    "sha": "114bacea6d3041e04970ead8f86c610c563ae865",
+    "status": "deferred",
+    "scope": "rmcp 0.10 fork -> 2.2 requires transport/API migration; remediation and non-applicability not claimed."
+  }
+}
