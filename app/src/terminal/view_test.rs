@@ -5372,3 +5372,39 @@ fn linear_deeplink_via_default_entrypoint_does_not_auto_submit_in_fullscreen() {
         });
     })
 }
+
+#[test]
+fn command_detected_grok_does_not_claim_plugin_installation() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let terminal = add_window_with_terminal(&mut app, None);
+        terminal.update(&mut app, |view, ctx| {
+            view.register_cli_agent_listener_without_session_start_event(
+                CLIAgent::Grok,
+                false,
+                ctx,
+            );
+            let session = CLIAgentSessionsModel::as_ref(ctx)
+                .session(view.view_id)
+                .unwrap();
+            assert!(session.listener.is_some());
+            assert!(session.plugin_version.is_none());
+        });
+    })
+}
+
+#[test]
+fn installed_grok_seeds_plugin_version() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let terminal = add_window_with_terminal(&mut app, None);
+        terminal.update(&mut app, |view, ctx| {
+            view.register_cli_agent_listener_without_session_start_event(CLIAgent::Grok, true, ctx);
+            let session = CLIAgentSessionsModel::as_ref(ctx)
+                .session(view.view_id)
+                .unwrap();
+            assert!(session.listener.is_some());
+            assert!(session.plugin_version.is_some());
+        });
+    })
+}

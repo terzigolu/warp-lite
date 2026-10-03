@@ -23,7 +23,7 @@
 use cocoa::base::nil;
 use cocoa::foundation::NSAutoreleasePool;
 
-use super::pasteboard_type_for_image_mime_type;
+use super::*;
 
 /// Number of outer pool cycles. Each cycle creates an `NSAutoreleasePool`,
 /// runs the inner loop, then drains. On master the retained NSStrings survive
@@ -57,5 +57,30 @@ fn pasteboard_type_for_image_mime_type_memory_behavior() {
             }
             pool.drain();
         }
+    }
+}
+
+#[test]
+fn tiff_only_pasteboard_is_recognized_as_image_data() {
+    unsafe {
+        // Use a private pasteboard; never replace the user's clipboard.
+        let pool = cocoa::foundation::NSAutoreleasePool::new(nil);
+        let pasteboard: id = msg_send![class!(NSPasteboard), pasteboardWithUniqueName];
+        let tiff_type = make_nsstring("public.tiff");
+        let payload = [0x49u8, 0x49, 0x2a, 0x00];
+        pasteboard.declareTypes_owner(NSArray::arrayWithObject(nil, tiff_type), nil);
+        let data: id = msg_send![class!(NSData), alloc];
+        let data =
+            data.initWithBytes_length_(payload.as_ptr() as *const c_void, payload.len() as u64);
+        let _: () = msg_send![pasteboard, setData: data forType: tiff_type];
+        let _: () = msg_send![data, release];
+        let images = Clipboard(pasteboard)
+            .read_image_data_from_pasteboard()
+            .unwrap();
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].mime_type, "image/tiff");
+        assert_eq!(images[0].data, payload);
+        let _: () = msg_send![pasteboard, releaseGlobally];
+        pool.drain();
     }
 }

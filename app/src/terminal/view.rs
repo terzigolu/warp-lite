@@ -10759,7 +10759,7 @@ impl TerminalView {
                                         detection
                                     {
                                         me.register_cli_agent_listener_without_session_start_event(
-                                            agent, ctx,
+                                            agent, false, ctx,
                                         );
                                     }
 
@@ -11458,13 +11458,16 @@ impl TerminalView {
                     return;
                 }
 
-                // Suppress OSC 9 notifications when a Codex listener is active.
-                // The listener's subscription handles these via CodexSessionHandler.
+                // Codex/Grok listeners handle OSC 9 notifications themselves.
+                // Suppress the generic path to avoid duplicate notifications.
                 if title.is_none() {
-                    let has_codex_listener = CLIAgentSessionsModel::as_ref(ctx)
+                    let has_cli_agent_listener = CLIAgentSessionsModel::as_ref(ctx)
                         .session(self.view_id)
-                        .is_some_and(|s| s.agent == CLIAgent::Codex && s.listener.is_some());
-                    if has_codex_listener {
+                        .is_some_and(|s| {
+                            matches!(s.agent, CLIAgent::Codex | CLIAgent::Grok)
+                                && s.listener.is_some()
+                        });
+                    if has_cli_agent_listener {
                         return;
                     }
                 }
@@ -11814,14 +11817,16 @@ impl TerminalView {
     fn register_cli_agent_listener_without_session_start_event(
         &mut self,
         agent: CLIAgent,
+        assume_plugin_installed: bool,
         ctx: &mut ViewContext<Self>,
     ) {
-        // No SessionStart event in this path (mid-session install/update).
-        // Assume the just-installed plugin meets the minimum version for this agent
-        // so the update chip doesn't flash before the user runs /reload-plugins.
+        // Command detection does not prove a plugin is installed. Only the
+        // explicit install/update flow may seed its minimum version before
+        // the user runs /reload-plugins.
         #[cfg(not(target_family = "wasm"))]
-        let plugin_version =
-            plugin_manager_for(agent).map(|m| m.minimum_plugin_version().to_owned());
+        let plugin_version = assume_plugin_installed
+            .then(|| plugin_manager_for(agent).map(|m| m.minimum_plugin_version().to_owned()))
+            .flatten();
         #[cfg(target_family = "wasm")]
         let plugin_version = None;
         let notification = CLIAgentEvent {
@@ -20221,7 +20226,7 @@ impl TerminalView {
                 self.enter_environment_setup_selector(repos.clone(), ctx);
             }
             InputEvent::RegisterPluginListener(agent) => {
-                self.register_cli_agent_listener_without_session_start_event(*agent, ctx);
+                self.register_cli_agent_listener_without_session_start_event(*agent, true, ctx);
             }
             #[cfg(not(target_family = "wasm"))]
             InputEvent::OpenPluginInstructionsPane(agent, kind) => {

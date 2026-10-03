@@ -496,6 +496,7 @@ default = [
     "markdown_mermaid",
     "configurable_toolbar",
     "hoa_notifications",
+    "pluggable_notifications",
     "cli_agent_rich_input",
     "vertical_tabs",
     "tab_configs",

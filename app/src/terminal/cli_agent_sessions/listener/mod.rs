@@ -183,6 +183,7 @@ impl CLIAgentSessionListener {
         ctx.subscribe_to_model(model_event_dispatcher, move |me, event, ctx| {
             if let ModelEvent::PluggableNotification { title, body } = event {
                 // A rich session may have started before this listener was registered.
+                // Command detection must leave plugin_version unset.
                 if title.is_none()
                     && CLIAgentSessionsModel::as_ref(ctx)
                         .session(me.terminal_view_id)
