@@ -81,9 +81,9 @@ The current build is `v0.5.8-lite`.
 
 ## What Changed Recently
 
-### Unreleased — additional October local-terminal improvements
+### v0.5.9-lite — additional October local-terminal improvements
 
-Right-click paste with Shift-menu override, macOS TIFF clipboard support, uncached editor text layout, RTL/font crash guards, smaller UI-core update/spawn code, local Grok/Kiro CLI integration, Windows backdrop/GPU recovery, and font-fallback fixes. See the [follow-up source and validation report](WARP_LITE_SYNC_FOLLOWUP_2026-10.md). This extends the former protected UI/core boundary; v0.5.8 release assets are unchanged.
+Right-click paste with Shift-menu override, macOS TIFF clipboard support, uncached editor text layout, RTL/font crash guards, smaller UI-core update/spawn code, local Grok/Kiro CLI integration, Windows backdrop/GPU recovery, and font-fallback fixes. See the [follow-up source and validation report](WARP_LITE_SYNC_FOLLOWUP_2026-10.md). This extends the former protected UI/core boundary. Includes 14 additional upstream source adaptations; embedded Warp AI/cloud and telemetry remain disabled.
 
 ### v0.5.8-lite — October upstream sync (2026-10)
 
@@ -270,6 +270,7 @@ Historical phase branches and tags may still exist, but the public state should 
 
 | Tag | Summary |
 |---|---|
+| `v0.5.9-lite` | Right-click paste, TIFF clipboard, editor/UI-core and RTL/font fixes, Grok/Kiro CLI support, and Windows renderer/backdrop adaptations. |
 | `v0.5.8-lite` | October sync: native completions, shell widget handoff, history ranking, tab groups, editor/Vim, settings, and bounded caches. |
 | `v0.5.7-lite` | Privacy-vetted August upstream sync: 193 integration commits for security, terminal/shell reliability, editor/Vim, grouped/pinned tabs, performance, and platform compatibility. |
 | `v0.5.6-lite` | Added `warp_platform` compile boundaries, removed pricing/account and safe AI startup work from default Lite, and added measured release/runtime benchmark gates. |

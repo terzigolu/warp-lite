@@ -40,3 +40,7 @@ Implementation commits: `15a830397ae56c572e6c0c27a33dcd5d83b28921` (upstream ada
 - Candidate bundle: `/tmp/warp-lite-followup-20261003/WarpLite Followup.app`. No new release was published.
 
 The [validation record](docs/upstream-sync/2026-10-03-validation.json) separates native checks from automated tests. Windows/Linux runtime behavior and authenticated Grok/Kiro requests require their respective environments.
+
+## Release
+
+Packaged for `v0.5.9-lite` after the validation above; application/crate source is unchanged from `a86f918501e7e2d3f00a2806dbb44c2b3c1d3821`. The temporary candidate and unpublished status above describe the initial validation stage. See [release notes](docs/releases/v0.5.9-lite.md) for distribution details and known limits.
